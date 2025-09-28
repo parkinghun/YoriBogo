@@ -12,7 +12,6 @@ final class FridgeViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        Bundle.getSecrets(for: .key)
     }
     
 }
