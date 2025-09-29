@@ -1,6 +1,6 @@
 {
     "categories": [
-        { "id": 1, "name": "과일·채소", "imageName": "leaf" },
+        { "id": 1, "name": "과일·채소", "imageName": "carrot" },
         { "id": 2, "name": "빵·곡물·조식류", "imageName": "takeoutbag.and.cup.and.straw" },
         { "id": 3, "name": "고기·단백질", "imageName": "hare" },
         { "id": 4, "name": "유제품·계란", "imageName": "carton" },

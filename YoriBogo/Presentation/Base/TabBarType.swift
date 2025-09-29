@@ -20,7 +20,7 @@ enum TabBarType: CaseIterable {
     private var viewController: UIViewController {
         switch self {
         case .refrigerator:
-            let vc = FridgeViewController()
+            let vc = FridgeViewController(viewModel: FridgeViewModel())
             vc.tabBarItem = self.tabBarItem
             return vc
         case .recommend:

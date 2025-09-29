@@ -34,6 +34,15 @@ final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
         try dataSource.delete(id)
     }
     
+    func getFridgeEntities() -> ([FridgeCategory], [FridgeSubcategory], [FridgeIngredient]) {
+        let dto = Bundle.loadJSON("FridgeIngredients", as: FridgeDTO.self)
+        
+        let categories = dto.categories.map { FridgeCategory(from: $0) }
+        let subcategories = dto.subcategories.map { FridgeSubcategory(from: $0) }
+        let ingredients = dto.ingredients.map { FridgeIngredient(from: $0) }
+        
+        return (categories, subcategories, ingredients)
+    }
 //    func loadMockIngredients() -> [FridgeIngredientDetail] {
 //        guard let dto = MockLoader.loadFridgeDTO() else { return [] }
 //        let baseIngredients = FridgeIngredientConverter.toEntities(from: dto).ingredients

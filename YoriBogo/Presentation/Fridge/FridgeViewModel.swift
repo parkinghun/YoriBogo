@@ -11,12 +11,13 @@ import RxCocoa
 
 final class FridgeViewModel: ViewModelType {
     struct Input {
-        
+        let nextButtontapped: ControlEvent<Void>
     }
     
     struct Output {
         // repository에서 찾아서
         var showEmptyView: Driver<Bool>
+        var pushIngredientSelelctionVC: Driver<Void>
     }
     
     private let disposeBag = DisposeBag()
@@ -26,10 +27,13 @@ final class FridgeViewModel: ViewModelType {
         self.repository = repository
     }
     
-    func transform(intput: Input) -> Output {
+    func transform(input: Input) -> Output {
         let showEmptyView = PublishRelay<Bool>()
         repository.getIngredients().isEmpty ? showEmptyView.accept(true) : showEmptyView.accept(false)
         
-        return Output(showEmptyView: showEmptyView.asDriver(onErrorJustReturn: true))
+        let pushIngredientSelelctionVC = input.nextButtontapped.asDriver()
+        
+        
+        return Output(showEmptyView: showEmptyView.asDriver(onErrorJustReturn: true), pushIngredientSelelctionVC: pushIngredientSelelctionVC)
     }
 }
