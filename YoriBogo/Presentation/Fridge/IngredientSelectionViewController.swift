@@ -21,6 +21,7 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
     private lazy var categoryCollectionView = {
         let cv = UICollectionView(frame: .zero, collectionViewLayout: categoryLayout())
         cv.register(IngredientCategoryCell.self, forCellWithReuseIdentifier: IngredientCategoryCell.id)
+        cv.delegate = self
         return cv
     }()
     lazy var ingredientCollectionView = {
@@ -28,13 +29,16 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         cv.register(IngredientCell.self, forCellWithReuseIdentifier: IngredientCell.id)
         cv.register(IngredientHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: IngredientHeaderView.id)
         cv.backgroundColor = .gray50
+        cv.delegate = self
         return cv
     }()
     let selectButton = RoundedButton(title: "재료 추가하기", titleColor: .white, backgroundColor: .brandOrange500)
     
     private let viewModel: IngredientSelectionViewModel
     private let disposeBag: DisposeBag = DisposeBag()
-    
+    private let visibleSectionSubject = PublishSubject<Int>()
+
+    private var isScrollingProgrammatically = false
     typealias CategorySection = IngredientSelectionViewModel.CategorySection
     
     private var categoryDataSource: UICollectionViewDiffableDataSource<CategorySection, FridgeCategory>!
@@ -84,9 +88,11 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         }
     }
     
-
+    
     func bind() {
-        let input = IngredientSelectionViewModel.Input(selectedIngredientIndex: ingredientCollectionView.rx.itemSelected)
+        let input = IngredientSelectionViewModel.Input(selectedIngredientIndex: ingredientCollectionView.rx.itemSelected,
+                                                       selectedCategoryIndex: categoryCollectionView.rx.itemSelected,
+                                                       visibleSectionIndex: visibleSectionSubject.asObservable())
         let output = viewModel.transform(input: input)
         
         output.categories
@@ -100,13 +106,62 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
                 owner.applyIngredientSnapshot(sections: sections)
             }
             .disposed(by: disposeBag)
+            
+            output.reconfigureItem
+                .drive(with: self) { owner, ingredient in
+                    guard var snapshot = owner.ingredientDataSource?.snapshot() else { return }
+                    snapshot.reconfigureItems([ingredient])
+                    owner.ingredientDataSource?.apply(snapshot, animatingDifferences: false)
+                }
+                .disposed(by: disposeBag)
         
-        output.selectedItemIds
-            .drive(with: self) { owner, ids in
-                
+        // 카테고리 선택 시 재료 섹션 스크롤
+          output.scrollToSection
+              .drive(with: self) { owner, sectionIndex in
+                  owner.scrollToIngredientSection(sectionIndex)
+              }
+              .disposed(by: disposeBag)
+          
+          // 재료 스크롤 시 카테고리 선택
+          output.selectedCategoryIndex
+              .drive(with: self) { owner, categoryIndex in
+                  owner.selectCategory(at: categoryIndex)
+              }
+              .disposed(by: disposeBag)
+        
+        output.buttonTitle
+            .drive(selectButton.rx.title(for: .normal))
+            .disposed(by: disposeBag)
+        
+        output.isButtonEnabled
+            .drive(with: self) { owner, isEnabled in
+                owner.selectButton.isEnabled = isEnabled
+                owner.selectButton.backgroundColor = isEnabled ? .brandOrange500 : .gray300
+                owner.selectButton.alpha = isEnabled ? 1.0 : 0.6
             }
             .disposed(by: disposeBag)
-            
+        
+        selectButton.rx.tap
+            .withUnretained(self)
+            .subscribe(onNext: { owner, _ in
+                let selectedIngredients = owner.viewModel.getSelectedIngredients()
+                owner.navigateToDetail(with: selectedIngredients)
+            })
+            .disposed(by: disposeBag)
+      }
+    
+    private func navigateToDetail(with ingredients: [FridgeIngredient]) {
+        dump(ingredients)
+        // 방법 1: 다음 ViewController로 직접 전달
+//        let detailViewModel = IngredientDetailViewModel(ingredients: ingredients)
+//        let detailVC = IngredientDetailViewController(viewModel: detailViewModel)
+//        navigationController?.pushViewController(detailVC, animated: true)
+        
+        // 방법 2: Coordinator 패턴 사용 시
+        // coordinator?.showIngredientDetail(ingredients: ingredients)
+        
+        // 방법 3: Closure/Delegate 패턴
+        // onIngredientsSelected?(ingredients)
     }
     
     private func configureDataSource() {
@@ -122,7 +177,9 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
             guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: IngredientCell.id, for: indexPath) as? IngredientCell else { return UICollectionViewCell() }
             
             let image = UIImage(named: item.key)
-            cell.configure(image: image, title: item.name)
+            
+            let isSelected = self.viewModel.isIngredientSelected(item.id)
+            cell.configure(image: image, title: item.name, isSelected: isSelected)
             
             return cell
         }
@@ -140,12 +197,18 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         }
     }
     
-    private func applyCategorySnapshot(_ categories: [FridgeCategory], animating: Bool = true) {
-        var snapshot = NSDiffableDataSourceSnapshot<CategorySection, FridgeCategory>()
-        snapshot.appendSections([.main])
-        snapshot.appendItems(categories, toSection: .main)
-        categoryDataSource.apply(snapshot, animatingDifferences: animating)
-    }
+    private func applyCategorySnapshot(_ categories: [FridgeCategory], animating: Bool = false) {
+         var snapshot = NSDiffableDataSourceSnapshot<CategorySection, FridgeCategory>()
+         snapshot.appendSections([.main])
+         snapshot.appendItems(categories, toSection: .main)
+         categoryDataSource.apply(snapshot, animatingDifferences: animating)
+         
+         // 첫 번째 카테고리 자동 선택
+         if !categories.isEmpty {
+             let indexPath = IndexPath(item: 0, section: 0)
+             categoryCollectionView.selectItem(at: indexPath, animated: false, scrollPosition: [])
+         }
+     }
     
     private func applyIngredientSnapshot(sections: [IngredientSelectionViewModel.IngredientSectionModel], animating: Bool = true) {
         var snapshot = NSDiffableDataSourceSnapshot<FridgeSubcategory, FridgeIngredient>()
@@ -157,6 +220,50 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         ingredientDataSource.apply(snapshot, animatingDifferences: animating)
     }
     
+    private func scrollToIngredientSection(_ sectionIndex: Int) {
+         isScrollingProgrammatically = true
+         
+        let headerIndexPath = IndexPath(item: 0, section: sectionIndex)
+
+        if let headerAttributes = ingredientCollectionView.layoutAttributesForSupplementaryElement(
+            ofKind: UICollectionView.elementKindSectionHeader,
+            at: headerIndexPath
+        ) {
+            let offsetY = headerAttributes.frame.origin.y - ingredientCollectionView.contentInset.top
+            ingredientCollectionView.setContentOffset(
+                CGPoint(x: 0, y: offsetY),
+                animated: true
+            )
+        }
+         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+             self?.isScrollingProgrammatically = false
+         }
+     }
+    
+    private func selectCategory(at index: Int) {
+         let indexPath = IndexPath(item: index, section: 0)
+         
+         // 이전 선택 해제
+         if let selectedItems = categoryCollectionView.indexPathsForSelectedItems {
+             selectedItems.forEach { categoryCollectionView.deselectItem(at: $0, animated: false) }
+         }
+         
+         // 새로운 선택
+         categoryCollectionView.selectItem(at: indexPath, animated: false, scrollPosition: [])
+         categoryCollectionView.scrollToItem(at: indexPath, at: .centeredVertically, animated: true)
+     }
+     
+    /// 현재 보이는 재료 섹션 감지
+    private func updateVisibleSection() {
+          guard !isScrollingProgrammatically else { return }
+          
+          let visibleIndexPaths = ingredientCollectionView.indexPathsForVisibleItems.sorted()
+          
+          guard let firstVisibleIndexPath = visibleIndexPaths.first else { return }
+          
+          visibleSectionSubject.onNext(firstVisibleIndexPath.section)
+      }
+      
     
     private func categoryLayout() -> UICollectionViewCompositionalLayout {
         let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalHeight(1.0))
@@ -178,10 +285,10 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         
         let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalWidth(0.5))
         let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-                
+        
         let section = NSCollectionLayoutSection(group: group)
         section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4, bottom: 8, trailing: 4)
-
+        
         let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(44))
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
@@ -191,9 +298,27 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         header.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0)
         
         section.boundarySupplementaryItems = [header]
-
+        
         let layout = UICollectionViewCompositionalLayout(section: section)
         
         return layout
+    }
+}
+
+extension IngredientSelectionViewController: UICollectionViewDelegate {
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard scrollView == ingredientCollectionView else { return }
+        updateVisibleSection()
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        guard scrollView == ingredientCollectionView else { return }
+        updateVisibleSection()
+    }
+    
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        guard scrollView == ingredientCollectionView, !decelerate else { return }
+        updateVisibleSection()
     }
 }

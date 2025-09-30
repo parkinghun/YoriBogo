@@ -12,5 +12,5 @@ protocol ReusableView {
 }
 
 extension ReusableView {
-    static var id: String { String(describing: ReusableView.self) }
+    static var id: String { String(describing: Self.self) }
 }

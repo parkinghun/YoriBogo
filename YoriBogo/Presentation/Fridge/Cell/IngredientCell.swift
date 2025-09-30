@@ -34,6 +34,22 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
         return sv
     }()
     
+    private let checkmarkContainer = {
+        let view = UIView()
+        view.backgroundColor = .brandOrange600
+        view.layer.cornerRadius = 12
+        view.isHidden = true
+        return view
+    }()
+    
+    private let checkmarkIcon = {
+        let iv = UIImageView()
+        iv.image = UIImage(systemName: "checkmark")
+        iv.tintColor = .white
+        iv.contentMode = .scaleAspectFit
+        return iv
+    }()
+    
     private let outerView = {
         let view = UIView()
         view.backgroundColor = .white
@@ -56,33 +72,64 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
     override func prepareForReuse() {
         imageView.image = nil
         titleLabel.text = nil
+        updateUI(selected: false)
     }
     
-    func configure(image: UIImage?, title: String) {
+    func configure(image: UIImage?, title: String, isSelected: Bool) {
         imageView.image = image
         titleLabel.text = title
+        updateUI(selected: isSelected)
     }
     
     
     private func updateUI(selected: Bool) {
-        let color = isSelected ? UIColor.brandOrange400 : UIColor.gray500
-        
-        outerView.backgroundColor = isSelected ? .brandOrange200 : .white
-        outerView.layer.borderColor = isSelected ? UIColor.brandOrange400.cgColor : UIColor.gray100.cgColor
+        if selected {
+            outerView.backgroundColor = .brandOrange200
+            outerView.layer.borderColor = UIColor.brandOrange400.cgColor
+            checkmarkContainer.isHidden = false
+        } else {
+            outerView.backgroundColor = .white
+            outerView.layer.borderColor = UIColor.gray100.cgColor
+            checkmarkContainer.isHidden = true
+        }
     }
     
     func configureHierachy() {
         contentView.addSubview(outerView)
         outerView.addSubview(stackView)
+        outerView.addSubview(checkmarkContainer)
+        checkmarkContainer.addSubview(checkmarkIcon)
     }
     
+    //    func configureLayout() {
+    
+    //        stackView.snp.makeConstraints { $0.edges.equalToSuperview().inset(8) }
+    //        outerView.snp.makeConstraints { $0.edges.equalToSuperview() }
+    //
+    //        imageView.snp.makeConstraints {
+    //            $0.horizontalEdges.equalToSuperview()
+    //            $0.height.equalTo(imageView.snp.width)
+    //        }
+    //    }
     func configureLayout() {
-        stackView.snp.makeConstraints { $0.edges.equalToSuperview().inset(8) }
         outerView.snp.makeConstraints { $0.edges.equalToSuperview() }
+        
+        stackView.snp.makeConstraints { $0.edges.equalToSuperview().inset(8) }
         
         imageView.snp.makeConstraints {
             $0.horizontalEdges.equalToSuperview()
             $0.height.equalTo(imageView.snp.width)
+        }
+        
+        checkmarkContainer.snp.makeConstraints {
+            $0.top.equalTo(imageView.snp.top).offset(-4)
+            $0.trailing.equalTo(imageView.snp.trailing).offset(4)
+            $0.width.height.equalTo(24)
+        }
+        
+        checkmarkIcon.snp.makeConstraints {
+            $0.center.equalToSuperview()
+            $0.width.height.equalTo(14)
         }
     }
 }
