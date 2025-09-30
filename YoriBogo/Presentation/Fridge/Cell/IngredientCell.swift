@@ -38,6 +38,7 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
         let view = UIView()
         view.backgroundColor = .white
         view.layer.cornerRadius = 12
+        view.layer.borderWidth = 1
         view.clipsToBounds = true
         return view
     }()
@@ -62,6 +63,14 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
         titleLabel.text = title
     }
     
+    
+    private func updateUI(selected: Bool) {
+        let color = isSelected ? UIColor.brandOrange400 : UIColor.gray500
+        
+        outerView.backgroundColor = isSelected ? .brandOrange200 : .white
+        outerView.layer.borderColor = isSelected ? UIColor.brandOrange400.cgColor : UIColor.gray100.cgColor
+    }
+    
     func configureHierachy() {
         contentView.addSubview(outerView)
         outerView.addSubview(stackView)
@@ -76,14 +85,5 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
             $0.height.equalTo(imageView.snp.width)
         }
     }
-    
-    //    private func updateUI(selected: Bool) {
-    //        let color = isSelected ? UIColor.brandOrange400 : UIColor.gray500
-    //
-    //        iconView.tintColor = color
-    //        titleLabel.textColor = color
-    //        hilightBar.backgroundColor = isSelected ? UIColor.brandOrange400 : .white
-    //        contentView.backgroundColor = isSelected ? UIColor.brandOrange100 : .white
-    //    }
 }
 

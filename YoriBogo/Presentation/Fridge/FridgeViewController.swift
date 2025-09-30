@@ -29,6 +29,7 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupNavigation()
         configureHierachy()
         configureLayout()
         bind()
@@ -40,10 +41,17 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
         
         output.pushIngredientSelelctionVC
             .drive(with: self) { owner, _ in
-                owner.navigationController?.pushViewController(IngredientSelectionViewController(viewModel: .init()), animated: true)
+                let vc  = IngredientSelectionViewController(viewModel: .init())
+                vc.hidesBottomBarWhenPushed = true
+
+                owner.navigationController?.pushViewController(vc, animated: true)
             }
             .disposed(by: disposeBag)
         
+    }
+    
+    private func setupNavigation() {
+        navigationItem.title = "냉장고"
     }
     
     func configureHierachy() {

@@ -30,6 +30,7 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         cv.backgroundColor = .gray50
         return cv
     }()
+    let selectButton = RoundedButton(title: "재료 추가하기", titleColor: .white, backgroundColor: .brandOrange500)
     
     private let viewModel: IngredientSelectionViewModel
     private let disposeBag: DisposeBag = DisposeBag()
@@ -62,6 +63,7 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
     func configureHierachy() {
         view.addSubview(categoryCollectionView)
         view.addSubview(ingredientCollectionView)
+        view.addSubview(selectButton)
     }
     
     func configureLayout() {
@@ -70,14 +72,21 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
             $0.width.equalTo(100)
         }
         ingredientCollectionView.snp.makeConstraints {
-            $0.verticalEdges.trailing.equalTo(view.safeAreaLayoutGuide)
+            $0.top.trailing.equalTo(view.safeAreaLayoutGuide)
+            $0.bottom.equalTo(selectButton.snp.top).offset(-12)
             $0.leading.equalTo(categoryCollectionView.snp.trailing)
+        }
+        selectButton.snp.makeConstraints {
+            $0.leading.equalTo(categoryCollectionView.snp.trailing).offset(20)
+            $0.trailing.equalToSuperview().inset(20)
+            $0.bottom.equalToSuperview().offset(-30)
+            $0.height.equalTo(44)
         }
     }
     
 
     func bind() {
-        let input = IngredientSelectionViewModel.Input()
+        let input = IngredientSelectionViewModel.Input(selectedIngredientIndex: ingredientCollectionView.rx.itemSelected)
         let output = viewModel.transform(input: input)
         
         output.categories
@@ -91,6 +100,13 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
                 owner.applyIngredientSnapshot(sections: sections)
             }
             .disposed(by: disposeBag)
+        
+        output.selectedItemIds
+            .drive(with: self) { owner, ids in
+                
+            }
+            .disposed(by: disposeBag)
+            
     }
     
     private func configureDataSource() {
@@ -124,7 +140,6 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         }
     }
     
-    // MARK: - Snapshot Helpers
     private func applyCategorySnapshot(_ categories: [FridgeCategory], animating: Bool = true) {
         var snapshot = NSDiffableDataSourceSnapshot<CategorySection, FridgeCategory>()
         snapshot.appendSections([.main])
@@ -167,7 +182,7 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         let section = NSCollectionLayoutSection(group: group)
         section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4, bottom: 8, trailing: 4)
 
-        let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .estimated(44))
+        let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(44))
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
             elementKind: UICollectionView.elementKindSectionHeader,
