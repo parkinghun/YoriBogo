@@ -43,12 +43,19 @@ final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
         
         return (categories, subcategories, ingredients)
     }
-//    func loadMockIngredients() -> [FridgeIngredientDetail] {
-//        guard let dto = MockLoader.loadFridgeDTO() else { return [] }
-//        let baseIngredients = FridgeIngredientConverter.toEntities(from: dto).ingredients
-//        
-//        return baseIngredients.map {
-//            FridgeIngredientDetail(from: $0, qty: 1, unit: "개", altText: nil, expirationDate: Date().addingTimeInterval(60*60*24*7))
-//        }
-//    }
+    
+    func getCategoryName(for categoryId: Int) -> String {
+        let (categories, _, _) = getFridgeEntities()
+        return categories.first { $0.id == categoryId}?.name ?? "기타"
+    }
+    
+//    /// FridgeIngredient → FridgeIngredientDetail 변환
+//    func toDetail(from ingredient: FridgeIngredient) -> FridgeIngredientDetail {
+//          let categoryName = getCategoryName(for: ingredient.categoryId)
+//          
+//          return FridgeIngredientDetail(
+//              from: ingredient,
+//              categoryName: categoryName
+//          )
+//      }
 }

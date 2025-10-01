@@ -48,14 +48,16 @@ struct FridgeIngredient: Identifiable, Hashable {
     }
 }
 
+
+
 // DB 저장용
-struct FridgeIngredientDetail {
+struct FridgeIngredientDetail: Identifiable, Hashable {
     let id: String
     let name: String
     let categoryId: Int
     let subcategoryId: Int?
     let imageKey: String   // 이미지 매핑용
-
+    
     // 사용자 입력/상태
     var qty: Double?
     var unit: String?
@@ -67,7 +69,30 @@ struct FridgeIngredientDetail {
     var notifyD1: Bool  // 알림 전송 여부 D-1
     var notifyDday: Bool  // 알림 전송 여부 D-day
     
-    init(from base: FridgeIngredient, qty: Double, unit: String?, altText: String?, expirationDate: Date?, notifyD3: Bool = false, notifyD1: Bool = false, notifyDday: Bool = false) {
+    var categoryName: String {
+        let repository = FridgeIngredientRepository()
+        return repository.getCategoryName(for: categoryId)
+    }
+    
+    init(from ingredient: FridgeIngredient) {
+        self.id = "\(ingredient.id)"
+        self.name = ingredient.name
+        self.categoryId = ingredient.categoryId
+        self.subcategoryId = ingredient.subcategoryId
+        self.imageKey = ingredient.key
+        
+        self.qty = nil
+        self.unit = nil
+        self.altText = nil
+        self.expirationDate = nil
+        self.regDate = Date()
+        self.updatedAt = nil
+        self.notifyD3 = false
+        self.notifyD1 = false
+        self.notifyDday = false
+    }
+    
+    init(from base: FridgeIngredient, qty: Double? = nil, unit: String? = nil, altText: String? = nil, expirationDate: Date? = nil, notifyD3: Bool = false, notifyD1: Bool = false, notifyDday: Bool = false) {
         self.id = "\(base.id)"
         self.name = base.name
         self.categoryId = base.categoryId
@@ -99,6 +124,17 @@ struct FridgeIngredientDetail {
         self.notifyD3 = object.notifyD3
         self.notifyD1 = object.notifyD1
         self.notifyDday = object.notifyDday
+    }
+    
+    
+    /// qty 기본값 적용
+    func toSaveModel() -> FridgeIngredientDetail {
+        var copy = self
+        
+        if copy.qty == nil || copy.qty! <= 0 {
+            copy.qty = 1
+        }
+        return copy
     }
 }
 
