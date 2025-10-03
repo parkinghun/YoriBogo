@@ -40,15 +40,13 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
         print(realm.configuration.fileURL)
 
         let objects = realm.objects(FridgeIngredientObject.self)
-        let sorted = applySorting(to: objects, sortBy: sortBy)
-        return sorted.map { FridgeIngredientDetail(from: $0) }
+        return applySorting(to: Array(objects), sortBy: sortBy)
     }
 
     func fetchByCategories(_ categoryIds: [Int], sortBy: SortOption) -> [FridgeIngredientDetail] {
         let objects = realm.objects(FridgeIngredientObject.self)
             .where { $0.categoryId.in(categoryIds) }
-        let sorted = applySorting(to: objects, sortBy: sortBy)
-        return sorted.map { FridgeIngredientDetail(from: $0) }
+        return applySorting(to: Array(objects), sortBy: sortBy)
     }
 
     func delete(_ id: String) throws {
@@ -62,12 +60,25 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
     }
 
     // MARK: - Private
-    private func applySorting(to results: Results<FridgeIngredientObject>, sortBy: SortOption) -> Results<FridgeIngredientObject> {
+    private func applySorting(to objects: [FridgeIngredientObject], sortBy: SortOption) -> [FridgeIngredientDetail] {
+        let details = objects.map { FridgeIngredientDetail(from: $0) }
+
         switch sortBy {
         case .basic:
-            return results.sorted(byKeyPath: "name", ascending: true)
+            return details.sorted { $0.name < $1.name }
         case .expiryDate:
-            return results.sorted(byKeyPath: "expirationDate", ascending: true)
+            return details.sorted { lhs, rhs in
+                switch (lhs.expirationDate, rhs.expirationDate) {
+                case (nil, nil):
+                    return false
+                case (nil, _):
+                    return false  // nil을 뒤로
+                case (_, nil):
+                    return true   // nil을 뒤로
+                case (let date1?, let date2?):
+                    return date1 < date2
+                }
+            }
         }
     }
 }

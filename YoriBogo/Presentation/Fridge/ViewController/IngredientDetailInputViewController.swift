@@ -128,17 +128,6 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
             }
             .disposed(by: disposeBag)
         
-        output.reloadItemAtIndex
-            .drive(with: self) { owner, index in
-                guard var snapshot = owner.dataSource?.snapshot(),
-                      index < snapshot.itemIdentifiers.count else { return }
-                
-                let item = snapshot.itemIdentifiers[index]
-                snapshot.reloadItems([item])
-                owner.dataSource?.apply(snapshot, animatingDifferences: false)
-            }
-            .disposed(by: disposeBag)
-        
         // 저장 결과 처리
         output.saveResult
             .drive(with: self) { owner, result in

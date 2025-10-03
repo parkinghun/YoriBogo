@@ -15,6 +15,7 @@
 		B574AB3A2E89D08100D8AA58 /* RxCocoa in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB392E89D08100D8AA58 /* RxCocoa */; };
 		B574AB3C2E89D08100D8AA58 /* RxSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB3B2E89D08100D8AA58 /* RxSwift */; };
 		B574AE5A2E8E23AC00D8AA58 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B574AB2D2E89CF9500D8AA58 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		B574AEE92E901F6F00D8AA58 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -62,6 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B574AEE92E901F6F00D8AA58 /* IQKeyboardManagerSwift in Frameworks */,
 				B574AB3C2E89D08100D8AA58 /* RxSwift in Frameworks */,
 				B574AB372E89D06D00D8AA58 /* Kingfisher in Frameworks */,
 				B574AB342E89D06300D8AA58 /* Alamofire in Frameworks */,
@@ -118,6 +120,7 @@
 				B574AB362E89D06D00D8AA58 /* Kingfisher */,
 				B574AB392E89D08100D8AA58 /* RxCocoa */,
 				B574AB3B2E89D08100D8AA58 /* RxSwift */,
+				B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */,
 			);
 			productName = YoriBogo;
 			productReference = B574A9412E89BBC400D8AA58 /* YoriBogo.app */;
@@ -153,6 +156,7 @@
 				B574AB322E89D06300D8AA58 /* XCRemoteSwiftPackageReference "Alamofire" */,
 				B574AB352E89D06D00D8AA58 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				B574AB382E89D08100D8AA58 /* XCRemoteSwiftPackageReference "RxSwift" */,
+				B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B574A9422E89BBC400D8AA58 /* Products */;
@@ -443,6 +447,14 @@
 				minimumVersion = 6.9.0;
 			};
 		};
+		B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/hackiftekhar/IQKeyboardManager.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -475,6 +487,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B574AB382E89D08100D8AA58 /* XCRemoteSwiftPackageReference "RxSwift" */;
 			productName = RxSwift;
+		};
+		B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */;
+			productName = IQKeyboardManagerSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

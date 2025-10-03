@@ -94,7 +94,6 @@ final class FridgeIngredientCardCell: UICollectionViewCell, ReusableView {
         }
     }
 
-    //TODO: - 캘린더 위치 변경 & 컬러 변경
     private func configureDDayBadge(for date: Date) {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -119,14 +118,16 @@ final class FridgeIngredientCardCell: UICollectionViewCell, ReusableView {
             dDayBadge.textColor = .white
         case 1...3:
             dDayBadge.text = "D-\(daysLeft)"
-            dDayBadge.backgroundColor = .systemOrange
+            dDayBadge.backgroundColor = .systemRed
             dDayBadge.textColor = .white
         case 4...7:
             dDayBadge.text = "D-\(daysLeft)"
-            dDayBadge.backgroundColor = .systemYellow
-            dDayBadge.textColor = .black
+            dDayBadge.backgroundColor = .systemOrange
+            dDayBadge.textColor = .white
         default:
-            dDayBadge.isHidden = true
+            dDayBadge.text = "D-\(daysLeft)"
+            dDayBadge.backgroundColor = .gray200
+            dDayBadge.textColor = .gray700
         }
     }
 
