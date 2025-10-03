@@ -41,6 +41,28 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     
     private let addButtonItem = UIBarButtonItem(image: UIImage(systemName: "plus"), style: .plain, target: nil, action: nil)
 
+    private let filterInfoView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        return view
+    }()
+
+    private let totalCountLabel = {
+        let label = UILabel()
+        label.font = Pretendard.medium.of(size: 14)
+        label.textColor = .gray700
+        return label
+    }()
+
+    private let sortButton = {
+        let button = UIButton()
+        button.setTitle("기본순", for: .normal)
+        button.setTitleColor(.gray700, for: .normal)
+        button.titleLabel?.font = Pretendard.medium.of(size: 14)
+        button.setImage(UIImage(named: "sort"), for: .normal)
+        button.semanticContentAttribute = .forceRightToLeft
+        return button
+    }()
 
     // MARK: - Properties
     private let disposeBag = DisposeBag()
@@ -85,6 +107,9 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     func configureHierachy() {
         view.addSubview(emptyView)
         view.addSubview(categoryChipCollectionView)
+        view.addSubview(filterInfoView)
+        filterInfoView.addSubview(totalCountLabel)
+        filterInfoView.addSubview(sortButton)
         view.addSubview(collectionView)
     }
 
@@ -99,8 +124,24 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
             $0.height.equalTo(60)
         }
 
-        collectionView.snp.makeConstraints {
+        filterInfoView.snp.makeConstraints {
             $0.top.equalTo(categoryChipCollectionView.snp.bottom)
+            $0.horizontalEdges.equalToSuperview()
+            $0.height.equalTo(44)
+        }
+
+        totalCountLabel.snp.makeConstraints {
+            $0.leading.equalToSuperview().inset(20)
+            $0.centerY.equalToSuperview()
+        }
+
+        sortButton.snp.makeConstraints {
+            $0.trailing.equalToSuperview().inset(20)
+            $0.centerY.equalToSuperview()
+        }
+
+        collectionView.snp.makeConstraints {
+            $0.top.equalTo(filterInfoView.snp.bottom)
             $0.horizontalEdges.bottom.equalTo(view.safeAreaLayoutGuide)
         }
     }
@@ -111,17 +152,35 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
             viewDidLoad: viewDidLoadRelay.asObservable(),
             addButtonTapped: Observable.merge(emptyView.ctaButton.rx.tap.asObservable(),
                                               addButtonItem.rx.tap.asObservable()),
-            categorySelected: categorySelectedRelay.asObservable()
+            categorySelected: categorySelectedRelay.asObservable(),
+            sortButtonTapped: sortButton.rx.tap.asObservable()
         )
 
         let output = viewModel.transform(input: input)
 
+        // 빈 화면 전환
         output.isEmpty
             .drive(with: self) { owner, isEmpty in
                 owner.emptyView.isHidden = !isEmpty
                 owner.collectionView.isHidden = isEmpty
                 owner.categoryChipCollectionView.isHidden = isEmpty
+                owner.filterInfoView.isHidden = isEmpty
                 owner.addButtonItem.isHidden = isEmpty
+            }
+            .disposed(by: disposeBag)
+
+        // 총 아이템 수 표시
+        output.totalItemCount
+            .drive(with: self) { owner, count in
+                owner.totalCountLabel.text = "전체 \(count)개"
+            }
+            .disposed(by: disposeBag)
+
+        // 정렬 버튼 텍스트 업데이트
+        output.currentSort
+            .drive(with: self) { owner, sort in
+                let title = sort == .basic ? "기본순" : "소비기한 임박순"
+                owner.sortButton.setTitle(title, for: .normal)
             }
             .disposed(by: disposeBag)
 

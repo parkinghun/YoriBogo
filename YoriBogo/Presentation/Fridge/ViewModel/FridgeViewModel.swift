@@ -29,7 +29,8 @@ final class FridgeViewModel: ViewModelType {
     struct Input {
         let viewDidLoad: Observable<Void>
         let addButtonTapped: Observable<Void>
-        let categorySelected: Observable<Int>  // 선택된 카테고리 ID
+        let categorySelected: Observable<Int>
+        let sortButtonTapped: Observable<Void>
     }
 
     struct Output {
@@ -37,12 +38,15 @@ final class FridgeViewModel: ViewModelType {
         let sections: Driver<[FridgeCategorySection]>
         let categoryChips: Driver<[CategoryChip]>
         let selectedCategoryIds: Driver<Set<Int>>
+        let totalItemCount: Driver<Int>
+        let currentSort: Driver<SortOption>
         let pushIngredientSelectionVC: Driver<Void>
     }
 
     private let disposeBag = DisposeBag()
     private let repository: FridgeIngredientRepository
-    private let selectedCategoriesRelay = BehaviorRelay<Set<Int>>(value: [-1])  // 초기값: 전체 선택
+    private let selectedCategoriesRelay = BehaviorRelay<Set<Int>>(value: [-1])
+    private let currentSortRelay = BehaviorRelay<SortOption>(value: .basic)
 
     init(repository: FridgeIngredientRepository = FridgeIngredientRepository()) {
         self.repository = repository
@@ -52,6 +56,17 @@ final class FridgeViewModel: ViewModelType {
         let isEmptyRelay = BehaviorRelay<Bool>(value: true)
         let sectionsRelay = BehaviorRelay<[FridgeCategorySection]>(value: [])
         let categoryChipsRelay = BehaviorRelay<[CategoryChip]>(value: [])
+        let totalItemCountRelay = BehaviorRelay<Int>(value: 0)
+
+        // 정렬 버튼 처리 - 토글
+        input.sortButtonTapped
+            .withUnretained(self)
+            .subscribe(onNext: { owner, _ in
+                let current = owner.currentSortRelay.value
+                let next: SortOption = current == .basic ? .expiryDate : .basic
+                owner.currentSortRelay.accept(next)
+            })
+            .disposed(by: disposeBag)
 
         // 카테고리 선택 처리
         input.categorySelected
@@ -78,31 +93,37 @@ final class FridgeViewModel: ViewModelType {
             })
             .disposed(by: disposeBag)
 
+        // 데이터 로드 (viewDidLoad + 카테고리 선택 + 정렬 변경)
         Observable.combineLatest(
             input.viewDidLoad,
-            selectedCategoriesRelay.asObservable()
+            selectedCategoriesRelay.asObservable(),
+            currentSortRelay.asObservable()
         )
         .withUnretained(self)
         .subscribe(onNext: { owner, data in
-            let (_, selectedIds) = data
+            let (_, selectedIds, sortOption) = data
 
-            let allIngredients = owner.repository.getIngredients()
+            // 전체 재료 가져오기 (정렬 적용)
+            let allIngredients = owner.repository.getIngredients(sortBy: sortOption)
             isEmptyRelay.accept(allIngredients.isEmpty)
+            totalItemCountRelay.accept(allIngredients.count)
 
             if allIngredients.isEmpty {
                 sectionsRelay.accept([])
                 categoryChipsRelay.accept([])
             } else {
+                // 카테고리 칩 생성
                 let chips = owner.createCategoryChips(from: allIngredients, selectedIds: selectedIds)
                 categoryChipsRelay.accept(chips)
 
-                let ingredients: [FridgeIngredientDetail]  // Realm에서 필터링된 데이터 가져오기
+                // Realm에서 필터링된 데이터 가져오기 (정렬 적용)
+                let ingredients: [FridgeIngredientDetail]
 
                 if selectedIds.contains(-1) {
                     ingredients = allIngredients
                 } else {
                     let categoryIds = Array(selectedIds)
-                    ingredients = owner.repository.getIngredients(byCategoryIds: categoryIds)
+                    ingredients = owner.repository.getIngredients(byCategoryIds: categoryIds, sortBy: sortOption)
                 }
 
                 let sections = owner.groupByCategory(ingredients)
@@ -118,6 +139,8 @@ final class FridgeViewModel: ViewModelType {
             sections: sectionsRelay.asDriver(),
             categoryChips: categoryChipsRelay.asDriver(),
             selectedCategoryIds: selectedCategoriesRelay.asDriver(),
+            totalItemCount: totalItemCountRelay.asDriver(),
+            currentSort: currentSortRelay.asDriver(),
             pushIngredientSelectionVC: pushIngredientSelectionVC
         )
     }
@@ -152,4 +175,9 @@ private extension FridgeViewModel {
         chips.append(contentsOf: categoryChips)
         return chips
     }
+}
+
+enum Sort: String {
+    case basic = "기본순"
+    case expiryDate = "소비기한 임박순"
 }

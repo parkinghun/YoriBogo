@@ -9,8 +9,8 @@ import Foundation
 
 protocol FridgeIngredientRepositoryType {
     func addIngredient(_ ingredient: FridgeIngredientDetail) throws
-    func getIngredients() -> [FridgeIngredientDetail]
-    func getIngredients(byCategoryIds categoryIds: [Int]) -> [FridgeIngredientDetail]
+    func getIngredients(sortBy: SortOption) -> [FridgeIngredientDetail]
+    func getIngredients(byCategoryIds categoryIds: [Int], sortBy: SortOption) -> [FridgeIngredientDetail]
     func removeIngredient(id: String) throws
 }
 
@@ -25,12 +25,12 @@ final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
         try dataSource.save(ingredient)
     }
 
-    func getIngredients() -> [FridgeIngredientDetail] {
-        return dataSource.fetchAll()
+    func getIngredients(sortBy: SortOption = .basic) -> [FridgeIngredientDetail] {
+        return dataSource.fetchAll(sortBy: sortBy)
     }
 
-    func getIngredients(byCategoryIds categoryIds: [Int]) -> [FridgeIngredientDetail] {
-        return dataSource.fetchByCategories(categoryIds)
+    func getIngredients(byCategoryIds categoryIds: [Int], sortBy: SortOption = .basic) -> [FridgeIngredientDetail] {
+        return dataSource.fetchByCategories(categoryIds, sortBy: sortBy)
     }
 
     func removeIngredient(id: String) throws {

@@ -10,9 +10,14 @@ import RealmSwift
 
 protocol FridgeIngredientDataSourceType {
     func save(_ ingredient: FridgeIngredientDetail) throws
-    func fetchAll() -> [FridgeIngredientDetail]
-    func fetchByCategories(_ categoryIds: [Int]) -> [FridgeIngredientDetail]
+    func fetchAll(sortBy: SortOption) -> [FridgeIngredientDetail]
+    func fetchByCategories(_ categoryIds: [Int], sortBy: SortOption) -> [FridgeIngredientDetail]
     func delete(_ id: String) throws
+}
+
+enum SortOption {
+    case basic      // 기본순 (이름순)
+    case expiryDate // 소비기한 임박순
 }
 
 final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
@@ -31,24 +36,35 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
         print(realm.configuration.fileURL)
     }
 
-
-    func fetchAll() -> [FridgeIngredientDetail] {
+    func fetchAll(sortBy: SortOption) -> [FridgeIngredientDetail] {
         print(realm.configuration.fileURL)
 
         let objects = realm.objects(FridgeIngredientObject.self)
-        return objects.map { FridgeIngredientDetail(from: $0) }
+        let sorted = applySorting(to: objects, sortBy: sortBy)
+        return sorted.map { FridgeIngredientDetail(from: $0) }
     }
 
-    func fetchByCategories(_ categoryIds: [Int]) -> [FridgeIngredientDetail] {
+    func fetchByCategories(_ categoryIds: [Int], sortBy: SortOption) -> [FridgeIngredientDetail] {
         let objects = realm.objects(FridgeIngredientObject.self)
             .where { $0.categoryId.in(categoryIds) }
-        return objects.map { FridgeIngredientDetail(from: $0) }
+        let sorted = applySorting(to: objects, sortBy: sortBy)
+        return sorted.map { FridgeIngredientDetail(from: $0) }
     }
 
     func delete(_ id: String) throws {
         guard let object = realm.object(ofType: FridgeIngredientObject.self, forPrimaryKey: id) else { return }
         try realm.write {
             realm.delete(object)
+        }
+    }
+
+    // MARK: - Private
+    private func applySorting(to results: Results<FridgeIngredientObject>, sortBy: SortOption) -> Results<FridgeIngredientObject> {
+        switch sortBy {
+        case .basic:
+            return results.sorted(byKeyPath: "name", ascending: true)
+        case .expiryDate:
+            return results.sorted(byKeyPath: "expirationDate", ascending: true)
         }
     }
 }
