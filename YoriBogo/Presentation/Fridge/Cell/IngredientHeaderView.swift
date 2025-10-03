@@ -65,7 +65,7 @@ final class IngredientHeaderView: UICollectionReusableView, ReusableView {
         addSubview(stackView)
 
         stackView.snp.makeConstraints {
-            $0.leading.equalToSuperview().offset(20)
+            $0.leading.equalToSuperview()  // 4
             $0.centerY.equalToSuperview()
         }
 

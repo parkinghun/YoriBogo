@@ -10,9 +10,8 @@ import Foundation
 protocol FridgeIngredientRepositoryType {
     func addIngredient(_ ingredient: FridgeIngredientDetail) throws
     func getIngredients() -> [FridgeIngredientDetail]
+    func getIngredients(byCategoryIds categoryIds: [Int]) -> [FridgeIngredientDetail]
     func removeIngredient(id: String) throws
-    
-//    func loadMockIngredients() -> [FridgeIngredientDetail]
 }
 
 final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
@@ -28,6 +27,10 @@ final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
 
     func getIngredients() -> [FridgeIngredientDetail] {
         return dataSource.fetchAll()
+    }
+
+    func getIngredients(byCategoryIds categoryIds: [Int]) -> [FridgeIngredientDetail] {
+        return dataSource.fetchByCategories(categoryIds)
     }
 
     func removeIngredient(id: String) throws {
@@ -48,14 +51,4 @@ final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
         let (categories, _, _) = getFridgeEntities()
         return categories.first { $0.id == categoryId}?.name ?? "기타"
     }
-    
-//    /// FridgeIngredient → FridgeIngredientDetail 변환
-//    func toDetail(from ingredient: FridgeIngredient) -> FridgeIngredientDetail {
-//          let categoryName = getCategoryName(for: ingredient.categoryId)
-//          
-//          return FridgeIngredientDetail(
-//              from: ingredient,
-//              categoryName: categoryName
-//          )
-//      }
 }

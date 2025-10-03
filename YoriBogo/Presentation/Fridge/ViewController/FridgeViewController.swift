@@ -14,6 +14,20 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
 
     private let emptyView = FridgeEmptyView()
 
+    private lazy var categoryChipCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize
+        layout.minimumInteritemSpacing = 8
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
+
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = .white
+        cv.showsHorizontalScrollIndicator = false
+        cv.register(FridgeCategoryChipCell.self, forCellWithReuseIdentifier: FridgeCategoryChipCell.id)
+        return cv
+    }()
+
     private lazy var collectionView: UICollectionView = {
         let cv = UICollectionView(frame: .zero, collectionViewLayout: createLayout())
         cv.backgroundColor = .gray50
@@ -24,12 +38,18 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
         cv.contentInset = UIEdgeInsets(top: 16, left: 0, bottom: 16, right: 0)
         return cv
     }()
+    
+    private let addButtonItem = UIBarButtonItem(image: UIImage(systemName: "plus"), style: .plain, target: nil, action: nil)
+
 
     // MARK: - Properties
     private let disposeBag = DisposeBag()
     private var viewModel: FridgeViewModel
     private var dataSource: UICollectionViewDiffableDataSource<FridgeCategorySection, FridgeIngredientDetail>!
+    private var chipDataSource: UICollectionViewDiffableDataSource<Int, CategoryChip>!
     private let viewDidLoadRelay = PublishRelay<Void>()
+    private let categorySelectedRelay = PublishRelay<Int>()
+    private var categoryChips: [CategoryChip] = []
 
     // MARK: - Initialization
     init(viewModel: FridgeViewModel) {
@@ -44,6 +64,7 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
         configureHierachy()
         configureLayout()
         configureDataSource()
+        configureCategoryChipDataSource()
         bind()
 
         viewDidLoadRelay.accept(())
@@ -58,10 +79,12 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     // MARK: - Setup
     private func setupNavigation() {
         navigationItem.title = "냉장고"
+        navigationItem.rightBarButtonItem = addButtonItem
     }
 
     func configureHierachy() {
         view.addSubview(emptyView)
+        view.addSubview(categoryChipCollectionView)
         view.addSubview(collectionView)
     }
 
@@ -70,8 +93,15 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
             $0.edges.equalToSuperview()
         }
 
+        categoryChipCollectionView.snp.makeConstraints {
+            $0.top.equalTo(view.safeAreaLayoutGuide)
+            $0.horizontalEdges.equalToSuperview()
+            $0.height.equalTo(60)
+        }
+
         collectionView.snp.makeConstraints {
-            $0.edges.equalTo(view.safeAreaLayoutGuide)
+            $0.top.equalTo(categoryChipCollectionView.snp.bottom)
+            $0.horizontalEdges.bottom.equalTo(view.safeAreaLayoutGuide)
         }
     }
 
@@ -79,16 +109,36 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     func bind() {
         let input = FridgeViewModel.Input(
             viewDidLoad: viewDidLoadRelay.asObservable(),
-            addButtonTapped: emptyView.ctaButton.rx.tap
+            addButtonTapped: Observable.merge(emptyView.ctaButton.rx.tap.asObservable(),
+                                              addButtonItem.rx.tap.asObservable()),
+            categorySelected: categorySelectedRelay.asObservable()
         )
 
         let output = viewModel.transform(input: input)
 
-        // 빈 화면 전환
         output.isEmpty
             .drive(with: self) { owner, isEmpty in
                 owner.emptyView.isHidden = !isEmpty
                 owner.collectionView.isHidden = isEmpty
+                owner.categoryChipCollectionView.isHidden = isEmpty
+                owner.addButtonItem.isHidden = isEmpty
+            }
+            .disposed(by: disposeBag)
+
+        // 카테고리 칩 선택 이벤트 (rx.itemSelected 사용)
+        categoryChipCollectionView.rx.itemSelected
+            .compactMap { [weak self] indexPath -> Int? in
+                guard let chip = self?.chipDataSource.itemIdentifier(for: indexPath) else { return nil }
+                return chip.id
+            }
+            .bind(to: categorySelectedRelay)
+            .disposed(by: disposeBag)
+
+        // 카테고리 칩 데이터 바인딩 (선택 상태 포함)
+        output.categoryChips
+            .drive(with: self) { owner, chips in
+                owner.categoryChips = chips
+                owner.applyCategoryChipSnapshot(chips: chips)
             }
             .disposed(by: disposeBag)
 
@@ -110,6 +160,29 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     }
 
     // MARK: - DataSource
+    private func configureCategoryChipDataSource() {
+        chipDataSource = UICollectionViewDiffableDataSource<Int, CategoryChip>(
+            collectionView: categoryChipCollectionView
+        ) { collectionView, indexPath, chip in
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: FridgeCategoryChipCell.id,
+                for: indexPath
+            ) as? FridgeCategoryChipCell else {
+                return UICollectionViewCell()
+            }
+
+            cell.configure(title: chip.name, isSelected: chip.isSelected)
+            return cell
+        }
+    }
+
+    private func applyCategoryChipSnapshot(chips: [CategoryChip]) {
+        var snapshot = NSDiffableDataSourceSnapshot<Int, CategoryChip>()
+        snapshot.appendSections([0])
+        snapshot.appendItems(chips)
+        chipDataSource.apply(snapshot, animatingDifferences: false)
+    }
+
     private func configureDataSource() {
         dataSource = UICollectionViewDiffableDataSource<FridgeCategorySection, FridgeIngredientDetail>(
             collectionView: collectionView
@@ -125,7 +198,6 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
             return cell
         }
 
-        // 헤더 설정
         dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
             guard kind == UICollectionView.elementKindSectionHeader,
                   let header = collectionView.dequeueReusableSupplementaryView(
@@ -153,29 +225,27 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
         dataSource.apply(snapshot, animatingDifferences: true)
     }
 
-    // MARK: - Layout
     private func createLayout() -> UICollectionViewLayout {
         let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .estimated(160)
+            widthDimension: .fractionalWidth(1/3),
+            heightDimension: .fractionalHeight(1.0)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
         let groupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
-            heightDimension: .estimated(160)
+            heightDimension: .absolute(160)
         )
-        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 3)
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
         group.interItemSpacing = .fixed(12)
 
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = 12
         section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 20, trailing: 20)
 
-        // 헤더 추가
         let headerSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
-            heightDimension: .estimated(44)
+            heightDimension: .absolute(44)
         )
         let header = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: headerSize,
