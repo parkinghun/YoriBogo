@@ -216,6 +216,61 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
                 owner.navigationController?.pushViewController(vc, animated: true)
             }
             .disposed(by: disposeBag)
+
+        collectionView.rx.itemSelected
+            .compactMap { [weak self] indexPath -> FridgeIngredientDetail? in
+                guard let item = self?.dataSource.itemIdentifier(for: indexPath) else { return nil }
+                return item
+            }
+            .bind(with: self) { owner, ingredient in
+                owner.showIngredientDetail(ingredient)
+            }
+            .disposed(by: disposeBag)
+    }
+
+    // MARK: - Ingredient Detail
+    private func showIngredientDetail(_ ingredient: FridgeIngredientDetail) {
+        let detailCardView = IngredientDetailCardView()
+        detailCardView.configure(with: ingredient)
+        detailCardView.show(in: view)
+
+        detailCardView.closeButton.rx.tap
+            .bind {
+                detailCardView.dismiss()
+            }
+            .disposed(by: disposeBag)
+
+        detailCardView.consumeButton.rx.tap
+            .bind(with: self) { owner, _ in
+                owner.handleConsume(ingredient, cardView: detailCardView)
+            }
+            .disposed(by: disposeBag)
+
+        detailCardView.discardButton.rx.tap
+            .bind(with: self) { owner, _ in
+                owner.handleDiscard(ingredient, cardView: detailCardView)
+            }
+            .disposed(by: disposeBag)
+    }
+
+    private func handleConsume(_ ingredient: FridgeIngredientDetail, cardView: IngredientDetailCardView) {
+        do {
+            try viewModel.consumeIngredient(id: ingredient.id)
+            cardView.dismiss()
+            viewDidLoadRelay.accept(())
+        } catch {
+            print("소진 처리 실패: \(error)")
+        }
+    }
+
+    private func handleDiscard(_ ingredient: FridgeIngredientDetail, cardView: IngredientDetailCardView) {
+        do {
+            try viewModel.discardIngredient(id: ingredient.id)
+            cardView.dismiss()
+            viewDidLoadRelay.accept(())
+        } catch {
+            print("폐기 처리 실패: \(error)")
+        }
     }
 
     // MARK: - DataSource

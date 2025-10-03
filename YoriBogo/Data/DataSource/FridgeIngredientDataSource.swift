@@ -52,7 +52,10 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
     }
 
     func delete(_ id: String) throws {
-        guard let object = realm.object(ofType: FridgeIngredientObject.self, forPrimaryKey: id) else { return }
+        guard let objectId = try? ObjectId(string: id),
+              let object = realm.object(ofType: FridgeIngredientObject.self, forPrimaryKey: objectId) else {
+            throw NSError(domain: "FridgeIngredientDataSource", code: 404, userInfo: [NSLocalizedDescriptionKey: "Object not found"])
+        }
         try realm.write {
             realm.delete(object)
         }

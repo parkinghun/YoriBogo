@@ -15,6 +15,22 @@ extension DateFormatter {
          formatter.locale = Locale(identifier: "ko_KR")
          return formatter
      }()
+
+     /// 상세 카드 유통기한 표시용 (같은 연도): "10월10일"
+     static let expirationDetailSameYear: DateFormatter = {
+         let formatter = DateFormatter()
+         formatter.dateFormat = "M월d일"
+         formatter.locale = Locale(identifier: "ko_KR")
+         return formatter
+     }()
+
+     /// 상세 카드 유통기한 표시용 (다른 연도): "2026년1월2일"
+     static let expirationDetailDifferentYear: DateFormatter = {
+         let formatter = DateFormatter()
+         formatter.dateFormat = "yyyy년M월d일"
+         formatter.locale = Locale(identifier: "ko_KR")
+         return formatter
+     }()
      
      /// 날짜만 표시: "2025-10-07"
      static let isoDate: DateFormatter = {
