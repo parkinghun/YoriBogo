@@ -251,6 +251,12 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
                 owner.handleDiscard(ingredient, cardView: detailCardView)
             }
             .disposed(by: disposeBag)
+
+        detailCardView.saveButton.rx.tap
+            .bind(with: self) { owner, _ in
+                owner.handleSave(cardView: detailCardView)
+            }
+            .disposed(by: disposeBag)
     }
 
     private func handleConsume(_ ingredient: FridgeIngredientDetail, cardView: IngredientDetailCardView) {
@@ -270,6 +276,18 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
             viewDidLoadRelay.accept(())
         } catch {
             print("폐기 처리 실패: \(error)")
+        }
+    }
+
+    private func handleSave(cardView: IngredientDetailCardView) {
+        guard let updatedDetail = cardView.getUpdatedDetail() else { return }
+
+        do {
+            try viewModel.updateIngredient(updatedDetail)
+            cardView.dismiss()
+            viewDidLoadRelay.accept(())
+        } catch {
+            print("수정 처리 실패: \(error)")
         }
     }
 

@@ -74,6 +74,46 @@ final class IngredientDetailCardView: UIView {
     private let quantityRow = InfoRowView(title: "수량")
     private let expirationRow = InfoRowView(title: "소비기한")
 
+    // MARK: - Edit Mode UI
+    private let quantityTextField = {
+        let tf = UITextField()
+        tf.keyboardType = .decimalPad
+        tf.textAlignment = .right
+        tf.font = Pretendard.medium.of(size: 16)
+        tf.borderStyle = .roundedRect
+        tf.placeholder = "수량"
+        tf.isHidden = true
+        return tf
+    }()
+
+    private let unitTextField = {
+        let tf = UITextField()
+        tf.textAlignment = .right
+        tf.font = Pretendard.medium.of(size: 16)
+        tf.borderStyle = .roundedRect
+        tf.placeholder = "단위"
+        tf.isHidden = true
+        return tf
+    }()
+
+    private let expirationDatePicker = {
+        let picker = UIDatePicker()
+        picker.datePickerMode = .date
+        picker.preferredDatePickerStyle = .wheels
+        picker.locale = Locale(identifier: "ko_KR")
+        return picker
+    }()
+
+    private let expirationTextField = {
+        let tf = UITextField()
+        tf.textAlignment = .right
+        tf.font = Pretendard.medium.of(size: 16)
+        tf.borderStyle = .roundedRect
+        tf.placeholder = "소비기한"
+        tf.isHidden = true
+        return tf
+    }()
+
     // MARK: - Action Buttons
     private let buttonStackView = {
         let sv = UIStackView()
@@ -109,11 +149,34 @@ final class IngredientDetailCardView: UIView {
         return button
     }()
 
+    let saveButton = {
+        let button = UIButton()
+        button.backgroundColor = .brandOrange500
+        button.setTitle("수정하기", for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.titleLabel?.font = Pretendard.semiBold.of(size: 16)
+        button.layer.cornerRadius = 12
+        button.isHidden = true
+        button.isEnabled = false
+        return button
+    }()
+
+    // MARK: - Properties
+    private var isEditMode = false
+    private var originalDetail: FridgeIngredientDetail?
+    private var hasChanges = false {
+        didSet {
+            saveButton.isEnabled = hasChanges
+            saveButton.backgroundColor = hasChanges ? .brandOrange500 : .gray300
+        }
+    }
+
     // MARK: - Initialization
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
         setupGesture()
+        setupTextFieldActions()
     }
 
     required init?(coder: NSCoder) {
@@ -136,9 +199,16 @@ final class IngredientDetailCardView: UIView {
         infoStackView.addArrangedSubview(quantityRow)
         infoStackView.addArrangedSubview(expirationRow)
 
+        // Edit mode text fields
+        quantityRow.addSubview(quantityTextField)
+        quantityRow.addSubview(unitTextField)
+        expirationRow.addSubview(expirationTextField)
+
         cardContainerView.addSubview(buttonStackView)
         buttonStackView.addArrangedSubview(consumeButton)
         buttonStackView.addArrangedSubview(discardButton)
+
+        cardContainerView.addSubview(saveButton)
 
         setupConstraints()
     }
@@ -187,8 +257,37 @@ final class IngredientDetailCardView: UIView {
             $0.horizontalEdges.equalToSuperview().inset(20)
         }
 
+        // Edit mode text fields
+        quantityTextField.snp.makeConstraints {
+            $0.trailing.equalTo(unitTextField.snp.leading).offset(-8)
+            $0.centerY.equalToSuperview()
+            $0.width.equalTo(80)
+            $0.height.equalTo(32)
+        }
+        
+        unitTextField.snp.makeConstraints {
+            $0.trailing.equalToSuperview()
+            $0.centerY.equalToSuperview()
+            $0.width.equalTo(80)
+            $0.height.equalTo(32)
+        }
+
+        expirationTextField.snp.makeConstraints {
+            $0.trailing.equalToSuperview()
+            $0.centerY.equalToSuperview()
+            $0.width.equalTo(150)
+            $0.height.equalTo(32)
+        }
+
         // Buttons
         buttonStackView.snp.makeConstraints {
+            $0.top.equalTo(infoStackView.snp.bottom).offset(20)
+            $0.horizontalEdges.equalToSuperview().inset(20)
+            $0.bottom.equalToSuperview().inset(20)
+            $0.height.equalTo(56)
+        }
+
+        saveButton.snp.makeConstraints {
             $0.top.equalTo(infoStackView.snp.bottom).offset(20)
             $0.horizontalEdges.equalToSuperview().inset(20)
             $0.bottom.equalToSuperview().inset(20)
@@ -201,12 +300,59 @@ final class IngredientDetailCardView: UIView {
         dimmedBackgroundView.addGestureRecognizer(tapGesture)
     }
 
+    private func setupTextFieldActions() {
+        // DatePicker 설정
+        expirationTextField.inputView = expirationDatePicker
+
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        let doneButton = UIBarButtonItem(title: "완료", style: .done, target: self, action: #selector(datePickerDone))
+        let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        toolbar.setItems([flexSpace, doneButton], animated: false)
+        expirationTextField.inputAccessoryView = toolbar
+
+        // Text field 변경 감지
+        quantityTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        unitTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+
+        // Edit button 액션
+        editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
+    }
+
     @objc private func dimmedViewTapped() {
         dismiss()
     }
 
+    @objc private func datePickerDone() {
+        let isSameYear = Calendar.current.component(.year, from: Date()) == Calendar.current.component(.year, from: expirationDatePicker.date)
+        let dateFormatter = isSameYear ? DateFormatter.expirationDetailSameYear : DateFormatter.expirationDetailDifferentYear
+        expirationTextField.text = dateFormatter.string(from: expirationDatePicker.date)
+        expirationTextField.resignFirstResponder()
+        textFieldDidChange()
+    }
+
+    @objc private func textFieldDidChange() {
+        guard let original = originalDetail else { return }
+
+        let currentQty = Double(quantityTextField.text ?? "") ?? original.qty ?? 0
+        let currentUnit = unitTextField.text ?? ""
+        let currentExpiration = expirationDatePicker.date
+
+        let qtyChanged = currentQty != (original.qty ?? 0)
+        let unitChanged = currentUnit != (original.unit ?? "")
+        let expirationChanged = !Calendar.current.isDate(currentExpiration, inSameDayAs: original.expirationDate ?? Date())
+
+        hasChanges = qtyChanged || unitChanged || expirationChanged
+    }
+
+    @objc private func editButtonTapped() {
+        isEditMode.toggle()
+        updateEditMode()
+    }
+
     // MARK: - Public Methods
     func configure(with detail: FridgeIngredientDetail) {
+        originalDetail = detail
         nameLabel.text = detail.name
         ingredientImageView.image = UIImage(named: detail.imageKey)
 
@@ -216,19 +362,67 @@ final class IngredientDetailCardView: UIView {
         // 수량 정보
         if let qty = detail.qty, let unit = detail.unit {
             quantityRow.setValue("\(Int(qty))\(unit)")
+            quantityTextField.text = "\(Int(qty))"
+            unitTextField.text = unit
         } else if let qty = detail.qty {
             quantityRow.setValue("\(Int(qty))개")
+            quantityTextField.text = "\(Int(qty))"
+            unitTextField.text = ""
         } else {
             quantityRow.setValue("수량 미정")
+            quantityTextField.text = ""
+            unitTextField.text = ""
         }
 
         // 소비기한 정보
         if let expirationDate = detail.expirationDate {
             let (dateString, dDay, color) = formatExpirationDate(expirationDate)
             expirationRow.setValue("\(dateString) (\(dDay))", color: color)
+            expirationDatePicker.date = expirationDate
+
+            let calendar = Calendar.current
+            let isSameYear = calendar.component(.year, from: Date()) == calendar.component(.year, from: expirationDate)
+            let formatter = isSameYear ? DateFormatter.expirationDetailSameYear : DateFormatter.expirationDetailDifferentYear
+            expirationTextField.text = formatter.string(from: expirationDate)
         } else {
             expirationRow.setValue("미정")
+            expirationTextField.text = ""
         }
+    }
+
+    private func updateEditMode() {
+        // Edit button toggle
+        editButton.isHidden = isEditMode
+
+        // Info rows visibility
+        quantityRow.setEditMode(isEditMode)
+        expirationRow.setEditMode(isEditMode)
+
+        // Text fields visibility
+        quantityTextField.isHidden = !isEditMode
+        unitTextField.isHidden = !isEditMode
+        expirationTextField.isHidden = !isEditMode
+
+        // Button visibility
+        buttonStackView.isHidden = isEditMode
+        saveButton.isHidden = !isEditMode
+
+        // Reset hasChanges
+        if isEditMode {
+            hasChanges = false
+        }
+    }
+
+    func getUpdatedDetail() -> FridgeIngredientDetail? {
+        guard let original = originalDetail, hasChanges else { return nil }
+
+        var updated = original
+        updated.qty = Double(quantityTextField.text ?? "") ?? original.qty
+        updated.unit = unitTextField.text?.isEmpty == false ? unitTextField.text : original.unit
+        updated.expirationDate = expirationDatePicker.date
+        updated.updatedAt = Date()
+
+        return updated
     }
 
     func show(in view: UIView) {
@@ -345,5 +539,9 @@ private final class InfoRowView: UIView {
     func setValue(_ value: String, color: UIColor = .black) {
         valueLabel.text = value
         valueLabel.textColor = color
+    }
+
+    func setEditMode(_ isEditMode: Bool) {
+        valueLabel.isHidden = isEditMode
     }
 }

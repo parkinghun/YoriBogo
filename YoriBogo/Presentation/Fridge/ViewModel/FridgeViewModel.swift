@@ -60,6 +60,10 @@ final class FridgeViewModel: ViewModelType {
         try repository.removeIngredient(id: id)
     }
 
+    func updateIngredient(_ ingredient: FridgeIngredientDetail) throws {
+        try repository.addIngredient(ingredient)
+    }
+
     func transform(input: Input) -> Output {
         let isEmptyRelay = BehaviorRelay<Bool>(value: true)
         let sectionsRelay = BehaviorRelay<[FridgeCategorySection]>(value: [])
