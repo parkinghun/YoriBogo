@@ -14,7 +14,22 @@
 		B574AB372E89D06D00D8AA58 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB362E89D06D00D8AA58 /* Kingfisher */; };
 		B574AB3A2E89D08100D8AA58 /* RxCocoa in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB392E89D08100D8AA58 /* RxCocoa */; };
 		B574AB3C2E89D08100D8AA58 /* RxSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB3B2E89D08100D8AA58 /* RxSwift */; };
+		B574AE5A2E8E23AC00D8AA58 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B574AB2D2E89CF9500D8AA58 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B574AE5B2E8E23AC00D8AA58 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				B574AE5A2E8E23AC00D8AA58 /* RealmSwift in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		B574A9412E89BBC400D8AA58 /* YoriBogo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YoriBogo.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -86,6 +101,7 @@
 				B574A93D2E89BBC400D8AA58 /* Sources */,
 				B574A93E2E89BBC400D8AA58 /* Frameworks */,
 				B574A93F2E89BBC400D8AA58 /* Resources */,
+				B574AE5B2E8E23AC00D8AA58 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

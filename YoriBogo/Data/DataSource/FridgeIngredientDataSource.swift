@@ -32,6 +32,8 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
         
     
     func fetchAll() -> [FridgeIngredientDetail] {
+        print(realm.configuration.fileURL)
+
         let objects = realm.objects(FridgeIngredientObject.self)
         return objects.map { FridgeIngredientDetail(from: $0) }
     }

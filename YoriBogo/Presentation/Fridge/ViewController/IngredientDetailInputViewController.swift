@@ -12,7 +12,6 @@ import SnapKit
 
 final class IngredientDetailInputViewController: BaseViewController, ConfigureViewController {
     
-    // MARK: - UI Components
     private let headerLabel = {
         let label = UILabel()
         label.text = "세부 정보를 입력해주세요"
@@ -42,7 +41,6 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
     
     let saveButton = RoundedButton(title: "냉장고에 추가하기", titleColor: .white, backgroundColor: .brandOrange500)
     
-    // MARK: - Properties
     private let viewModel: IngredientDetailInputViewModel
     private let disposeBag = DisposeBag()
     
@@ -60,13 +58,11 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
     
     private let cellEventRelay = PublishRelay<CellEvent>()
     
-    // MARK: - Initialization
     init(viewModel: IngredientDetailInputViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
     
-    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupNavigation()
@@ -179,8 +175,6 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
             .disposed(by: disposeBag)
     }
     
-    
-    // MARK: - DataSource
     private func configureDataSource() {
         dataSource = UICollectionViewDiffableDataSource<Section, FridgeIngredientDetail>(
             collectionView: collectionView
@@ -219,7 +213,6 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
         dataSource.apply(snapshot, animatingDifferences: false)
     }
     
-    // MARK: - Layout
     private func createLayout() -> UICollectionViewLayout {
         let itemSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),

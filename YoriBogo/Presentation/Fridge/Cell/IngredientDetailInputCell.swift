@@ -103,9 +103,6 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         quantityTextFieldView.textField.text = "1"
         unitTextFieldView.textField.text = nil
         dateTextFieldView.textField.text = nil
-        onQuantityChanged = nil
-        onUnitChanged = nil
-        onDateSelected = nil
     }
     
     func configure(with detail: FridgeIngredientDetail, index: Int) {
@@ -194,7 +191,6 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
             }
         }
     
-    // MARK: - Actions
     private func setupActions() {
         quantityTextFieldView.textField.addTarget(self, action: #selector(quantityTextFieldDidChange), for: .editingChanged)
         unitTextFieldView.textField.addTarget(self, action: #selector(unitTextFieldDidChange), for: .editingChanged)
@@ -225,13 +221,13 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
     
     @objc private func datePickerDone() {
         let selectedDate = datePicker.date
-        
+
         dateTextFieldView.textField.text = DateFormatter.expirationDate.string(from: selectedDate)
-        
+
         onDateSelected?(selectedDate)
-        dateTextFieldView.resignFirstResponder()
+        dateTextFieldView.textField.resignFirstResponder()
     }
-    
+
     @objc private func clearDate() {
         dateTextFieldView.textField.text = nil
         onDateSelected?(nil)
