@@ -7,6 +7,7 @@
 
 import UIKit
 import IQKeyboardManagerSwift
+import RealmSwift
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -14,9 +15,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        
+
         IQKeyboardManager.shared.isEnabled = true
+
+        configureRealm()
+
         return true
+    }
+
+    // MARK: - Realm Configuration
+    private func configureRealm() {
+        let config = Realm.Configuration(
+            schemaVersion: 1,
+            migrationBlock: { migration, oldSchemaVersion in
+                if oldSchemaVersion < 1 {
+                    // 필요 시 마이그레이션 로직 추가
+                }
+            }
+        )
+        Realm.Configuration.defaultConfiguration = config
+
+        // Realm 초기화 확인
+        do {
+            _ = try Realm()
+            print("Realm 초기화 성공")
+        } catch {
+            print("Realm 초기화 실패: \(error)")
+        }
     }
 
     // MARK: UISceneSession Lifecycle

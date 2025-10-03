@@ -13,11 +13,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        
+
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = BaseTabBarController()
         window?.makeKeyAndVisible()
+
+        // 앱 시작 시 레시피 데이터 로드
+        loadRecipesIfNeeded()
+    }
+
+    // MARK: - Recipe Loading
+    private func loadRecipesIfNeeded() {
+        Task {
+            do {
+                let recipes = try await NetworkManager.shared.fetchAllRecipes()
+                print("✅ 레시피 로드 완료: \(recipes.count)개")
+            } catch {
+                print("❌ 레시피 로드 실패: \(error)")
+            }
+        }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
