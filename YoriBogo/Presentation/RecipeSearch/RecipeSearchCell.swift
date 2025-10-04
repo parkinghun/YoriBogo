@@ -72,8 +72,8 @@ final class RecipeSearchCell: UITableViewCell, ReusableView {
         }
 
         bookmarkButton.snp.makeConstraints {
-            $0.top.equalToSuperview().inset(16)
             $0.trailing.equalToSuperview().inset(16)
+            $0.centerY.equalTo(recipeImageView)
             $0.size.equalTo(40)
         }
 

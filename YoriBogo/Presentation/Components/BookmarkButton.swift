@@ -10,22 +10,18 @@ import UIKit
 final class BookmarkButton: UIButton {
 
     // MARK: - Initialization
-    init() {
-        super.init(frame: .zero)
+    convenience init(radius: CGFloat = 24) {
+        self.init()
+        self.layer.cornerRadius = radius
         setupUI()
     }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
+    
     // MARK: - Setup
     private func setupUI() {
         setImage(UIImage(systemName: "heart"), for: .normal)
         setImage(UIImage(systemName: "heart.fill"), for: .selected)
         tintColor = .systemOrange
         backgroundColor = .white
-        layer.cornerRadius = 24
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.1
         layer.shadowOffset = CGSize(width: 0, height: 2)

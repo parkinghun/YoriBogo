@@ -16,7 +16,7 @@ final class RecommendViewController: BaseViewController {
     // MARK: - UI Components
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "🍳 오늘, 이 요리 어때요?"
+        label.text = "오늘, 이 요리 어때요?"
         label.font = .systemFont(ofSize: 28, weight: .bold)
         label.textColor = .darkGray
         return label

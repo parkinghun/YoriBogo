@@ -31,7 +31,7 @@ final class RecipeDetailViewController: BaseViewController {
         return iv
     }()
 
-    private let bookmarkButton = BookmarkButton()
+    private let bookmarkButton = BookmarkButton(radius: 20)
 
     private let recipeTitleLabel: UILabel = {
         let label = UILabel()
@@ -156,10 +156,15 @@ final class RecipeDetailViewController: BaseViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupNavigatoin()
         setupUI()
         bind()
     }
 
+    private func setupNavigatoin() {
+        navigationItem.title = "상세 레시피"
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         view.backgroundColor = .white
