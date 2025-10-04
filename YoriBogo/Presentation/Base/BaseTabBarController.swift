@@ -18,7 +18,7 @@ final class BaseTabBarController: UITabBarController {
     private func setTabBar() {
         self.viewControllers = TabBarType.allCases.map { $0.navigationController }
         
-        self.tabBar.tintColor = .black
+        self.tabBar.tintColor = .brandOrange500
         self.tabBar.unselectedItemTintColor = .gray
     }
 }

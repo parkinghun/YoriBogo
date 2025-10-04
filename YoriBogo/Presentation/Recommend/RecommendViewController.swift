@@ -55,6 +55,7 @@ final class RecommendViewController: BaseViewController {
     // MARK: - Properties
     private let viewModel = RecommendViewModel()
     private let disposeBag = DisposeBag()
+    private let viewWillAppearTrigger = PublishRelay<Void>()
 
     private var recommendedData: [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] = []
     private var hasIngredients: Bool = true
@@ -98,6 +99,11 @@ final class RecommendViewController: BaseViewController {
         setNavigation()
         setupUI()
         bind()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        viewWillAppearTrigger.accept(())
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -157,7 +163,8 @@ final class RecommendViewController: BaseViewController {
     // MARK: - Bind
     private func bind() {
         let input = RecommendViewModel.Input(
-            viewDidLoad: Observable.just(()), searchButtonTapped: searchButtonItem.rx.tap
+            viewWillAppear: viewWillAppearTrigger.asObservable(),
+            searchButtonTapped: searchButtonItem.rx.tap
         )
 
         let output = viewModel.transform(input: input)

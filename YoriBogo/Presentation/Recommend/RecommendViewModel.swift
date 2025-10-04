@@ -12,7 +12,7 @@ import RealmSwift
 
 final class RecommendViewModel: ViewModelType {
     struct Input {
-        let viewDidLoad: Observable<Void>
+        let viewWillAppear: Observable<Void>
         let searchButtonTapped: ControlEvent<Void>
     }
 
@@ -30,7 +30,7 @@ final class RecommendViewModel: ViewModelType {
     func transform(input: Input) -> Output {
         let hasIngredients = BehaviorRelay<Bool>(value: false)
 
-        let recommendedRecipes = input.viewDidLoad
+        let recommendedRecipes = input.viewWillAppear
             .flatMapLatest { [weak self] _ -> Observable<[(recipe: Recipe, matchRate: Double, matchedIngredients: [String])]> in
                 guard let self = self else { return Observable.just([]) }
 

@@ -105,6 +105,16 @@ final class RecipeDetailViewController: BaseViewController {
         return view
     }()
 
+    private let emptyIngredientsLabel: UILabel = {
+        let label = UILabel()
+        label.text = "보유 재료가 없습니다"
+        label.font = .systemFont(ofSize: 14, weight: .regular)
+        label.textColor = .gray500
+        label.textAlignment = .center
+        label.isHidden = true
+        return label
+    }()
+
     // 재료 섹션
     private let ingredientsContainerView: UIView = {
         let view = UIView()
@@ -198,6 +208,7 @@ final class RecipeDetailViewController: BaseViewController {
 
         ownedIngredientsContainerView.addSubview(ownedIngredientsHeaderLabel)
         ownedIngredientsContainerView.addSubview(ownedIngredientsFlowView)
+        ownedIngredientsContainerView.addSubview(emptyIngredientsLabel)
 
         ingredientsContainerView.addSubview(ingredientsSectionHeaderLabel)
         ingredientsContainerView.addSubview(ingredientsStackView)
@@ -274,6 +285,13 @@ final class RecipeDetailViewController: BaseViewController {
             $0.top.equalTo(ownedIngredientsHeaderLabel.snp.bottom).offset(12)
             $0.horizontalEdges.equalToSuperview().inset(16)
             $0.bottom.equalToSuperview().inset(16)
+        }
+
+        emptyIngredientsLabel.snp.makeConstraints {
+            $0.top.equalTo(ownedIngredientsHeaderLabel.snp.bottom).offset(12)
+            $0.horizontalEdges.equalToSuperview().inset(16)
+            $0.bottom.equalToSuperview().inset(16)
+            $0.height.greaterThanOrEqualTo(40)
         }
 
         ingredientsContainerView.snp.makeConstraints {
@@ -377,8 +395,7 @@ final class RecipeDetailViewController: BaseViewController {
                 if let tip = tip, !tip.isEmpty {
                     owner.tipLabel.text = tip
                 } else {
-                    owner.tipSectionHeaderLabel.isHidden = true
-                    owner.tipContainerView.isHidden = true
+                    owner.tipLabel.text = "-"
                 }
             }
             .disposed(by: disposeBag)
@@ -406,12 +423,15 @@ final class RecipeDetailViewController: BaseViewController {
         ownedIngredientsFlowView.removeAllArrangedSubviews()
 
         if ingredients.isEmpty {
-            ownedIngredientsHeaderLabel.isHidden = true
-            ownedIngredientsContainerView.isHidden = true
+            ownedIngredientsHeaderLabel.text = "보유 재료 매칭"
+            ownedIngredientsFlowView.isHidden = true
+            emptyIngredientsLabel.isHidden = false
             return
         }
 
         ownedIngredientsHeaderLabel.text = "✅ 보유 재료 매칭 (\(ingredients.count)개)"
+        ownedIngredientsFlowView.isHidden = false
+        emptyIngredientsLabel.isHidden = true
 
         // FlowLayoutView에 태그 추가
         ingredients.forEach { ingredient in

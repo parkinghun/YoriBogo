@@ -96,16 +96,8 @@ final class IngredientDetailCardView: UIView {
         return tf
     }()
 
-    private let expirationDatePicker = {
-        let picker = UIDatePicker()
-        picker.datePickerMode = .date
-        picker.preferredDatePickerStyle = .wheels
-        picker.locale = Locale(identifier: "ko_KR")
-        return picker
-    }()
-
-    private let expirationTextField = {
-        let tf = UITextField()
+    private let expirationTextField: DatePickerTextField = {
+        let tf = DatePickerTextField(showClearButton: false)
         tf.textAlignment = .right
         tf.font = Pretendard.medium.of(size: 16)
         tf.borderStyle = .roundedRect
@@ -301,19 +293,14 @@ final class IngredientDetailCardView: UIView {
     }
 
     private func setupTextFieldActions() {
-        // DatePicker 설정
-        expirationTextField.inputView = expirationDatePicker
-
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        let doneButton = UIBarButtonItem(title: "완료", style: .done, target: self, action: #selector(datePickerDone))
-        let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
-        toolbar.setItems([flexSpace, doneButton], animated: false)
-        expirationTextField.inputAccessoryView = toolbar
-
         // Text field 변경 감지
         quantityTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
         unitTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+
+        // DatePicker 변경 감지
+        expirationTextField.onDateSelected = { [weak self] _ in
+            self?.textFieldDidChange()
+        }
 
         // Edit button 액션
         editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
@@ -323,20 +310,12 @@ final class IngredientDetailCardView: UIView {
         dismiss()
     }
 
-    @objc private func datePickerDone() {
-        let isSameYear = Calendar.current.component(.year, from: Date()) == Calendar.current.component(.year, from: expirationDatePicker.date)
-        let dateFormatter = isSameYear ? DateFormatter.expirationDetailSameYear : DateFormatter.expirationDetailDifferentYear
-        expirationTextField.text = dateFormatter.string(from: expirationDatePicker.date)
-        expirationTextField.resignFirstResponder()
-        textFieldDidChange()
-    }
-
     @objc private func textFieldDidChange() {
         guard let original = originalDetail else { return }
 
         let currentQty = Double(quantityTextField.text ?? "") ?? original.qty ?? 0
         let currentUnit = unitTextField.text ?? ""
-        let currentExpiration = expirationDatePicker.date
+        let currentExpiration = expirationTextField.getDate() ?? Date()
 
         let qtyChanged = currentQty != (original.qty ?? 0)
         let unitChanged = currentUnit != (original.unit ?? "")
@@ -378,12 +357,12 @@ final class IngredientDetailCardView: UIView {
         if let expirationDate = detail.expirationDate {
             let (dateString, dDay, color) = formatExpirationDate(expirationDate)
             expirationRow.setValue("\(dateString) (\(dDay))", color: color)
-            expirationDatePicker.date = expirationDate
 
             let calendar = Calendar.current
             let isSameYear = calendar.component(.year, from: Date()) == calendar.component(.year, from: expirationDate)
             let formatter = isSameYear ? DateFormatter.expirationDetailSameYear : DateFormatter.expirationDetailDifferentYear
-            expirationTextField.text = formatter.string(from: expirationDate)
+            expirationTextField.dateFormatter = formatter
+            expirationTextField.setDate(expirationDate)
         } else {
             expirationRow.setValue("미정")
             expirationTextField.text = ""
@@ -419,7 +398,7 @@ final class IngredientDetailCardView: UIView {
         var updated = original
         updated.qty = Double(quantityTextField.text ?? "") ?? original.qty
         updated.unit = unitTextField.text?.isEmpty == false ? unitTextField.text : original.unit
-        updated.expirationDate = expirationDatePicker.date
+        updated.expirationDate = expirationTextField.getDate() ?? original.expirationDate
         updated.updatedAt = Date()
 
         return updated

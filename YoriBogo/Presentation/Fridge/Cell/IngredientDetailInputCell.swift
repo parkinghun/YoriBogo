@@ -60,7 +60,7 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
     
     private let quantityTextFieldView = BorderedTextFieldView(type: .quantity)
     private let unitTextFieldView = BorderedTextFieldView(type: .unit)
-    
+
     private let expirationLabel = {
         let label = UILabel()
         label.text = "소비기한"
@@ -68,22 +68,34 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         label.textColor = .gray700
         return label
     }()
-    
-    private let dateTextFieldView = BorderedTextFieldView(type: .date)
 
-    private lazy var datePicker = {
-        let picker = UIDatePicker()
-        picker.datePickerMode = .date
-        picker.preferredDatePickerStyle = .wheels
-        picker.locale = Locale(identifier: "ko_KR")
-        picker.minimumDate = Date()
-        return picker
+    private let dateTextField: DatePickerTextField = {
+        let tf = DatePickerTextField(showClearButton: true)
+        tf.placeholder = DateFormatter.expirationDate.string(from: .now)
+        tf.font = AppFont.button
+        tf.backgroundColor = .white
+        tf.layer.cornerRadius = 8
+        tf.layer.borderColor = UIColor.gray200.cgColor
+        tf.layer.borderWidth = 1
+        tf.tintColor = .clear
+        tf.dateFormatter = DateFormatter.expirationDate
+        let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 44))
+        tf.leftView = paddingView
+        tf.leftViewMode = .always
+        let rightPaddingView = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
+        let calendarIcon = UIImageView(image: UIImage(systemName: "calendar"))
+        calendarIcon.tintColor = .gray600
+        calendarIcon.frame = CGRect(x: 8, y: 10, width: 24, height: 24)
+        rightPaddingView.addSubview(calendarIcon)
+        tf.rightView = rightPaddingView
+        tf.rightViewMode = .always
+        return tf
     }()
-    
+
     var onQuantityChanged: ((String) -> Void)?
     var onUnitChanged: ((String) -> Void)?
     var onDateSelected: ((Date?) -> Void)?
-    
+
     private var currentIndex: Int = 0
     
     override init(frame: CGRect) {
@@ -91,7 +103,6 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         configureHierarchy()
         configureLayout()
         setupActions()
-        setupDatePicker()
     }
     
     required init?(coder: NSCoder) {
@@ -102,7 +113,7 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         super.prepareForReuse()
         quantityTextFieldView.textField.text = "1"
         unitTextFieldView.textField.text = nil
-        dateTextFieldView.textField.text = nil
+        dateTextField.text = nil
     }
     
     func configure(with detail: FridgeIngredientDetail, index: Int) {
@@ -123,12 +134,8 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         } else {
             unitTextFieldView.textField.text = nil
         }
-        
-        if let date = detail.expirationDate {
-            dateTextFieldView.textField.text = DateFormatter.expirationDate.string(from: date)
-        } else {
-            dateTextFieldView.textField.text = nil
-        }
+
+        dateTextField.setDate(detail.expirationDate)
     }
     
     private func configureHierarchy() {
@@ -140,7 +147,7 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         containerView.addSubview(quantityTextFieldView)
         containerView.addSubview(unitTextFieldView)
         containerView.addSubview(expirationLabel)
-        containerView.addSubview(dateTextFieldView)
+        containerView.addSubview(dateTextField)
     }
     
     private func configureLayout() {
@@ -182,8 +189,8 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
                 $0.top.equalTo(quantityTextFieldView.snp.bottom).offset(16)
                 $0.leading.equalToSuperview().inset(16)
             }
-            
-            dateTextFieldView.snp.makeConstraints {
+
+            dateTextField.snp.makeConstraints {
                 $0.top.equalTo(expirationLabel.snp.bottom).offset(8)
                 $0.horizontalEdges.equalToSuperview().inset(16)
                 $0.bottom.equalToSuperview().inset(16)
@@ -194,6 +201,10 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
     private func setupActions() {
         quantityTextFieldView.textField.addTarget(self, action: #selector(quantityTextFieldDidChange), for: .editingChanged)
         unitTextFieldView.textField.addTarget(self, action: #selector(unitTextFieldDidChange), for: .editingChanged)
+
+        dateTextField.onDateSelected = { [weak self] date in
+            self?.onDateSelected?(date)
+        }
     }
     
     @objc private func quantityTextFieldDidChange() {
@@ -202,35 +213,5 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
     
     @objc private func unitTextFieldDidChange() {
         onUnitChanged?(unitTextFieldView.textField.text ?? "")
-    }
-    
-    
-    private func setupDatePicker() {
-        dateTextFieldView.textField.inputView = datePicker
-        
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        
-        let clearButton = UIBarButtonItem(title: "삭제", style: .plain, target: self, action: #selector(clearDate))
-        let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
-        let doneButton = UIBarButtonItem(title: "완료", style: .done, target: self, action: #selector(datePickerDone))
-        
-        toolbar.items = [clearButton, flexSpace, doneButton]
-        dateTextFieldView.textField.inputAccessoryView = toolbar
-    }
-    
-    @objc private func datePickerDone() {
-        let selectedDate = datePicker.date
-
-        dateTextFieldView.textField.text = DateFormatter.expirationDate.string(from: selectedDate)
-
-        onDateSelected?(selectedDate)
-        dateTextFieldView.textField.resignFirstResponder()
-    }
-
-    @objc private func clearDate() {
-        dateTextFieldView.textField.text = nil
-        onDateSelected?(nil)
-        dateTextFieldView.textField.resignFirstResponder()
     }
 }
