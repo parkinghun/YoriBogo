@@ -11,6 +11,10 @@ import Kingfisher
 
 final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
 
+    // MARK: - Properties
+    private var recipeId: String?
+    var onBookmarkTapped: ((String) -> Void)?
+
     // MARK: - UI Components
     private let cardContainerView: UIView = {
         let view = UIView()
@@ -71,10 +75,21 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        bookmarkButton.addTarget(self, action: #selector(bookmarkButtonTapped), for: .touchUpInside)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func bookmarkButtonTapped() {
+        print("🔥 북마크 버튼 탭됨")
+        guard let recipeId = recipeId else {
+            print("⚠️ recipeId가 nil입니다")
+            return
+        }
+        print("✅ recipeId: \(recipeId)")
+        onBookmarkTapped?(recipeId)
     }
 
     // MARK: - Setup
@@ -128,6 +143,7 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
 
     // MARK: - Configuration
     func configure(with recipe: Recipe, hasIngredients: Bool, matchRate: Double, matchedIngredients: [String]) {
+        recipeId = recipe.id
         recipeTitleLabel.text = recipe.title
 
         // 이미지 로드
@@ -183,5 +199,14 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
 
     private func createIngredientTag(text: String) -> ChipLabel {
         return ChipLabel(text: text, style: .greenLight, size: .regular)
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        recipeId = nil
+        onBookmarkTapped = nil
+        recipeImageView.image = nil
+        recipeTitleLabel.text = nil
+        ingredientsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
     }
 }

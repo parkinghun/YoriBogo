@@ -28,6 +28,7 @@ final class RecipeDetailViewController: BaseViewController {
         iv.contentMode = .scaleAspectFill
         iv.clipsToBounds = true
         iv.backgroundColor = .systemGray6
+        iv.isUserInteractionEnabled = true
         return iv
     }()
 
@@ -403,8 +404,7 @@ final class RecipeDetailViewController: BaseViewController {
         // 북마크 상태
         output.isBookmarked
             .drive(with: self) { owner, isBookmarked in
-                let imageName = isBookmarked ? "heart.fill" : "heart"
-                owner.bookmarkButton.setImage(UIImage(systemName: imageName), for: .normal)
+                owner.bookmarkButton.setBookmarked(isBookmarked)
             }
             .disposed(by: disposeBag)
     }

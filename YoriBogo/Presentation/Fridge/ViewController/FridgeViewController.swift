@@ -17,10 +17,12 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     private lazy var categoryChipCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
-        layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize
+        layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize  // 얘 떄문이야~~
         layout.minimumInteritemSpacing = 8
         layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
-
+        layout.minimumLineSpacing = 8
+        
+        
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.backgroundColor = .white
         cv.showsHorizontalScrollIndicator = false

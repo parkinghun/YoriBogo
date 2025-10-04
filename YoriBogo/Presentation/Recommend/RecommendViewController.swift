@@ -56,6 +56,7 @@ final class RecommendViewController: BaseViewController {
     private let viewModel = RecommendViewModel()
     private let disposeBag = DisposeBag()
     private let viewWillAppearTrigger = PublishRelay<Void>()
+    private let recipeManager = RecipeRealmManager.shared
 
     private var recommendedData: [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] = []
     private var hasIngredients: Bool = true
@@ -103,7 +104,43 @@ final class RecommendViewController: BaseViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        viewWillAppearTrigger.accept(())
+
+        // DetailViewController에서 돌아올 때 북마크 상태 업데이트
+        if !recommendedData.isEmpty {
+            updateBookmarkStates()
+        } else {
+            // 처음 진입할 때만 데이터 로드
+            viewWillAppearTrigger.accept(())
+        }
+    }
+
+    private func updateBookmarkStates() {
+        // Realm에서 최신 recipe 가져와서 recommendedData 업데이트
+        for (index, data) in recommendedData.enumerated() {
+            if let updatedRecipe = recipeManager.fetchRecipe(by: data.recipe.id) {
+                recommendedData[index].recipe = updatedRecipe
+            }
+        }
+
+        // 보이는 셀들만 업데이트
+        collectionView.visibleCells.forEach { cell in
+            if let indexPath = collectionView.indexPath(for: cell),
+               let recipeCell = cell as? RecommendRecipeCell {
+                let actualIndex = indexPath.item % recommendedData.count
+                let data = recommendedData[actualIndex]
+                recipeCell.configure(
+                    with: data.recipe,
+                    hasIngredients: hasIngredients,
+                    matchRate: data.matchRate,
+                    matchedIngredients: data.matchedIngredients
+                )
+
+                // 북마크 클로저 다시 연결
+                recipeCell.onBookmarkTapped = { [weak self] recipeId in
+                    self?.toggleBookmark(recipeId: recipeId)
+                }
+            }
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -262,6 +299,13 @@ extension RecommendViewController: UICollectionViewDataSource {
             matchRate: data.matchRate,
             matchedIngredients: data.matchedIngredients
         )
+
+        // 북마크 버튼 탭 이벤트 처리
+        cell.onBookmarkTapped = { [weak self] recipeId in
+            print("🎯 RecommendViewController - 북마크 클로저 호출됨")
+            self?.toggleBookmark(recipeId: recipeId)
+        }
+
         return cell
     }
 }
@@ -313,8 +357,14 @@ extension RecommendViewController: UICollectionViewDelegate {
         let actualIndex = indexPath.item % recommendedData.count
         let data = recommendedData[actualIndex]
 
+        // Realm에서 최신 레시피 가져오기
+        guard let updatedRecipe = recipeManager.fetchRecipe(by: data.recipe.id) else {
+            print("⚠️ 레시피를 찾을 수 없습니다: \(data.recipe.id)")
+            return
+        }
+
         let detailVC = RecipeDetailViewController(
-            recipe: data.recipe,
+            recipe: updatedRecipe,
             matchRate: data.matchRate,
             matchedIngredients: data.matchedIngredients
         )
@@ -329,6 +379,44 @@ extension RecommendViewController: UICollectionViewDelegate {
 
         if let indexPath = collectionView.indexPathForItem(at: centerPoint) {
             pageControl.currentPage = indexPath.item % recommendedData.count
+        }
+    }
+
+    private func toggleBookmark(recipeId: String) {
+        print("📌 toggleBookmark 호출됨: \(recipeId)")
+        do {
+            // Realm에서 북마크 토글
+            try recipeManager.toggleBookmark(recipeId: recipeId)
+            print("✅ 북마크 토글 성공")
+
+            // recommendedData 배열에서 해당 레시피 찾아서 업데이트
+            for (index, data) in recommendedData.enumerated() {
+                if data.recipe.id == recipeId {
+                    // 업데이트된 레시피 가져오기
+                    if let updatedRecipe = recipeManager.fetchRecipe(by: recipeId) {
+                        recommendedData[index].recipe = updatedRecipe
+
+                        // 모든 해당 셀들 리로드 (무한 스크롤이므로 여러 인덱스에 같은 데이터가 있음)
+                        collectionView.visibleCells.forEach { cell in
+                            if let indexPath = collectionView.indexPath(for: cell),
+                               let recipeCell = cell as? RecommendRecipeCell {
+                                let actualIndex = indexPath.item % recommendedData.count
+                                if actualIndex == index {
+                                    recipeCell.configure(
+                                        with: updatedRecipe,
+                                        hasIngredients: hasIngredients,
+                                        matchRate: data.matchRate,
+                                        matchedIngredients: data.matchedIngredients
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    break
+                }
+            }
+        } catch {
+            print("❌ 북마크 토글 에러: \(error)")
         }
     }
 }

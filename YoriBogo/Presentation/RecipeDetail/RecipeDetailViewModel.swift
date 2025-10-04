@@ -47,6 +47,7 @@ final class RecipeDetailViewModel: ViewModelType {
             .subscribe(onNext: { [weak self] _ in
                 guard let self = self else { return }
                 do {
+                    print("북마크 버튼 tapped")
                     try self.recipeManager.toggleBookmark(recipeId: self.recipe.id)
                     isBookmarkedRelay.accept(!isBookmarkedRelay.value)
                 } catch {

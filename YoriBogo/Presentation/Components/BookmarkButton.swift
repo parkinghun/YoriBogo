@@ -26,6 +26,7 @@ final class BookmarkButton: UIButton {
         layer.shadowOpacity = 0.1
         layer.shadowOffset = CGSize(width: 0, height: 2)
         layer.shadowRadius = 8
+        isUserInteractionEnabled = true
     }
 
     // MARK: - Public Methods
