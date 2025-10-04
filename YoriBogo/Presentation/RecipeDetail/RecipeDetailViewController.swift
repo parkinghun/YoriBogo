@@ -456,10 +456,12 @@ final class RecipeDetailViewController: BaseViewController {
     private func createIngredientItemView(ingredient: RecipeIngredient) -> UIView {
         let containerView = UIView()
 
-        // 보유 재료 확인
+        // 보유 재료 확인 (정확한 매칭)
         let isOwned = matchedIngredientNames.contains { matchedName in
-            ingredient.name.lowercased().contains(matchedName.lowercased()) ||
-            matchedName.lowercased().contains(ingredient.name.lowercased())
+            isIngredientMatch(
+                recipeIngredient: ingredient.name.lowercased(),
+                userIngredient: matchedName.lowercased()
+            )
         }
 
         let bulletView = UIView()
@@ -467,24 +469,22 @@ final class RecipeDetailViewController: BaseViewController {
         bulletView.layer.cornerRadius = 4
         bulletView.clipsToBounds = true
 
+        // 재료명 (왼쪽)
         let nameLabel = UILabel()
         nameLabel.text = ingredient.name
         nameLabel.font = .systemFont(ofSize: 15, weight: .regular)
         nameLabel.textColor = .gray700
+        nameLabel.numberOfLines = 1
 
-        let quantityLabel = UILabel()
-        if let qty = ingredient.qty, let unit = ingredient.unit {
-            quantityLabel.text = "\(qty)\(unit)"
-        } else if let altText = ingredient.altText {
-            quantityLabel.text = altText
-        } else {
-            quantityLabel.text = ""
-        }
-        quantityLabel.font = .systemFont(ofSize: 15, weight: .regular)
-        quantityLabel.textColor = .gray500
-        quantityLabel.textAlignment = .right
+        // 부가 정보 (오른쪽): qty unit (altText)
+        let detailLabel = UILabel()
+        detailLabel.text = formatIngredientDetail(ingredient)
+        detailLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        detailLabel.textColor = .gray500
+        detailLabel.textAlignment = .right
+        detailLabel.numberOfLines = 1
 
-        [bulletView, nameLabel, quantityLabel].forEach {
+        [bulletView, nameLabel, detailLabel].forEach {
             containerView.addSubview($0)
         }
 
@@ -499,7 +499,7 @@ final class RecipeDetailViewController: BaseViewController {
             $0.centerY.equalToSuperview()
         }
 
-        quantityLabel.snp.makeConstraints {
+        detailLabel.snp.makeConstraints {
             $0.trailing.equalToSuperview()
             $0.centerY.equalToSuperview()
             $0.leading.greaterThanOrEqualTo(nameLabel.snp.trailing).offset(12)
@@ -510,6 +510,50 @@ final class RecipeDetailViewController: BaseViewController {
         }
 
         return containerView
+    }
+
+    private func formatIngredientDetail(_ ingredient: RecipeIngredient) -> String {
+        var parts: [String] = []
+
+        // qty와 unit이 있으면 추가 (소수점 최적화)
+        if let qty = ingredient.qty, let unit = ingredient.unit {
+            let formattedQty = qty.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "%.0f", qty)  // 정수
+                : String(format: "%g", qty)     // 소수점 (trailing zeros 제거)
+            parts.append("\(formattedQty)\(unit)")
+        }
+
+        // altText가 있으면 괄호로 추가
+        if let altText = ingredient.altText, !altText.isEmpty {
+            parts.append("(\(altText))")
+        }
+
+        return parts.joined(separator: " ")
+    }
+
+    private func isIngredientMatch(recipeIngredient: String, userIngredient: String) -> Bool {
+        // 1. 정확히 일치하는 경우
+        if recipeIngredient == userIngredient {
+            return true
+        }
+
+        // 2. 레시피 재료가 사용자 재료로 시작하고 다음 문자가 공백이거나 끝인 경우
+        if recipeIngredient.hasPrefix(userIngredient) {
+            let nextIndex = recipeIngredient.index(recipeIngredient.startIndex, offsetBy: userIngredient.count)
+            if nextIndex == recipeIngredient.endIndex || recipeIngredient[nextIndex] == " " {
+                return true
+            }
+        }
+
+        // 3. 사용자 재료가 레시피 재료로 시작하고 다음 문자가 공백이거나 끝인 경우
+        if userIngredient.hasPrefix(recipeIngredient) {
+            let nextIndex = userIngredient.index(userIngredient.startIndex, offsetBy: recipeIngredient.count)
+            if nextIndex == userIngredient.endIndex || userIngredient[nextIndex] == " " {
+                return true
+            }
+        }
+
+        return false
     }
 
     private func configureSteps(steps: [RecipeStep]) {

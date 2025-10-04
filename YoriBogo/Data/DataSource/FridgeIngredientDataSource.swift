@@ -21,35 +21,31 @@ enum SortOption {
 }
 
 final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
-    private let realm = try! Realm()
 
     func save(_ ingredient: FridgeIngredientDetail) throws {
+        let realm = try Realm()
         let object = ingredient.toRealmObject()
-        do {
-            try realm.write {
-                realm.add(object, update: .modified)
-            }
-        } catch {
-            print("냉장고 재료 realm DB 저장 실패")
-        }
 
-        print(realm.configuration.fileURL)
+        try realm.write {
+            realm.add(object, update: .modified)
+        }
     }
 
     func fetchAll(sortBy: SortOption) -> [FridgeIngredientDetail] {
-        print(realm.configuration.fileURL)
-
+        let realm = try! Realm()
         let objects = realm.objects(FridgeIngredientObject.self)
         return applySorting(to: Array(objects), sortBy: sortBy)
     }
 
     func fetchByCategories(_ categoryIds: [Int], sortBy: SortOption) -> [FridgeIngredientDetail] {
+        let realm = try! Realm()
         let objects = realm.objects(FridgeIngredientObject.self)
             .where { $0.categoryId.in(categoryIds) }
         return applySorting(to: Array(objects), sortBy: sortBy)
     }
 
     func delete(_ id: String) throws {
+        let realm = try Realm()
         guard let objectId = try? ObjectId(string: id),
               let object = realm.object(ofType: FridgeIngredientObject.self, forPrimaryKey: objectId) else {
             throw NSError(domain: "FridgeIngredientDataSource", code: 404, userInfo: [NSLocalizedDescriptionKey: "Object not found"])
