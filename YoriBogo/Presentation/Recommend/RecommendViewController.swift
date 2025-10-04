@@ -30,7 +30,6 @@ final class RecommendViewController: BaseViewController {
         return label
     }()
 
-    
     private let searchButtonItem = UIBarButtonItem(image: UIImage(systemName: "magnifyingglass"), style: .plain, target: nil, action: nil)
 
     private lazy var collectionView: UICollectionView = {
@@ -43,13 +42,16 @@ final class RecommendViewController: BaseViewController {
     }()
 
     private let pageControl: UIPageControl = {
-        let pc = UIPageControl()
-        pc.numberOfPages = 5
-        pc.currentPage = 0
-        pc.pageIndicatorTintColor = .systemGray4
-        pc.currentPageIndicatorTintColor = .systemOrange
-        return pc
+        let pageControl = UIPageControl()
+        pageControl.numberOfPages = 5
+        pageControl.currentPage = 0
+        pageControl.pageIndicatorTintColor = .systemGray4
+        pageControl.currentPageIndicatorTintColor = .systemOrange
+        return pageControl
     }()
+    
+    // TODO: - 컨텐츠
+    
 
     // MARK: - Properties
     private let viewModel = RecommendViewModel()
@@ -213,15 +215,6 @@ final class RecommendViewController: BaseViewController {
         let centerPoint = CGPoint(x: center, y: collectionView.bounds.midY)
         return collectionView.indexPathForItem(at: centerPoint)
     }
-    
-    private func scrollToNextItem() {
-        guard !recommendedData.isEmpty else { return }
-        guard let currentIndexPath = currentCenteredIndexPath() else { return }
-
-        let nextItem = currentIndexPath.item + 1
-        let nextIndexPath = IndexPath(item: nextItem, section: 0)
-        collectionView.scrollToItem(at: nextIndexPath, at: .centeredHorizontally, animated: true)
-    }
 }
 
 // MARK: - UICollectionViewDataSource
@@ -254,16 +247,11 @@ extension RecommendViewController: UICollectionViewDataSource {
 
 // MARK: - UICollectionViewDelegate
 extension RecommendViewController: UICollectionViewDelegate {
+
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard !recommendedData.isEmpty else { return }
-
-        let centerX = collectionView.contentOffset.x + collectionView.bounds.width / 2
-        let centerPoint = CGPoint(x: centerX, y: collectionView.bounds.midY)
-
-        if let indexPath = collectionView.indexPathForItem(at: centerPoint) {
-            let actualPage = indexPath.item % recommendedData.count
-            pageControl.currentPage = actualPage
-        }
+        // 스크롤 중에도 실시간으로 페이지 컨트롤 업데이트
+        updatePageControl()
+//        startAutoScroll()
     }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -271,23 +259,47 @@ extension RecommendViewController: UICollectionViewDelegate {
         stopAutoScroll()
     }
 
-    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        // 사용자가 스크롤을 끝내면 타이머 리셋하여 4초 후 자동 스크롤 재시작
-        if !decelerate {
-            startAutoScroll()
-        }
-    }
-
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        // 관성 스크롤이 끝나면 타이머 리셋하여 4초 후 자동 스크롤 재시작
+        updatePageControl()
         startAutoScroll()
     }
 
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
-        // 자동 스크롤 애니메이션이 끝났을 때도 페이지 컨트롤 업데이트
         updatePageControl()
     }
     
+    private func scrollToNextItem() {
+        guard !recommendedData.isEmpty else { return }
+        guard let currentIndexPath = currentCenteredIndexPath() else { return }
+
+        let nextItem = (currentIndexPath.item + 1) % (recommendedData.count * multiplier)
+        let nextIndexPath = IndexPath(item: nextItem, section: 0)
+        collectionView.scrollToItem(at: nextIndexPath, at: .centeredHorizontally, animated: true)
+
+        // ✅ 페이지 컨트롤 갱신 추가
+        pageControl.currentPage = nextItem % recommendedData.count
+    }
+    
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        // 사용자가 스크롤을 끝내면 타이머 리셋하여 4초 후 자동 스크롤 재시작
+        if !decelerate {
+            updatePageControl()
+            startAutoScroll()
+        }
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let actualIndex = indexPath.item % recommendedData.count
+        let data = recommendedData[actualIndex]
+
+        let detailVC = RecipeDetailViewController(
+            recipe: data.recipe,
+            matchRate: data.matchRate,
+            matchedIngredients: data.matchedIngredients
+        )
+        navigationController?.pushViewController(detailVC, animated: true)
+    }
+
     private func updatePageControl() {
         guard !recommendedData.isEmpty else { return }
 
