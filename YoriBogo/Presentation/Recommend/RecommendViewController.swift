@@ -100,21 +100,58 @@ final class RecommendViewController: BaseViewController {
         setNavigation()
         setupUI()
         bind()
+        setupNotifications()
+
+        // 첫 진입 시 데이터 로드
+        viewWillAppearTrigger.accept(())
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        // DetailViewController에서 돌아올 때 북마크 상태 업데이트
-        if !recommendedData.isEmpty {
-            updateBookmarkStates()
-        } else {
-            // 처음 진입할 때만 데이터 로드
-            viewWillAppearTrigger.accept(())
+        // DetailViewController에서 돌아올 때 북마크 상태만 업데이트
+        updateBookmarkStates()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+
+        // collectionView가 보이는지 확인
+        if recommendedData.isEmpty {
+            print("⚠️ RecommendViewController - 데이터가 비어있습니다")
         }
+
+        startAutoScroll()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        stopAutoScroll()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        stopAutoScroll()
+    }
+
+    // MARK: - Notifications
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(fridgeIngredientsDidChange),
+            name: .fridgeIngredientsDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func fridgeIngredientsDidChange() {
+        // 냉장고 재료가 변경되면 추천 레시피 갱신
+        viewWillAppearTrigger.accept(())
     }
 
     private func updateBookmarkStates() {
+        guard !recommendedData.isEmpty else { return }
+
         // Realm에서 최신 recipe 가져와서 recommendedData 업데이트
         for (index, data) in recommendedData.enumerated() {
             if let updatedRecipe = recipeManager.fetchRecipe(by: data.recipe.id) {
@@ -143,26 +180,6 @@ final class RecommendViewController: BaseViewController {
         }
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-
-        // collectionView가 보이는지 확인
-        if recommendedData.isEmpty {
-            print("⚠️ RecommendViewController - 데이터가 비어있습니다")
-        }
-
-        startAutoScroll()
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        stopAutoScroll()
-    }
-
-    deinit {
-        stopAutoScroll()
-    }
-    
     // MARK: - Setup
     private func setNavigation() {
         navigationItem.title = "레시피 추천"
@@ -302,7 +319,6 @@ extension RecommendViewController: UICollectionViewDataSource {
 
         // 북마크 버튼 탭 이벤트 처리
         cell.onBookmarkTapped = { [weak self] recipeId in
-            print("🎯 RecommendViewController - 북마크 클로저 호출됨")
             self?.toggleBookmark(recipeId: recipeId)
         }
 
@@ -383,11 +399,9 @@ extension RecommendViewController: UICollectionViewDelegate {
     }
 
     private func toggleBookmark(recipeId: String) {
-        print("📌 toggleBookmark 호출됨: \(recipeId)")
         do {
             // Realm에서 북마크 토글
             try recipeManager.toggleBookmark(recipeId: recipeId)
-            print("✅ 북마크 토글 성공")
 
             // recommendedData 배열에서 해당 레시피 찾아서 업데이트
             for (index, data) in recommendedData.enumerated() {

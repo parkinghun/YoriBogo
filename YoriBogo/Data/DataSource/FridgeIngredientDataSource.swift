@@ -8,6 +8,10 @@
 import Foundation
 import RealmSwift
 
+extension Notification.Name {
+    static let fridgeIngredientsDidChange = Notification.Name("fridgeIngredientsDidChange")
+}
+
 protocol FridgeIngredientDataSourceType {
     func save(_ ingredient: FridgeIngredientDetail) throws
     func fetchAll(sortBy: SortOption) -> [FridgeIngredientDetail]
@@ -29,6 +33,9 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
         try realm.write {
             realm.add(object, update: .modified)
         }
+
+        // 냉장고 재료 변경 알림
+        NotificationCenter.default.post(name: .fridgeIngredientsDidChange, object: nil)
     }
 
     func fetchAll(sortBy: SortOption) -> [FridgeIngredientDetail] {
@@ -53,6 +60,9 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
         try realm.write {
             realm.delete(object)
         }
+
+        // 냉장고 재료 변경 알림
+        NotificationCenter.default.post(name: .fridgeIngredientsDidChange, object: nil)
     }
 
     // MARK: - Private

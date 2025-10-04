@@ -154,7 +154,6 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
                 // 북마크 버튼 탭 이벤트 처리
                 cell.onBookmarkTapped = { recipeId in
-                    print("🎯 RecipeSearchViewController - 북마크 클로저 호출됨")
                     self?.toggleBookmark(recipeId: recipeId)
                 }
             }
@@ -205,11 +204,9 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
     // MARK: - Private Methods
     private func toggleBookmark(recipeId: String) {
-        print("📌 검색 화면 toggleBookmark 호출됨: \(recipeId)")
         do {
             // Realm에서 북마크 토글
             try recipeManager.toggleBookmark(recipeId: recipeId)
-            print("✅ 북마크 토글 성공")
 
             // searchResults 배열에서 해당 레시피 찾아서 업데이트
             for (index, data) in searchResults.enumerated() {

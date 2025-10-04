@@ -83,12 +83,7 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
     }
 
     @objc private func bookmarkButtonTapped() {
-        print("🔥 북마크 버튼 탭됨")
-        guard let recipeId = recipeId else {
-            print("⚠️ recipeId가 nil입니다")
-            return
-        }
-        print("✅ recipeId: \(recipeId)")
+        guard let recipeId = recipeId else { return }
         onBookmarkTapped?(recipeId)
     }
 
