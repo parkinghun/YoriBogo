@@ -17,14 +17,8 @@ final class IngredientHeaderView: UICollectionReusableView, ReusableView {
         return label
     }()
 
-    private let countBadge = {
-        let label = UILabel()
-        label.font = Pretendard.medium.of(size: 14)
-        label.textColor = .brandOrange600
-        label.backgroundColor = .brandOrange100
-        label.textAlignment = .center
-        label.layer.cornerRadius = 12
-        label.clipsToBounds = true
+    private let countBadge: ChipLabel = {
+        let label = ChipLabel(style: .orangeFill, size: .small)
         label.isHidden = true
         return label
     }()
@@ -58,7 +52,7 @@ final class IngredientHeaderView: UICollectionReusableView, ReusableView {
             return
         }
         countBadge.isHidden = false
-        countBadge.text = "\(count)개"
+        countBadge.updateText("\(count)개")
     }
 
     private func setupUI() {
@@ -69,9 +63,5 @@ final class IngredientHeaderView: UICollectionReusableView, ReusableView {
             $0.centerY.equalToSuperview()
         }
 
-        countBadge.snp.makeConstraints {
-            $0.height.equalTo(24)
-            $0.width.greaterThanOrEqualTo(40)
-        }
     }
 }

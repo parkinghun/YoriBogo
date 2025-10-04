@@ -1,6 +1,6 @@
 {
     "categories": [
-        { "id": 1, "name": "과일·채소", "imageName": "carrot" },
+        { "id": 1, "name": "과일·채소", "imageName": "fruit" },
         { "id": 2, "name": "빵·곡물·조식류", "imageName": "cereals" },
         { "id": 3, "name": "고기·단백질", "imageName": "meat" },
         { "id": 4, "name": "유제품·계란", "imageName": "dairy" },

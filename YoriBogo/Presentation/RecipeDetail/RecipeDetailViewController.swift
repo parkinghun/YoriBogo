@@ -16,7 +16,7 @@ final class RecipeDetailViewController: BaseViewController {
     private let scrollView: UIScrollView = {
         let sv = UIScrollView()
         sv.showsVerticalScrollIndicator = true
-        sv.backgroundColor = .white
+        sv.backgroundColor = .gray50
         return sv
     }()
 
@@ -37,11 +37,17 @@ final class RecipeDetailViewController: BaseViewController {
         let label = UILabel()
         label.font = .systemFont(ofSize: 24, weight: .bold)
         label.textColor = .darkGray
-        label.numberOfLines = 0
+        label.numberOfLines = 2
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
     }()
 
-    private let matchBadgeLabel = BadgeLabel(text: "매칭률 95% ✨")
+    private let matchBadgeLabel: BadgeLabel = {
+        let label = BadgeLabel(text: "95%")
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        return label
+    }()
 
     // 태그
     private lazy var tagStackView: UIStackView = {
@@ -49,65 +55,6 @@ final class RecipeDetailViewController: BaseViewController {
         stack.axis = .horizontal
         stack.spacing = 8
         stack.alignment = .leading
-        return stack
-    }()
-
-    // 보유 재료 섹션
-    private let ownedIngredientsHeaderLabel: UILabel = {
-        let label = UILabel()
-        label.text = "✅ 보유 재료 매칭 (4개)"
-        label.font = .systemFont(ofSize: 16, weight: .semibold)
-        label.textColor = .darkGray
-        return label
-    }()
-
-    private let ownedIngredientsContainerView: UIView = {
-        let view = UIView()
-        view.backgroundColor = UIColor(red: 144/255, green: 238/255, blue: 144/255, alpha: 0.15)
-        view.layer.cornerRadius = 12
-        return view
-    }()
-
-    private lazy var ownedIngredientsStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 8
-        stack.alignment = .leading
-        stack.distribution = .fillProportionally
-        return stack
-    }()
-
-    // 재료 섹션
-    private let ingredientsSectionHeaderLabel: UILabel = {
-        let label = UILabel()
-        label.text = "📌 재료"
-        label.font = .systemFont(ofSize: 16, weight: .semibold)
-        label.textColor = .darkGray
-        return label
-    }()
-
-    private lazy var ingredientsStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 12
-        stack.alignment = .fill
-        return stack
-    }()
-
-    // 조리 단계 섹션
-    private let stepsSectionHeaderLabel: UILabel = {
-        let label = UILabel()
-        label.text = "👨‍🍳 요리 단계"
-        label.font = .systemFont(ofSize: 16, weight: .semibold)
-        label.textColor = .darkGray
-        return label
-    }()
-
-    private lazy var stepsStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 20
-        stack.alignment = .fill
         return stack
     }()
 
@@ -122,7 +69,7 @@ final class RecipeDetailViewController: BaseViewController {
 
     private let tipContainerView: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.1)
+        view.backgroundColor = .brandOrange50
         view.layer.cornerRadius = 12
         return view
     }()
@@ -135,9 +82,81 @@ final class RecipeDetailViewController: BaseViewController {
         return label
     }()
 
+    // 보유 재료 섹션
+    private let ownedIngredientsContainerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .statusGreen50
+        view.layer.cornerRadius = 12
+        return view
+    }()
+
+    private let ownedIngredientsHeaderLabel: UILabel = {
+        let label = UILabel()
+        label.text = "✅ 보유 재료 매칭 (4개)"
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.textColor = .darkGray
+        return label
+    }()
+
+    private let ownedIngredientsFlowView: FlowLayoutView = {
+        let view = FlowLayoutView()
+        view.horizontalSpacing = 8
+        view.verticalSpacing = 8
+        return view
+    }()
+
+    // 재료 섹션
+    private let ingredientsContainerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 12
+        return view
+    }()
+
+    private let ingredientsSectionHeaderLabel: UILabel = {
+        let label = UILabel()
+        label.text = "재료"
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.textColor = .darkGray
+        return label
+    }()
+
+    private lazy var ingredientsStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 12
+        stack.alignment = .fill
+        return stack
+    }()
+
+    // 조리 단계 섹션
+    private let stepsContainerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 12
+        return view
+    }()
+
+    private let stepsSectionHeaderLabel: UILabel = {
+        let label = UILabel()
+        label.text = "요리 단계"
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.textColor = .darkGray
+        return label
+    }()
+
+    private lazy var stepsStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 20
+        stack.alignment = .fill
+        return stack
+    }()
+
     // MARK: - Properties
     private let viewModel: RecipeDetailViewModel
     private let disposeBag = DisposeBag()
+    private var matchedIngredientNames: [String] = []
 
     // MARK: - Initialization
     init(recipe: Recipe, matchRate: Double, matchedIngredients: [String]) {
@@ -156,34 +175,35 @@ final class RecipeDetailViewController: BaseViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupNavigatoin()
         setupUI()
         bind()
-    }
-
-    private func setupNavigatoin() {
-        navigationItem.title = "상세 레시피"
     }
     
     // MARK: - Setup
     private func setupUI() {
-        view.backgroundColor = .white
-
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
 
         [recipeImageView, recipeTitleLabel, matchBadgeLabel,
-         tagStackView, ownedIngredientsHeaderLabel, ownedIngredientsContainerView,
-         ingredientsSectionHeaderLabel, ingredientsStackView,
-         stepsSectionHeaderLabel, stepsStackView,
-         tipSectionHeaderLabel, tipContainerView].forEach {
+         tagStackView, tipContainerView,
+         ownedIngredientsContainerView,
+         ingredientsContainerView,
+         stepsContainerView].forEach {
             contentView.addSubview($0)
         }
-        
-        recipeImageView.addSubview(bookmarkButton)
 
-        ownedIngredientsContainerView.addSubview(ownedIngredientsStackView)
+        recipeImageView.addSubview(bookmarkButton)
+        tipContainerView.addSubview(tipSectionHeaderLabel)
         tipContainerView.addSubview(tipLabel)
+
+        ownedIngredientsContainerView.addSubview(ownedIngredientsHeaderLabel)
+        ownedIngredientsContainerView.addSubview(ownedIngredientsFlowView)
+
+        ingredientsContainerView.addSubview(ingredientsSectionHeaderLabel)
+        ingredientsContainerView.addSubview(ingredientsStackView)
+
+        stepsContainerView.addSubview(stepsSectionHeaderLabel)
+        stepsContainerView.addSubview(stepsStackView)
 
         scrollView.snp.makeConstraints {
             $0.edges.equalToSuperview()
@@ -194,6 +214,7 @@ final class RecipeDetailViewController: BaseViewController {
             $0.width.equalTo(scrollView)
         }
 
+        // 이미지
         recipeImageView.snp.makeConstraints {
             $0.top.horizontalEdges.equalToSuperview()
             $0.height.equalTo(300)
@@ -205,70 +226,86 @@ final class RecipeDetailViewController: BaseViewController {
             $0.size.equalTo(40)
         }
 
+        // 타이틀 + 매칭률 (가로 배치)
         recipeTitleLabel.snp.makeConstraints {
             $0.top.equalTo(recipeImageView.snp.bottom).offset(20)
-            $0.horizontalEdges.equalToSuperview().inset(20)
+            $0.leading.equalToSuperview().inset(20)
+            $0.trailing.equalTo(matchBadgeLabel.snp.leading).offset(-12)
         }
 
         matchBadgeLabel.snp.makeConstraints {
+            $0.centerY.equalTo(recipeTitleLabel)
+            $0.trailing.equalToSuperview().inset(20)
+        }
+
+        // 태그
+        tagStackView.snp.makeConstraints {
             $0.top.equalTo(recipeTitleLabel.snp.bottom).offset(12)
             $0.leading.equalToSuperview().inset(20)
-            $0.height.equalTo(32)
         }
 
-        tagStackView.snp.makeConstraints {
-            $0.top.equalTo(matchBadgeLabel.snp.bottom).offset(12)
-            $0.leading.equalToSuperview().inset(20)
-        }
-
-        ownedIngredientsHeaderLabel.snp.makeConstraints {
+        tipContainerView.snp.makeConstraints {
             $0.top.equalTo(tagStackView.snp.bottom).offset(24)
             $0.horizontalEdges.equalToSuperview().inset(20)
+            $0.bottom.equalTo(tipLabel.snp.bottom).offset(16)
+        }
+        
+        tipSectionHeaderLabel.snp.makeConstraints {
+            $0.top.horizontalEdges.equalToSuperview().inset(16)
+        }
+
+        tipLabel.snp.makeConstraints {
+            $0.top.equalTo(tipSectionHeaderLabel.snp.bottom).offset(8)
+            $0.leading.equalTo(tipSectionHeaderLabel)
+            $0.trailing.equalToSuperview().inset(16)
         }
 
         ownedIngredientsContainerView.snp.makeConstraints {
-            $0.top.equalTo(ownedIngredientsHeaderLabel.snp.bottom).offset(12)
+            $0.top.equalTo(tipContainerView.snp.bottom).offset(24)
             $0.horizontalEdges.equalToSuperview().inset(20)
         }
 
-        ownedIngredientsStackView.snp.makeConstraints {
-            $0.edges.equalToSuperview().inset(16)
+        ownedIngredientsHeaderLabel.snp.makeConstraints {
+            $0.top.equalToSuperview().inset(16)
+            $0.horizontalEdges.equalToSuperview().inset(16)
         }
 
-        ingredientsSectionHeaderLabel.snp.makeConstraints {
+        ownedIngredientsFlowView.snp.makeConstraints {
+            $0.top.equalTo(ownedIngredientsHeaderLabel.snp.bottom).offset(12)
+            $0.horizontalEdges.equalToSuperview().inset(16)
+            $0.bottom.equalToSuperview().inset(16)
+        }
+
+        ingredientsContainerView.snp.makeConstraints {
             $0.top.equalTo(ownedIngredientsContainerView.snp.bottom).offset(24)
             $0.horizontalEdges.equalToSuperview().inset(20)
         }
 
+        ingredientsSectionHeaderLabel.snp.makeConstraints {
+            $0.top.equalToSuperview().inset(16)
+            $0.horizontalEdges.equalToSuperview().inset(16)
+        }
+
         ingredientsStackView.snp.makeConstraints {
             $0.top.equalTo(ingredientsSectionHeaderLabel.snp.bottom).offset(12)
-            $0.horizontalEdges.equalToSuperview().inset(20)
+            $0.horizontalEdges.bottom.equalToSuperview().inset(16)
         }
 
-        stepsSectionHeaderLabel.snp.makeConstraints {
-            $0.top.equalTo(ingredientsStackView.snp.bottom).offset(24)
-            $0.horizontalEdges.equalToSuperview().inset(20)
-        }
-
-        stepsStackView.snp.makeConstraints {
-            $0.top.equalTo(stepsSectionHeaderLabel.snp.bottom).offset(12)
-            $0.horizontalEdges.equalToSuperview().inset(20)
-        }
-
-        tipSectionHeaderLabel.snp.makeConstraints {
-            $0.top.equalTo(stepsStackView.snp.bottom).offset(24)
-            $0.horizontalEdges.equalToSuperview().inset(20)
-        }
-
-        // TODO: - 위로 올리기
-        tipContainerView.snp.makeConstraints {
-            $0.top.equalTo(tipSectionHeaderLabel.snp.bottom).offset(12)
+        // 요리 단계 (컨테이너 안에 헤더 포함)
+        stepsContainerView.snp.makeConstraints {
+            $0.top.equalTo(ingredientsContainerView.snp.bottom).offset(24)
             $0.horizontalEdges.equalToSuperview().inset(20)
             $0.bottom.equalToSuperview().inset(40)
         }
 
-        tipLabel.snp.makeConstraints {
-            $0.edges.equalToSuperview().inset(16)
+        stepsSectionHeaderLabel.snp.makeConstraints {
+            $0.top.equalToSuperview().inset(16)
+            $0.horizontalEdges.equalToSuperview().inset(16)
+        }
+
+        stepsStackView.snp.makeConstraints {
+            $0.top.equalTo(stepsSectionHeaderLabel.snp.bottom).offset(12)
+            $0.horizontalEdges.bottom.equalToSuperview().inset(16)
         }
     }
 
@@ -284,6 +321,7 @@ final class RecipeDetailViewController: BaseViewController {
         // 레시피 정보
         output.recipe
             .drive(with: self) { owner, recipe in
+                owner.navigationItem.title = recipe.title
                 owner.recipeTitleLabel.text = recipe.title
 
                 // 이미지
@@ -300,7 +338,7 @@ final class RecipeDetailViewController: BaseViewController {
         output.matchRate
             .drive(with: self) { owner, matchRate in
                 let percentage = Int(matchRate * 100)
-                owner.matchBadgeLabel.text = "매칭률 \(percentage)% ✨"
+                owner.matchBadgeLabel.updateText("매치율 \(percentage)%")
             }
             .disposed(by: disposeBag)
 
@@ -314,6 +352,7 @@ final class RecipeDetailViewController: BaseViewController {
         // 보유 재료
         output.matchedIngredients
             .drive(with: self) { owner, ingredients in
+                owner.matchedIngredientNames = ingredients
                 owner.configureOwnedIngredients(ingredients: ingredients)
             }
             .disposed(by: disposeBag)
@@ -358,26 +397,13 @@ final class RecipeDetailViewController: BaseViewController {
         tagStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
         tags.forEach { tag in
-            let tagLabel = UILabel()
-            tagLabel.text = "#\(tag)"
-            tagLabel.font = .systemFont(ofSize: 14, weight: .medium)
-            tagLabel.textColor = .systemOrange
-            tagLabel.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.1)
-            tagLabel.textAlignment = .center
-            tagLabel.layer.cornerRadius = 14
-            tagLabel.clipsToBounds = true
-
-            tagLabel.snp.makeConstraints {
-                $0.height.equalTo(28)
-                $0.width.greaterThanOrEqualTo(60)
-            }
-
+            let tagLabel = ChipLabel(text: "#\(tag)", style: .orangeLight, size: .medium)
             tagStackView.addArrangedSubview(tagLabel)
         }
     }
 
     private func configureOwnedIngredients(ingredients: [String]) {
-        ownedIngredientsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        ownedIngredientsFlowView.removeAllArrangedSubviews()
 
         if ingredients.isEmpty {
             ownedIngredientsHeaderLabel.isHidden = true
@@ -387,54 +413,15 @@ final class RecipeDetailViewController: BaseViewController {
 
         ownedIngredientsHeaderLabel.text = "✅ 보유 재료 매칭 (\(ingredients.count)개)"
 
-        // 가로로 나열하되, 2줄까지만 표시
-        let hStack1 = UIStackView()
-        hStack1.axis = .horizontal
-        hStack1.spacing = 8
-        hStack1.alignment = .leading
-        hStack1.distribution = .fillProportionally
-
-        let hStack2 = UIStackView()
-        hStack2.axis = .horizontal
-        hStack2.spacing = 8
-        hStack2.alignment = .leading
-        hStack2.distribution = .fillProportionally
-
-        let vStack = UIStackView(arrangedSubviews: [hStack1, hStack2])
-        vStack.axis = .vertical
-        vStack.spacing = 8
-        vStack.alignment = .leading
-
-        ingredients.enumerated().forEach { index, ingredient in
+        // FlowLayoutView에 태그 추가
+        ingredients.forEach { ingredient in
             let tag = createIngredientTag(text: ingredient)
-            if index < (ingredients.count + 1) / 2 {
-                hStack1.addArrangedSubview(tag)
-            } else {
-                hStack2.addArrangedSubview(tag)
-            }
+            ownedIngredientsFlowView.addArrangedSubview(tag)
         }
-
-        ownedIngredientsStackView.addArrangedSubview(vStack)
     }
 
-    private func createIngredientTag(text: String) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = .systemFont(ofSize: 13, weight: .medium)
-        label.textColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 1.0)
-        label.backgroundColor = UIColor(red: 144/255, green: 238/255, blue: 144/255, alpha: 0.25)
-        label.textAlignment = .center
-        label.layer.cornerRadius = 14
-        label.clipsToBounds = true
-        label.layer.borderColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 0.2).cgColor
-        label.layer.borderWidth = 1
-
-        label.snp.makeConstraints {
-            $0.height.equalTo(28)
-            $0.width.greaterThanOrEqualTo(50)
-        }
-
-        return label
+    private func createIngredientTag(text: String) -> ChipLabel {
+        return ChipLabel(text: text, style: .greenLight, size: .medium)
     }
 
     private func configureIngredients(ingredients: [RecipeIngredient]) {
@@ -449,15 +436,21 @@ final class RecipeDetailViewController: BaseViewController {
     private func createIngredientItemView(ingredient: RecipeIngredient) -> UIView {
         let containerView = UIView()
 
-        let bulletLabel = UILabel()
-        bulletLabel.text = "•"
-        bulletLabel.font = .systemFont(ofSize: 14, weight: .regular)
-        bulletLabel.textColor = .systemOrange
+        // 보유 재료 확인
+        let isOwned = matchedIngredientNames.contains { matchedName in
+            ingredient.name.lowercased().contains(matchedName.lowercased()) ||
+            matchedName.lowercased().contains(ingredient.name.lowercased())
+        }
+
+        let bulletView = UIView()
+        bulletView.backgroundColor = isOwned ? .statusGreen500 : .brandOrange500
+        bulletView.layer.cornerRadius = 4
+        bulletView.clipsToBounds = true
 
         let nameLabel = UILabel()
         nameLabel.text = ingredient.name
-        nameLabel.font = .systemFont(ofSize: 14, weight: .regular)
-        nameLabel.textColor = .darkGray
+        nameLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        nameLabel.textColor = .gray700
 
         let quantityLabel = UILabel()
         if let qty = ingredient.qty, let unit = ingredient.unit {
@@ -467,33 +460,33 @@ final class RecipeDetailViewController: BaseViewController {
         } else {
             quantityLabel.text = ""
         }
-        quantityLabel.font = .systemFont(ofSize: 14, weight: .regular)
-        quantityLabel.textColor = .systemGray
+        quantityLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        quantityLabel.textColor = .gray500
         quantityLabel.textAlignment = .right
 
-        [bulletLabel, nameLabel, quantityLabel].forEach {
+        [bulletView, nameLabel, quantityLabel].forEach {
             containerView.addSubview($0)
         }
 
-        bulletLabel.snp.makeConstraints {
+        bulletView.snp.makeConstraints {
             $0.leading.equalToSuperview()
             $0.centerY.equalToSuperview()
-            $0.width.equalTo(10)
+            $0.size.equalTo(8)
         }
 
         nameLabel.snp.makeConstraints {
-            $0.leading.equalTo(bulletLabel.snp.trailing).offset(8)
+            $0.leading.equalTo(bulletView.snp.trailing).offset(12)
             $0.centerY.equalToSuperview()
         }
 
         quantityLabel.snp.makeConstraints {
             $0.trailing.equalToSuperview()
             $0.centerY.equalToSuperview()
-            $0.leading.greaterThanOrEqualTo(nameLabel.snp.trailing).offset(8)
+            $0.leading.greaterThanOrEqualTo(nameLabel.snp.trailing).offset(12)
         }
 
         containerView.snp.makeConstraints {
-            $0.height.equalTo(24)
+            $0.height.equalTo(28)
         }
 
         return containerView
@@ -511,45 +504,57 @@ final class RecipeDetailViewController: BaseViewController {
     private func createStepView(step: RecipeStep) -> UIView {
         let containerView = UIView()
 
-        let stepNumberLabel = UILabel()
-        stepNumberLabel.text = "\(step.index)"
-        stepNumberLabel.font = .systemFont(ofSize: 18, weight: .bold)
-        stepNumberLabel.textColor = .white
-        stepNumberLabel.backgroundColor = .systemOrange
-        stepNumberLabel.textAlignment = .center
-        stepNumberLabel.layer.cornerRadius = 18
-        stepNumberLabel.clipsToBounds = true
+        // 원형 번호 배지
+        let stepNumberBadge = UILabel()
+        stepNumberBadge.text = "\(step.index)"
+        stepNumberBadge.font = .systemFont(ofSize: 16, weight: .bold)
+        stepNumberBadge.textColor = .brandOrange600
+        stepNumberBadge.backgroundColor = .brandOrange100
+        stepNumberBadge.textAlignment = .center
+        stepNumberBadge.layer.cornerRadius = 18
+        stepNumberBadge.clipsToBounds = true
+
+        // 텍스트에서 숫자 부분 제거 (예: "1. 오렌지를 깎는다" -> "오렌지를 깎는다")
+        let cleanedText = step.text.replacingOccurrences(
+            of: "^\\d+\\.\\s*",
+            with: "",
+            options: .regularExpression
+        )
 
         let stepTextLabel = UILabel()
-        stepTextLabel.text = step.text
-        stepTextLabel.font = .systemFont(ofSize: 14, weight: .regular)
-        stepTextLabel.textColor = .darkGray
+        stepTextLabel.text = cleanedText
+        stepTextLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        stepTextLabel.textColor = .gray700
         stepTextLabel.numberOfLines = 0
 
-        containerView.addSubview(stepNumberLabel)
+        containerView.addSubview(stepNumberBadge)
         containerView.addSubview(stepTextLabel)
 
-        stepNumberLabel.snp.makeConstraints {
+        stepNumberBadge.snp.makeConstraints {
             $0.top.leading.equalToSuperview()
             $0.size.equalTo(36)
         }
 
         stepTextLabel.snp.makeConstraints {
-            $0.top.equalTo(stepNumberLabel.snp.bottom).offset(12)
-            $0.horizontalEdges.equalToSuperview()
+            $0.leading.equalTo(stepNumberBadge.snp.trailing).offset(12)
+            $0.trailing.equalToSuperview()
+            $0.centerY.equalTo(stepNumberBadge)
         }
 
-        // 이미지가 있으면 추가
         if !step.images.isEmpty {
+            let imageScrollView = UIScrollView()
+            imageScrollView.showsHorizontalScrollIndicator = false
+            imageScrollView.showsVerticalScrollIndicator = false
+
             let imageStackView = UIStackView()
             imageStackView.axis = .horizontal
             imageStackView.spacing = 8
             imageStackView.alignment = .leading
             imageStackView.distribution = .equalSpacing
 
-            step.images.prefix(2).forEach { imageInfo in
+            step.images.forEach { imageInfo in
                 let imageView = UIImageView()
-                imageView.contentMode = .scaleAspectFit
+                imageView.contentMode = .scaleAspectFill
                 imageView.clipsToBounds = true
                 imageView.layer.cornerRadius = 8
                 imageView.backgroundColor = .systemGray6
@@ -567,12 +572,20 @@ final class RecipeDetailViewController: BaseViewController {
                 imageStackView.addArrangedSubview(imageView)
             }
 
-            containerView.addSubview(imageStackView)
+            imageScrollView.addSubview(imageStackView)
+            containerView.addSubview(imageScrollView)
+
+            imageScrollView.snp.makeConstraints {
+                $0.top.equalTo(stepTextLabel.snp.bottom).offset(12)
+                $0.leading.equalTo(stepTextLabel)
+                $0.trailing.equalToSuperview()
+                $0.height.equalTo(120)
+                $0.bottom.equalToSuperview()
+            }
 
             imageStackView.snp.makeConstraints {
-                $0.top.equalTo(stepTextLabel.snp.bottom).offset(12)
-                $0.horizontalEdges.equalToSuperview()
-                $0.bottom.equalToSuperview()
+                $0.edges.equalToSuperview()
+                $0.height.equalToSuperview()
             }
         } else {
             stepTextLabel.snp.makeConstraints {

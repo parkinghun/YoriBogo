@@ -426,7 +426,9 @@ final class IngredientDetailCardView: UIView {
     }
 
     func show(in view: UIView) {
-        view.addSubview(self)
+        guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else { return }
+
+        window.addSubview(self)
         self.snp.makeConstraints {
             $0.edges.equalToSuperview()
         }

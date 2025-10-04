@@ -30,6 +30,12 @@ final class BadgeLabel: UILabel {
         self.clipsToBounds = true
     }
 
+    // MARK: - Public Methods
+    func updateText(_ text: String) {
+        self.text = text
+        invalidateIntrinsicContentSize()
+    }
+
     // MARK: - Override for padding
     override var intrinsicContentSize: CGSize {
         let size = super.intrinsicContentSize

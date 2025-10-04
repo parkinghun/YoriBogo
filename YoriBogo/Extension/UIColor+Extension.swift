@@ -10,6 +10,10 @@ import UIKit
 import UIKit
 
 extension UIColor {
+    // MARK: - Custom Colors
+    /// 밝은 베이지톤 배경
+    static let beige100 = UIColor(hex: "#FAF5EB")
+    
     // MARK: - Primary (Orange)
     /// 그라디언트 시작색
     static let brandOrange400 = UIColor(hex: "#FB923C")

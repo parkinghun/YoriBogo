@@ -16,7 +16,7 @@ final class RecommendViewController: BaseViewController {
     // MARK: - UI Components
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "오늘, 이 요리 어때요?"
+        label.text = "지금 냉장고에 딱 맞는 레시피"
         label.font = .systemFont(ofSize: 28, weight: .bold)
         label.textColor = .darkGray
         return label
@@ -24,7 +24,7 @@ final class RecommendViewController: BaseViewController {
 
     private let subtitleLabel: UILabel = {
         let label = UILabel()
-        label.text = "보유 재료로 만들 수 있는 추천 요리"
+        label.text = "보유 재료로 만들 수 있는 추천 요리 TOP 5"
         label.font = .systemFont(ofSize: 16, weight: .regular)
         label.textColor = .systemGray
         return label
@@ -38,6 +38,7 @@ final class RecommendViewController: BaseViewController {
         cv.showsHorizontalScrollIndicator = false
         cv.decelerationRate = .fast
         cv.register(RecommendRecipeCell.self, forCellWithReuseIdentifier: RecommendRecipeCell.id)
+        cv.alwaysBounceVertical = false
         return cv
     }()
 
@@ -47,12 +48,10 @@ final class RecommendViewController: BaseViewController {
         pageControl.currentPage = 0
         pageControl.pageIndicatorTintColor = .systemGray4
         pageControl.currentPageIndicatorTintColor = .systemOrange
+        pageControl.isHidden = true
         return pageControl
     }()
     
-    // TODO: - 컨텐츠
-    
-
     // MARK: - Properties
     private let viewModel = RecommendViewModel()
     private let disposeBag = DisposeBag()
@@ -122,8 +121,9 @@ final class RecommendViewController: BaseViewController {
     }
     
     private func setupUI() {
-        view.backgroundColor = UIColor(red: 250/255, green: 245/255, blue: 235/255, alpha: 1.0) // 베이지 배경
-
+//        view.backgroundColor = .beige100
+        view.backgroundColor = .white
+        
         [titleLabel, subtitleLabel, collectionView, pageControl].forEach {
             view.addSubview($0)
         }
@@ -186,7 +186,7 @@ final class RecommendViewController: BaseViewController {
             .drive(with: self) { owner, hasIngredients in
                 owner.hasIngredients = hasIngredients
                 if hasIngredients {
-                    owner.subtitleLabel.text = "보유 재료로 만들 수 있는 추천 요리"
+                    owner.subtitleLabel.text = "보유 재료로 만들 수 있는 추천 요리 TOP 5"
                 } else {
                     owner.subtitleLabel.text = "냉장고가 비어있어요. 이런 요리는 어때요?"
                 }

@@ -55,29 +55,9 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
         return stack
     }()
 
-    private let methodTagLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .medium)
-        label.textColor = .systemOrange
-        label.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.1)
-        label.textAlignment = .center
-        label.layer.cornerRadius = 16
-        label.clipsToBounds = true
-        label.text = "#메인요리"
-        return label
-    }()
+    private let methodTagLabel = ChipLabel(text: "#메인요리", style: .orangeLight, size: .regular)
 
-    private let categoryTagLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .medium)
-        label.textColor = .systemOrange
-        label.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.1)
-        label.textAlignment = .center
-        label.layer.cornerRadius = 16
-        label.clipsToBounds = true
-        label.text = "#초급"
-        return label
-    }()
+    private let categoryTagLabel = ChipLabel(text: "#초급", style: .orangeLight, size: .regular)
 
     private lazy var tagStackView: UIStackView = {
         let stack = UIStackView(arrangedSubviews: [methodTagLabel, categoryTagLabel])
@@ -138,15 +118,6 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
             $0.height.equalTo(32)
         }
 
-        methodTagLabel.snp.makeConstraints {
-            $0.height.equalTo(32)
-            $0.width.greaterThanOrEqualTo(80)
-        }
-
-        categoryTagLabel.snp.makeConstraints {
-            $0.height.equalTo(32)
-            $0.width.greaterThanOrEqualTo(60)
-        }
 
         tagStackView.snp.makeConstraints {
             $0.top.equalTo(ingredientsStackView.snp.bottom).offset(12)
@@ -176,11 +147,11 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
 
         // 태그 설정
         if let method = recipe.method {
-            methodTagLabel.text = "#\(method.displayName)"
+            methodTagLabel.updateText("#\(method.displayName)")
         }
 
         if let category = recipe.category {
-            categoryTagLabel.text = "#\(category.displayName)"
+            categoryTagLabel.updateText("#\(category.displayName)")
         }
 
         // 북마크 상태
@@ -210,24 +181,7 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
         }
     }
 
-    private func createIngredientTag(text: String) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = .systemFont(ofSize: 13, weight: .medium)
-        label.textColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 1.0) // 진한 초록
-        label.backgroundColor = UIColor(red: 144/255, green: 238/255, blue: 144/255, alpha: 0.25) // 연두/민트 톤
-        label.textAlignment = .center
-        label.layer.cornerRadius = 16
-        label.clipsToBounds = true
-        label.layer.borderColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 0.2).cgColor
-        label.layer.borderWidth = 1
-
-        // 패딩 설정
-        label.snp.makeConstraints {
-            $0.height.equalTo(32)
-            $0.width.greaterThanOrEqualTo(60)
-        }
-
-        return label
+    private func createIngredientTag(text: String) -> ChipLabel {
+        return ChipLabel(text: text, style: .greenLight, size: .regular)
     }
 }

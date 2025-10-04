@@ -20,8 +20,9 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
     
     private let titleLabel = {
         let label = UILabel()
-        label.font = AppFont.body
+        label.font = AppFont.button
         label.textAlignment = .center
+        label.numberOfLines = 2
         return label
     }()
     
@@ -101,16 +102,6 @@ final class IngredientCell: UICollectionViewCell, ReusableView, ConfigureView {
         checkmarkContainer.addSubview(checkmarkIcon)
     }
     
-    //    func configureLayout() {
-    
-    //        stackView.snp.makeConstraints { $0.edges.equalToSuperview().inset(8) }
-    //        outerView.snp.makeConstraints { $0.edges.equalToSuperview() }
-    //
-    //        imageView.snp.makeConstraints {
-    //            $0.horizontalEdges.equalToSuperview()
-    //            $0.height.equalTo(imageView.snp.width)
-    //        }
-    //    }
     func configureLayout() {
         outerView.snp.makeConstraints { $0.edges.equalToSuperview() }
         
