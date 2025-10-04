@@ -156,18 +156,17 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
     }
 
     // MARK: - Configuration
-    func configure(with recipe: Recipe, hasIngredients: Bool, matchedIngredients: [String] = []) {
+    func configure(with recipe: Recipe, hasIngredients: Bool, matchRate: Double, matchedIngredients: [String]) {
         recipeTitleLabel.text = recipe.title
 
         // 이미지 로드
-        if let imageURL = recipe.images.first(where: { $0.isThumbnail })?.value,
-           let url = URL(string: imageURL) {
-            recipeImageView.kf.setImage(with: url, placeholder: UIImage(systemName: "photo"))
-        }
+        let imageURL = recipe.images.first(where: { $0.isThumbnail })?.value
+        recipeImageView.setImageWithKF(urlString: imageURL, placeholder: UIImage(systemName: "photo"))
 
-        // 배지 설정
-        if hasIngredients {
-            badgeLabel.text = "보유재료와 95% 매치 ✨"
+        // 배지 설정 (매칭률 표시)
+        if hasIngredients && matchRate > 0 {
+            let percentage = Int(matchRate * 100)
+            badgeLabel.text = "보유재료와 \(percentage)% 매치 ✨"
         } else {
             badgeLabel.text = "간단 요리 추천 ✨"
         }

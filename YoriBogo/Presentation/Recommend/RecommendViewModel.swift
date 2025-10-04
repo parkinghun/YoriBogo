@@ -8,6 +8,7 @@
 import Foundation
 import RxSwift
 import RxCocoa
+import RealmSwift
 
 final class RecommendViewModel: ViewModelType {
     struct Input {
@@ -15,24 +16,33 @@ final class RecommendViewModel: ViewModelType {
     }
 
     struct Output {
-        let recommendedRecipes: Driver<[Recipe]>
+        let recommendedRecipes: Driver<[(recipe: Recipe, matchRate: Double, matchedIngredients: [String])]>
         let hasIngredients: Driver<Bool>
     }
 
     private let disposeBag = DisposeBag()
+    private let recipeManager = RecipeRealmManager.shared
 
     init() { }
 
     func transform(input: Input) -> Output {
-        // TODO: 실제 로직 구현 시 냉장고 재료 확인 및 추천 알고리즘 적용
-        let hasIngredients = BehaviorRelay<Bool>(value: true) // 임시로 true
+        let hasIngredients = BehaviorRelay<Bool>(value: false)
 
         let recommendedRecipes = input.viewDidLoad
-            .flatMapLatest { _ -> Observable<[Recipe]> in
-                // TODO: 실제로는 RecipeRealmManager에서 가져오기
-                // 임시 더미 데이터 5개 생성
-                let dummyRecipes = self.createDummyRecipes()
-                return Observable.just(dummyRecipes)
+            .flatMapLatest { [weak self] _ -> Observable<[(recipe: Recipe, matchRate: Double, matchedIngredients: [String])]> in
+                guard let self = self else { return Observable.just([]) }
+
+                // Realm에서 보유 재료 조회
+                let userIngredients = self.fetchUserIngredients()
+                hasIngredients.accept(!userIngredients.isEmpty)
+
+                // 보유 재료 기반 추천 레시피 가져오기
+                let recommendations = self.recipeManager.fetchRecommendedRecipes(
+                    userIngredients: userIngredients,
+                    maxCount: 5
+                )
+
+                return Observable.just(recommendations)
             }
             .asDriver(onErrorJustReturn: [])
 
@@ -42,36 +52,15 @@ final class RecommendViewModel: ViewModelType {
         )
     }
 
-    // MARK: - Dummy Data (임시)
-    private func createDummyRecipes() -> [Recipe] {
-        return (0..<5).map { index in
-            Recipe(
-                id: "dummy-\(index)",
-                baseId: "base-\(index)",
-                kind: .api,
-                version: 0,
-                title: "추천 레시피 \(index + 1)",
-                category: .sideDish,
-                method: .stirFry,
-                tags: ["간단", "맛있는"],
-                tip: nil,
-                images: [
-                    RecipeImage(
-                        source: .remoteURL,
-                        value: "https://via.placeholder.com/400x300",
-                        isThumbnail: true
-                    )
-                ],
-                nutrition: nil,
-                ingredients: [],
-                steps: [],
-                isBookmarked: false,
-                rating: nil,
-                cookCount: 0,
-                lastCookedAt: nil,
-                createdAt: Date(),
-                updatedAt: nil
-            )
+    // MARK: - Private Methods
+    private func fetchUserIngredients() -> [String] {
+        do {
+            let realm = try Realm()
+            let ingredientObjects = realm.objects(FridgeIngredientObject.self)
+            return ingredientObjects.map { $0.name }
+        } catch {
+            print("❌ Realm 조회 에러: \(error)")
+            return []
         }
     }
 }

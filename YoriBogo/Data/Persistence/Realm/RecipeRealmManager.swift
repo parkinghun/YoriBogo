@@ -136,4 +136,51 @@ final class RecipeRealmManager {
         let objects = realm.objects(RecipeObject.self).filter("isBookmarked == true")
         return objects.map { $0.toEntity() }
     }
+
+    // MARK: - 보유 재료 기반 추천 레시피
+    func fetchRecommendedRecipes(userIngredients: [String], maxCount: Int = 5) -> [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] {
+        let realm = try! getRealm()
+        let allRecipes = realm.objects(RecipeObject.self).map { $0.toEntity() }
+
+        // 보유 재료가 없으면 랜덤 레시피 반환
+        if userIngredients.isEmpty {
+            let randomRecipes = Array(allRecipes.shuffled().prefix(maxCount))
+            return randomRecipes.map { ($0, 0.0, []) }
+        }
+
+        // 각 레시피의 매칭률 계산
+        let recipesWithMatchRate: [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] = allRecipes.map { recipe in
+            let recipeIngredientNames = recipe.ingredients.map { $0.name.lowercased() }
+            let userIngredientsLower = userIngredients.map { $0.lowercased() }
+
+            // 매칭되는 재료 찾기
+            let matchedIngredients = recipeIngredientNames.filter { recipeIngredient in
+                userIngredientsLower.contains { userIngredient in
+                    recipeIngredient.contains(userIngredient) || userIngredient.contains(recipeIngredient)
+                }
+            }
+
+            // 매칭률 계산 (매칭된 재료 수 / 전체 레시피 재료 수)
+            let matchRate = recipeIngredientNames.isEmpty ? 0.0 : Double(matchedIngredients.count) / Double(recipeIngredientNames.count)
+
+            return (recipe, matchRate, matchedIngredients)
+        }
+
+        // 매칭률로 정렬 (높은 순)
+        let sortedRecipes = recipesWithMatchRate.sorted { $0.matchRate > $1.matchRate }
+
+        // 매칭된 레시피와 랜덤 레시피 조합
+        let matchedRecipes = sortedRecipes.filter { $0.matchRate > 0 }
+
+        if matchedRecipes.count >= maxCount {
+            // 매칭된 레시피가 충분하면 상위 N개만
+            return Array(matchedRecipes.prefix(maxCount))
+        } else {
+            // 부족하면 랜덤 레시피로 채우기
+            let nonMatchedRecipes = sortedRecipes.filter { $0.matchRate == 0 }.shuffled()
+            let needed = maxCount - matchedRecipes.count
+            let randomRecipes = Array(nonMatchedRecipes.prefix(needed))
+            return matchedRecipes + randomRecipes
+        }
+    }
 }

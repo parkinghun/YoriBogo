@@ -30,13 +30,8 @@ final class RecommendViewController: BaseViewController {
         return label
     }()
 
-    private let searchButton: UIButton = {
-        let btn = UIButton()
-        btn.setImage(UIImage(systemName: "magnifyingglass"), for: .normal)
-        btn.tintColor = .systemOrange
-        btn.contentMode = .scaleAspectFit
-        return btn
-    }()
+    
+    private let searchButtonItem = UIBarButtonItem(image: UIImage(systemName: "magnifyingglass"), style: .plain, target: nil, action: nil)
 
     private lazy var collectionView: UICollectionView = {
         let cv = UICollectionView(frame: .zero, collectionViewLayout: createCompositionalLayout())
@@ -60,7 +55,7 @@ final class RecommendViewController: BaseViewController {
     private let viewModel = RecommendViewModel()
     private let disposeBag = DisposeBag()
 
-    private var recipes: [Recipe] = []
+    private var recommendedData: [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] = []
     private var hasIngredients: Bool = true
 
     private var autoScrollTimer: Timer?
@@ -99,6 +94,7 @@ final class RecommendViewController: BaseViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        setNavigation()
         setupUI()
         bind()
     }
@@ -116,24 +112,23 @@ final class RecommendViewController: BaseViewController {
     deinit {
         stopAutoScroll()
     }
-
+    
     // MARK: - Setup
+    private func setNavigation() {
+        navigationItem.title = "레시피 추천"
+        navigationItem.rightBarButtonItem = searchButtonItem
+    }
+    
     private func setupUI() {
         view.backgroundColor = UIColor(red: 250/255, green: 245/255, blue: 235/255, alpha: 1.0) // 베이지 배경
 
-        [titleLabel, subtitleLabel, searchButton, collectionView, pageControl].forEach {
+        [titleLabel, subtitleLabel, collectionView, pageControl].forEach {
             view.addSubview($0)
         }
 
         titleLabel.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide).offset(20)
             $0.leading.equalToSuperview().inset(20)
-        }
-
-        searchButton.snp.makeConstraints {
-            $0.centerY.equalTo(titleLabel)
-            $0.trailing.equalToSuperview().inset(20)
-            $0.size.equalTo(28)
         }
 
         subtitleLabel.snp.makeConstraints {
@@ -166,14 +161,14 @@ final class RecommendViewController: BaseViewController {
         let output = viewModel.transform(input: input)
 
         output.recommendedRecipes
-            .drive(with: self) { owner, recipes in
-                owner.recipes = recipes
-                owner.pageControl.numberOfPages = recipes.count
+            .drive(with: self) { owner, data in
+                owner.recommendedData = data
+                owner.pageControl.numberOfPages = data.count
                 owner.collectionView.reloadData()
 
                 // 중앙으로 스크롤 (무한 스크롤을 위해)
-                if !recipes.isEmpty {
-                    let centerIndex = owner.multiplier / 2 * recipes.count
+                if !data.isEmpty {
+                    let centerIndex = owner.multiplier / 2 * data.count
                     DispatchQueue.main.async {
                         owner.collectionView.scrollToItem(
                             at: IndexPath(item: centerIndex, section: 0),
@@ -201,7 +196,7 @@ final class RecommendViewController: BaseViewController {
     // TODO: - 타이머 / 페이지 컨트롤 수정
     private func startAutoScroll() {
         stopAutoScroll()
-        guard !recipes.isEmpty else { return }
+        guard !recommendedData.isEmpty else { return }
 
         autoScrollTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
             self?.scrollToNextItem()
@@ -220,7 +215,7 @@ final class RecommendViewController: BaseViewController {
     }
     
     private func scrollToNextItem() {
-        guard !recipes.isEmpty else { return }
+        guard !recommendedData.isEmpty else { return }
         guard let currentIndexPath = currentCenteredIndexPath() else { return }
 
         let nextItem = currentIndexPath.item + 1
@@ -232,8 +227,8 @@ final class RecommendViewController: BaseViewController {
 // MARK: - UICollectionViewDataSource
 extension RecommendViewController: UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        guard !recipes.isEmpty else { return 0 }
-        return recipes.count * multiplier // 무한 스크롤
+        guard !recommendedData.isEmpty else { return 0 }
+        return recommendedData.count * multiplier // 무한 스크롤
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -244,13 +239,15 @@ extension RecommendViewController: UICollectionViewDataSource {
             return UICollectionViewCell()
         }
 
-        let actualIndex = indexPath.item % recipes.count
-        let recipe = recipes[actualIndex]
+        let actualIndex = indexPath.item % recommendedData.count
+        let data = recommendedData[actualIndex]
 
-        // TODO: 실제 보유 재료와 매칭되는 재료 계산 필요
-        let matchedIngredients = recipe.ingredients.prefix(5).map { $0.name }
-
-        cell.configure(with: recipe, hasIngredients: hasIngredients, matchedIngredients: Array(matchedIngredients))
+        cell.configure(
+            with: data.recipe,
+            hasIngredients: hasIngredients,
+            matchRate: data.matchRate,
+            matchedIngredients: data.matchedIngredients
+        )
         return cell
     }
 }
@@ -258,13 +255,13 @@ extension RecommendViewController: UICollectionViewDataSource {
 // MARK: - UICollectionViewDelegate
 extension RecommendViewController: UICollectionViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard !recipes.isEmpty else { return }
+        guard !recommendedData.isEmpty else { return }
 
         let centerX = collectionView.contentOffset.x + collectionView.bounds.width / 2
         let centerPoint = CGPoint(x: centerX, y: collectionView.bounds.midY)
 
         if let indexPath = collectionView.indexPathForItem(at: centerPoint) {
-            let actualPage = indexPath.item % recipes.count
+            let actualPage = indexPath.item % recommendedData.count
             pageControl.currentPage = actualPage
         }
     }
@@ -292,13 +289,13 @@ extension RecommendViewController: UICollectionViewDelegate {
     }
     
     private func updatePageControl() {
-        guard !recipes.isEmpty else { return }
+        guard !recommendedData.isEmpty else { return }
 
         let centerX = collectionView.contentOffset.x + collectionView.bounds.width / 2
         let centerPoint = CGPoint(x: centerX, y: collectionView.bounds.midY)
 
         if let indexPath = collectionView.indexPathForItem(at: centerPoint) {
-            pageControl.currentPage = indexPath.item % recipes.count
+            pageControl.currentPage = indexPath.item % recommendedData.count
         }
     }
 }
