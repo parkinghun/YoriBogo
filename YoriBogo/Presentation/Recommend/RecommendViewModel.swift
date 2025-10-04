@@ -13,11 +13,13 @@ import RealmSwift
 final class RecommendViewModel: ViewModelType {
     struct Input {
         let viewDidLoad: Observable<Void>
+        let searchButtonTapped: ControlEvent<Void>
     }
 
     struct Output {
         let recommendedRecipes: Driver<[(recipe: Recipe, matchRate: Double, matchedIngredients: [String])]>
         let hasIngredients: Driver<Bool>
+        let pushSearchViewController: Driver<Void>
     }
 
     private let disposeBag = DisposeBag()
@@ -46,9 +48,12 @@ final class RecommendViewModel: ViewModelType {
             }
             .asDriver(onErrorJustReturn: [])
 
+        let pushSearchViewController = input.searchButtonTapped.asDriver(onErrorJustReturn: ())
+        
         return Output(
             recommendedRecipes: recommendedRecipes,
-            hasIngredients: hasIngredients.asDriver()
+            hasIngredients: hasIngredients.asDriver(),
+            pushSearchViewController: pushSearchViewController
         )
     }
 

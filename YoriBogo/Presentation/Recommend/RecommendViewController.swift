@@ -157,7 +157,7 @@ final class RecommendViewController: BaseViewController {
     // MARK: - Bind
     private func bind() {
         let input = RecommendViewModel.Input(
-            viewDidLoad: Observable.just(())
+            viewDidLoad: Observable.just(()), searchButtonTapped: searchButtonItem.rx.tap
         )
 
         let output = viewModel.transform(input: input)
@@ -190,6 +190,13 @@ final class RecommendViewController: BaseViewController {
                 } else {
                     owner.subtitleLabel.text = "냉장고가 비어있어요. 이런 요리는 어때요?"
                 }
+            }
+            .disposed(by: disposeBag)
+        
+        output.pushSearchViewController
+            .drive(with: self) { owner, _ in
+                let vc = RecipeSearchViewController()
+                owner.navigationController?.pushViewController(vc, animated: true)
             }
             .disposed(by: disposeBag)
     }
