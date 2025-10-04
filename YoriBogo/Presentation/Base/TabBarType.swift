@@ -10,8 +10,9 @@ import UIKit
 enum TabBarType: CaseIterable {
     case refrigerator
     case recommend
-    case myRecipe
-    case setting
+    case search
+//    case myRecipe
+//    case setting
     
     var navigationController: UINavigationController {
         return BaseNavigationController(rootViewController: viewController)
@@ -27,14 +28,18 @@ enum TabBarType: CaseIterable {
             let vc = RecommendViewController()
             vc.tabBarItem = self.tabBarItem
             return vc
-        case .myRecipe:
-            let vc = RecipeViewController()
+        case .search:
+            let vc = RecipeSearchViewController()
             vc.tabBarItem = self.tabBarItem
             return vc
-        case .setting:
-            let vc = SettingViewController()
-            vc.tabBarItem = self.tabBarItem
-            return vc
+//        case .myRecipe:
+//            let vc = RecipeViewController()
+//            vc.tabBarItem = self.tabBarItem
+//            return vc
+//        case .setting:
+//            let vc = SettingViewController()
+//            vc.tabBarItem = self.tabBarItem
+//            return vc
         }
     }
     
@@ -44,10 +49,12 @@ enum TabBarType: CaseIterable {
             return UITabBarItem(title: title, image: itemImage, tag: 0)
         case .recommend:
             return UITabBarItem(title: title, image: itemImage, tag: 1)
-        case .myRecipe:
+        case .search:
             return UITabBarItem(title: title, image: itemImage, tag: 2)
-        case .setting:
-            return UITabBarItem(title: title, image: itemImage, tag: 3)
+//        case .myRecipe:
+//            return UITabBarItem(title: title, image: itemImage, tag: 2)
+//        case .setting:
+//            return UITabBarItem(title: title, image: itemImage, tag: 3)
         }
     }
     
@@ -57,10 +64,12 @@ enum TabBarType: CaseIterable {
             return "냉장고"
         case .recommend:
             return "추천"
-        case .myRecipe:
-            return "나의 레시피"
-        case .setting:
-            return "설정"
+        case .search:
+            return "검색"
+//        case .myRecipe:
+//            return "나의 레시피"
+//        case .setting:
+//            return "설정"
         }
     }
     
@@ -69,11 +78,13 @@ enum TabBarType: CaseIterable {
         case .refrigerator:
             return UIImage(systemName: "refrigerator")
         case .recommend:
-            return UIImage(systemName: "fork.knife")
-        case .myRecipe:
             return UIImage(systemName: "text.book.closed")
-        case .setting:
-            return UIImage(systemName: "gearshape")
+        case .search:
+            return UIImage(systemName: "magnifyingglass")
+//        case .myRecipe:
+//            return UIImage(systemName: "fork.knife")
+//        case .setting:
+//            return UIImage(systemName: "gearshape")
         }
     }
 }

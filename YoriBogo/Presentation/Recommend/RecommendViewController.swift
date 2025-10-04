@@ -108,6 +108,12 @@ final class RecommendViewController: BaseViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        // collectionView가 보이는지 확인
+        if recommendedData.isEmpty {
+            print("⚠️ RecommendViewController - 데이터가 비어있습니다")
+        }
+
         startAutoScroll()
     }
 
@@ -124,6 +130,7 @@ final class RecommendViewController: BaseViewController {
     private func setNavigation() {
         navigationItem.title = "레시피 추천"
         navigationItem.rightBarButtonItem = searchButtonItem
+        searchButtonItem.isHidden = true
     }
     
     private func setupUI() {
