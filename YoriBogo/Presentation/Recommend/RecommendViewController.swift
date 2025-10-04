@@ -6,11 +6,299 @@
 //
 
 import UIKit
+import RxSwift
+import RxCocoa
+import SnapKit
+import Kingfisher
 
 final class RecommendViewController: BaseViewController {
-    
+
+    // MARK: - UI Components
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.text = "🍳 오늘, 이 요리 어때요?"
+        label.font = .systemFont(ofSize: 28, weight: .bold)
+        label.textColor = .darkGray
+        return label
+    }()
+
+    private let subtitleLabel: UILabel = {
+        let label = UILabel()
+        label.text = "보유 재료로 만들 수 있는 추천 요리"
+        label.font = .systemFont(ofSize: 16, weight: .regular)
+        label.textColor = .systemGray
+        return label
+    }()
+
+    private let searchButton: UIButton = {
+        let btn = UIButton()
+        btn.setImage(UIImage(systemName: "magnifyingglass"), for: .normal)
+        btn.tintColor = .systemOrange
+        btn.contentMode = .scaleAspectFit
+        return btn
+    }()
+
+    private lazy var collectionView: UICollectionView = {
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: createCompositionalLayout())
+        cv.backgroundColor = .clear
+        cv.showsHorizontalScrollIndicator = false
+        cv.decelerationRate = .fast
+        cv.register(RecommendRecipeCell.self, forCellWithReuseIdentifier: RecommendRecipeCell.id)
+        return cv
+    }()
+
+    private let pageControl: UIPageControl = {
+        let pc = UIPageControl()
+        pc.numberOfPages = 5
+        pc.currentPage = 0
+        pc.pageIndicatorTintColor = .systemGray4
+        pc.currentPageIndicatorTintColor = .systemOrange
+        return pc
+    }()
+
+    // MARK: - Properties
+    private let viewModel = RecommendViewModel()
+    private let disposeBag = DisposeBag()
+
+    private var recipes: [Recipe] = []
+    private var hasIngredients: Bool = true
+
+    private var autoScrollTimer: Timer?
+    private let multiplier = 100 // 무한 스크롤을 위한 multiplier
+
+    // MARK: - Compositional Layout
+    private func createCompositionalLayout() -> UICollectionViewLayout {
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .fractionalHeight(1.0)
+        )
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(0.7),
+            heightDimension: .fractionalHeight(0.75)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+
+        let section = NSCollectionLayoutSection(group: group)
+        section.orthogonalScrollingBehavior = .groupPagingCentered
+        section.interGroupSpacing = 0
+
+        section.visibleItemsInvalidationHandler = { items, offset, environment in
+            let centerX = offset.x + environment.container.contentSize.width / 2
+            for item in items {
+                let distance = abs(item.frame.midX - centerX)
+                let scale = max(0.85, 1 - (distance / environment.container.contentSize.width) * 0.25)
+                item.transform = CGAffineTransform(scaleX: scale, y: scale)
+            }
+        }
+        
+        return UICollectionViewCompositionalLayout(section: section)
+    }
+
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupUI()
+        bind()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        startAutoScroll()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        stopAutoScroll()
+    }
+
+    deinit {
+        stopAutoScroll()
+    }
+
+    // MARK: - Setup
+    private func setupUI() {
+        view.backgroundColor = UIColor(red: 250/255, green: 245/255, blue: 235/255, alpha: 1.0) // 베이지 배경
+
+        [titleLabel, subtitleLabel, searchButton, collectionView, pageControl].forEach {
+            view.addSubview($0)
+        }
+
+        titleLabel.snp.makeConstraints {
+            $0.top.equalTo(view.safeAreaLayoutGuide).offset(20)
+            $0.leading.equalToSuperview().inset(20)
+        }
+
+        searchButton.snp.makeConstraints {
+            $0.centerY.equalTo(titleLabel)
+            $0.trailing.equalToSuperview().inset(20)
+            $0.size.equalTo(28)
+        }
+
+        subtitleLabel.snp.makeConstraints {
+            $0.top.equalTo(titleLabel.snp.bottom).offset(8)
+            $0.leading.equalToSuperview().inset(20)
+        }
+
+        collectionView.snp.makeConstraints {
+            $0.top.equalTo(subtitleLabel.snp.bottom).offset(24)
+            $0.horizontalEdges.equalToSuperview()
+            $0.bottom.equalTo(pageControl.snp.top).offset(-20)
+        }
+
+        pageControl.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.bottom.equalTo(view.safeAreaLayoutGuide).offset(-20)
+            $0.height.equalTo(30)
+        }
+
+        collectionView.delegate = self
+        collectionView.dataSource = self
+    }
+
+    // MARK: - Bind
+    private func bind() {
+        let input = RecommendViewModel.Input(
+            viewDidLoad: Observable.just(())
+        )
+
+        let output = viewModel.transform(input: input)
+
+        output.recommendedRecipes
+            .drive(with: self) { owner, recipes in
+                owner.recipes = recipes
+                owner.pageControl.numberOfPages = recipes.count
+                owner.collectionView.reloadData()
+
+                // 중앙으로 스크롤 (무한 스크롤을 위해)
+                if !recipes.isEmpty {
+                    let centerIndex = owner.multiplier / 2 * recipes.count
+                    DispatchQueue.main.async {
+                        owner.collectionView.scrollToItem(
+                            at: IndexPath(item: centerIndex, section: 0),
+                            at: .centeredHorizontally,
+                            animated: false
+                        )
+                    }
+                }
+            }
+            .disposed(by: disposeBag)
+
+        output.hasIngredients
+            .drive(with: self) { owner, hasIngredients in
+                owner.hasIngredients = hasIngredients
+                if hasIngredients {
+                    owner.subtitleLabel.text = "보유 재료로 만들 수 있는 추천 요리"
+                } else {
+                    owner.subtitleLabel.text = "냉장고가 비어있어요. 이런 요리는 어때요?"
+                }
+            }
+            .disposed(by: disposeBag)
+    }
+
+    // MARK: - Auto Scroll
+    // TODO: - 타이머 / 페이지 컨트롤 수정
+    private func startAutoScroll() {
+        stopAutoScroll()
+        guard !recipes.isEmpty else { return }
+
+        autoScrollTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
+            self?.scrollToNextItem()
+        }
+    }
+
+    private func stopAutoScroll() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = nil
+    }
+
+    private func currentCenteredIndexPath() -> IndexPath? {
+        let center = collectionView.bounds.midX + collectionView.contentOffset.x
+        let centerPoint = CGPoint(x: center, y: collectionView.bounds.midY)
+        return collectionView.indexPathForItem(at: centerPoint)
     }
     
+    private func scrollToNextItem() {
+        guard !recipes.isEmpty else { return }
+        guard let currentIndexPath = currentCenteredIndexPath() else { return }
+
+        let nextItem = currentIndexPath.item + 1
+        let nextIndexPath = IndexPath(item: nextItem, section: 0)
+        collectionView.scrollToItem(at: nextIndexPath, at: .centeredHorizontally, animated: true)
+    }
+}
+
+// MARK: - UICollectionViewDataSource
+extension RecommendViewController: UICollectionViewDataSource {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        guard !recipes.isEmpty else { return 0 }
+        return recipes.count * multiplier // 무한 스크롤
+    }
+
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(
+            withReuseIdentifier: RecommendRecipeCell.id,
+            for: indexPath
+        ) as? RecommendRecipeCell else {
+            return UICollectionViewCell()
+        }
+
+        let actualIndex = indexPath.item % recipes.count
+        let recipe = recipes[actualIndex]
+
+        // TODO: 실제 보유 재료와 매칭되는 재료 계산 필요
+        let matchedIngredients = recipe.ingredients.prefix(5).map { $0.name }
+
+        cell.configure(with: recipe, hasIngredients: hasIngredients, matchedIngredients: Array(matchedIngredients))
+        return cell
+    }
+}
+
+// MARK: - UICollectionViewDelegate
+extension RecommendViewController: UICollectionViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard !recipes.isEmpty else { return }
+
+        let centerX = collectionView.contentOffset.x + collectionView.bounds.width / 2
+        let centerPoint = CGPoint(x: centerX, y: collectionView.bounds.midY)
+
+        if let indexPath = collectionView.indexPathForItem(at: centerPoint) {
+            let actualPage = indexPath.item % recipes.count
+            pageControl.currentPage = actualPage
+        }
+    }
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        // 사용자가 스크롤을 시작하면 자동 스크롤 중지
+        stopAutoScroll()
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        // 사용자가 스크롤을 끝내면 타이머 리셋하여 4초 후 자동 스크롤 재시작
+        if !decelerate {
+            startAutoScroll()
+        }
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        // 관성 스크롤이 끝나면 타이머 리셋하여 4초 후 자동 스크롤 재시작
+        startAutoScroll()
+    }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        // 자동 스크롤 애니메이션이 끝났을 때도 페이지 컨트롤 업데이트
+        updatePageControl()
+    }
+    
+    private func updatePageControl() {
+        guard !recipes.isEmpty else { return }
+
+        let centerX = collectionView.contentOffset.x + collectionView.bounds.width / 2
+        let centerPoint = CGPoint(x: centerX, y: collectionView.bounds.midY)
+
+        if let indexPath = collectionView.indexPathForItem(at: centerPoint) {
+            pageControl.currentPage = indexPath.item % recipes.count
+        }
+    }
 }
