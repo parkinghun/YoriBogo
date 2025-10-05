@@ -60,6 +60,7 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
         setupNavigation()
         configureHierachy()
         configureLayout()
+        setupGestures()
         bind()
 
         emptyView.configure(state: .initial)
@@ -132,6 +133,16 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
         }
     }
 
+    private func setupGestures() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tapGesture.cancelsTouchesInView = false
+        view.addGestureRecognizer(tapGesture)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+
     // MARK: - Bind
     func bind() {
         let input = RecipeSearchViewModel.Input(
@@ -198,6 +209,13 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
                     matchedIngredients: data.matchedIngredients
                 )
                 self.navigationController?.pushViewController(detailVC, animated: true)
+            })
+            .disposed(by: disposeBag)
+
+        // 검색 버튼 클릭 시 키보드 내리기
+        searchBar.rx.searchButtonClicked
+            .subscribe(onNext: { [weak self] in
+                self?.searchBar.resignFirstResponder()
             })
             .disposed(by: disposeBag)
     }
