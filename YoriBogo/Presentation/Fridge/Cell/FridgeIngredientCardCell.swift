@@ -75,7 +75,7 @@ final class FridgeIngredientCardCell: UICollectionViewCell, ReusableView {
     }
 
     func configure(with item: FridgeIngredientDetail) {
-        imageView.image = UIImage(named: item.imageKey)
+        imageView.image = UIImage.ingredientImage(imageKey: item.imageKey, categoryId: item.categoryId)
         nameLabel.text = item.name
 
         if let qty = item.qty, let unit = item.unit {

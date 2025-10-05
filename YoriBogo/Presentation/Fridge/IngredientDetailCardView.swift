@@ -333,7 +333,7 @@ final class IngredientDetailCardView: UIView {
     func configure(with detail: FridgeIngredientDetail) {
         originalDetail = detail
         nameLabel.text = detail.name
-        ingredientImageView.image = UIImage(named: detail.imageKey)
+        ingredientImageView.image = UIImage.ingredientImage(imageKey: detail.imageKey, categoryId: detail.categoryId)
 
         // 카테고리
         categoryRow.setValue(detail.categoryName)

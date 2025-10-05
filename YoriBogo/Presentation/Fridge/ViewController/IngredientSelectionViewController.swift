@@ -167,12 +167,12 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
         
         ingredientDataSource = UICollectionViewDiffableDataSource<FridgeSubcategory, FridgeIngredient>(collectionView: ingredientCollectionView) { collectionView, indexPath, item in
             guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: IngredientCell.id, for: indexPath) as? IngredientCell else { return UICollectionViewCell() }
-            
-            let image = UIImage(named: item.key)
-            
+
+            let image = UIImage.ingredientImage(imageKey: item.key, categoryId: item.categoryId)
+
             let isSelected = self.viewModel.isIngredientSelected(item.id)
             cell.configure(image: image, title: item.name, isSelected: isSelected)
-            
+
             return cell
         }
         
