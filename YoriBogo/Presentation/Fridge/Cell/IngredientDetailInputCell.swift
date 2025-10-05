@@ -114,6 +114,9 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
         quantityTextFieldView.textField.text = "1"
         unitTextFieldView.textField.text = nil
         dateTextField.text = nil
+        onQuantityChanged = nil
+        onUnitChanged = nil
+        onDateSelected = nil
     }
     
     func configure(with detail: FridgeIngredientDetail, index: Int) {

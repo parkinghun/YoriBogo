@@ -7,6 +7,7 @@
 
 import UIKit
 import SnapKit
+import RxSwift
 
 final class IngredientDetailCardView: UIView {
 
@@ -162,6 +163,8 @@ final class IngredientDetailCardView: UIView {
             saveButton.backgroundColor = hasChanges ? .brandOrange500 : .gray300
         }
     }
+
+    var disposeBag = DisposeBag()
 
     // MARK: - Initialization
     override init(frame: CGRect) {

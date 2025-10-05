@@ -237,28 +237,31 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
         detailCardView.show(in: view)
 
         detailCardView.closeButton.rx.tap
-            .bind {
-                detailCardView.dismiss()
+            .bind { [weak detailCardView] in
+                detailCardView?.dismiss()
             }
-            .disposed(by: disposeBag)
+            .disposed(by: detailCardView.disposeBag)
 
         detailCardView.consumeButton.rx.tap
-            .bind(with: self) { owner, _ in
+            .bind(with: self) { [weak detailCardView] owner, _ in
+                guard let detailCardView = detailCardView else { return }
                 owner.handleConsume(ingredient, cardView: detailCardView)
             }
-            .disposed(by: disposeBag)
+            .disposed(by: detailCardView.disposeBag)
 
         detailCardView.discardButton.rx.tap
-            .bind(with: self) { owner, _ in
+            .bind(with: self) { [weak detailCardView] owner, _ in
+                guard let detailCardView = detailCardView else { return }
                 owner.handleDiscard(ingredient, cardView: detailCardView)
             }
-            .disposed(by: disposeBag)
+            .disposed(by: detailCardView.disposeBag)
 
         detailCardView.saveButton.rx.tap
-            .bind(with: self) { owner, _ in
+            .bind(with: self) { [weak detailCardView] owner, _ in
+                guard let detailCardView = detailCardView else { return }
                 owner.handleSave(cardView: detailCardView)
             }
-            .disposed(by: disposeBag)
+            .disposed(by: detailCardView.disposeBag)
     }
 
     private func handleConsume(_ ingredient: FridgeIngredientDetail, cardView: IngredientDetailCardView) {

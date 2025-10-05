@@ -13,6 +13,14 @@ Icon
 # Custom
 **/*.xcconfig
 
+# Secrets 폴더 전체 무시
+Secrets/
+Secrets/**
+
+# 혹시 중첩된 경로에서도 Secrets라는 이름의 폴더가 있다면 전부 무시
+**/Secrets/
+**/Secrets/**
+
 # Thumbnails
 ._*
 
