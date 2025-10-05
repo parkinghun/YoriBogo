@@ -21,6 +21,10 @@ Secrets/**
 **/Secrets/
 **/Secrets/**
 
+# Firebase config
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+
 # Thumbnails
 ._*
 
