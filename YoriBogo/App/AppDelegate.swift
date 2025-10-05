@@ -8,6 +8,7 @@
 import UIKit
 import IQKeyboardManagerSwift
 import RealmSwift
+import FirebaseCore
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -19,7 +20,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         IQKeyboardManager.shared.isEnabled = true
 
         configureRealm()
-
+        FirebaseApp.configure()
         return true
     }
 
