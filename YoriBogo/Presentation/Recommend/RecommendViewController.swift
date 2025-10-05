@@ -165,11 +165,13 @@ final class RecommendViewController: BaseViewController {
                let recipeCell = cell as? RecommendRecipeCell {
                 let actualIndex = indexPath.item % recommendedData.count
                 let data = recommendedData[actualIndex]
+                let neededIngredients = getNeededIngredients(recipe: data.recipe, matchedIngredients: data.matchedIngredients)
                 recipeCell.configure(
                     with: data.recipe,
                     hasIngredients: hasIngredients,
                     matchRate: data.matchRate,
-                    matchedIngredients: data.matchedIngredients
+                    matchedIngredients: data.matchedIngredients,
+                    neededIngredients: neededIngredients
                 )
 
                 // 북마크 클로저 다시 연결
@@ -188,7 +190,6 @@ final class RecommendViewController: BaseViewController {
     }
     
     private func setupUI() {
-//        view.backgroundColor = .beige100
         view.backgroundColor = .white
         
         [titleLabel, subtitleLabel, collectionView, pageControl].forEach {
@@ -290,6 +291,11 @@ final class RecommendViewController: BaseViewController {
         let centerPoint = CGPoint(x: center, y: collectionView.bounds.midY)
         return collectionView.indexPathForItem(at: centerPoint)
     }
+
+    private func getNeededIngredients(recipe: Recipe, matchedIngredients: [String]) -> [String] {
+        let allIngredients = recipe.ingredients.map { $0.name }
+        return allIngredients.filter { !matchedIngredients.contains($0) }
+    }
 }
 
 // MARK: - UICollectionViewDataSource
@@ -309,12 +315,14 @@ extension RecommendViewController: UICollectionViewDataSource {
 
         let actualIndex = indexPath.item % recommendedData.count
         let data = recommendedData[actualIndex]
+        let neededIngredients = getNeededIngredients(recipe: data.recipe, matchedIngredients: data.matchedIngredients)
 
         cell.configure(
             with: data.recipe,
             hasIngredients: hasIngredients,
             matchRate: data.matchRate,
-            matchedIngredients: data.matchedIngredients
+            matchedIngredients: data.matchedIngredients,
+            neededIngredients: neededIngredients
         )
 
         // 북마크 버튼 탭 이벤트 처리
@@ -416,11 +424,13 @@ extension RecommendViewController: UICollectionViewDelegate {
                                let recipeCell = cell as? RecommendRecipeCell {
                                 let actualIndex = indexPath.item % recommendedData.count
                                 if actualIndex == index {
+                                    let neededIngredients = getNeededIngredients(recipe: updatedRecipe, matchedIngredients: data.matchedIngredients)
                                     recipeCell.configure(
                                         with: updatedRecipe,
                                         hasIngredients: hasIngredients,
                                         matchRate: data.matchRate,
-                                        matchedIngredients: data.matchedIngredients
+                                        matchedIngredients: data.matchedIngredients,
+                                        neededIngredients: neededIngredients
                                     )
                                 }
                             }

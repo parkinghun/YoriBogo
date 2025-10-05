@@ -50,13 +50,16 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
         return label
     }()
 
-    private lazy var ingredientsStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 8
-        stack.alignment = .leading
-        stack.distribution = .fillProportionally
-        return stack
+    private let availableIngredientsLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 1
+        return label
+    }()
+
+    private let neededIngredientsLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 1
+        return label
     }()
 
     private let methodTagLabel = ChipLabel(text: "#메인요리", style: .orangeLight, size: .regular)
@@ -81,6 +84,16 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        recipeId = nil
+        onBookmarkTapped = nil
+        recipeImageView.image = nil
+        recipeTitleLabel.text = nil
+        availableIngredientsLabel.attributedText = nil
+        neededIngredientsLabel.attributedText = nil
+    }
 
     @objc private func bookmarkButtonTapped() {
         guard let recipeId = recipeId else { return }
@@ -92,7 +105,7 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
         contentView.addSubview(cardContainerView)
 
         [recipeImageView, badgeLabel, bookmarkButton, recipeTitleLabel,
-         ingredientsStackView, tagStackView].forEach {
+         availableIngredientsLabel, neededIngredientsLabel, tagStackView].forEach {
             cardContainerView.addSubview($0)
         }
 
@@ -122,22 +135,25 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
             $0.horizontalEdges.equalToSuperview().inset(20)
         }
 
-        ingredientsStackView.snp.makeConstraints {
+        availableIngredientsLabel.snp.makeConstraints {
             $0.top.equalTo(recipeTitleLabel.snp.bottom).offset(12)
-            $0.leading.trailing.equalToSuperview().inset(20)
-            $0.height.equalTo(32)
+            $0.horizontalEdges.equalToSuperview().inset(20)
         }
 
+        neededIngredientsLabel.snp.makeConstraints {
+            $0.top.equalTo(availableIngredientsLabel.snp.bottom).offset(4)
+            $0.horizontalEdges.equalToSuperview().inset(20)
+        }
 
         tagStackView.snp.makeConstraints {
-            $0.top.equalTo(ingredientsStackView.snp.bottom).offset(12)
+            $0.top.equalTo(neededIngredientsLabel.snp.bottom).offset(12)
             $0.leading.equalToSuperview().inset(20)
             $0.bottom.lessThanOrEqualToSuperview().inset(20)
         }
     }
 
     // MARK: - Configuration
-    func configure(with recipe: Recipe, hasIngredients: Bool, matchRate: Double, matchedIngredients: [String]) {
+    func configure(with recipe: Recipe, hasIngredients: Bool, matchRate: Double, matchedIngredients: [String], neededIngredients: [String]) {
         recipeId = recipe.id
         recipeTitleLabel.text = recipe.title
 
@@ -153,8 +169,29 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
             badgeLabel.text = "간단 요리 추천 ✨"
         }
 
-        // 보유 재료 태그 설정
-        configureIngredientsTags(matchedIngredients: matchedIngredients)
+        // 보유 재료 설정
+        if !matchedIngredients.isEmpty {
+            let ingredientsText = matchedIngredients.joined(separator: ", ")
+            availableIngredientsLabel.attributedText = createIngredientsAttributedText(
+                label: "보유 재료:",
+                ingredients: ingredientsText,
+                labelColor: .statusGreen700
+            )
+        } else {
+            availableIngredientsLabel.attributedText = nil
+        }
+
+        // 필요 재료 설정
+        if !neededIngredients.isEmpty {
+            let ingredientsText = neededIngredients.joined(separator: ", ")
+            neededIngredientsLabel.attributedText = createIngredientsAttributedText(
+                label: "필요 재료:",
+                ingredients: ingredientsText,
+                labelColor: .statusRed500
+            )
+        } else {
+            neededIngredientsLabel.attributedText = nil
+        }
 
         // 태그 설정
         if let method = recipe.method {
@@ -169,39 +206,22 @@ final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
         bookmarkButton.setBookmarked(recipe.isBookmarked)
     }
 
-    private func configureIngredientsTags(matchedIngredients: [String]) {
-        // 기존 태그 제거
-        ingredientsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+    // MARK: - Helper
+    private func createIngredientsAttributedText(label: String, ingredients: String, labelColor: UIColor) -> NSAttributedString {
+        let fullText = "\(label) \(ingredients)"
+        let attributedString = NSMutableAttributedString(string: fullText)
 
-        guard !matchedIngredients.isEmpty else { return }
+        // 라벨 스타일: Bold, 강조 컬러
+        let labelRange = (fullText as NSString).range(of: label)
+        attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 13, weight: .bold), range: labelRange)
+        attributedString.addAttribute(.foregroundColor, value: labelColor, range: labelRange)
 
-        let maxDisplayCount = 3
-        let displayIngredients = Array(matchedIngredients.prefix(maxDisplayCount))
+        // 재료 텍스트 스타일: Regular, 회색
+        let ingredientsRange = (fullText as NSString).range(of: ingredients)
+        attributedString.addAttribute(.font, value: UIFont.systemFont(ofSize: 13), range: ingredientsRange)
+        attributedString.addAttribute(.foregroundColor, value: UIColor.gray700, range: ingredientsRange)
 
-        // 재료 태그 생성
-        displayIngredients.forEach { ingredient in
-            let tag = createIngredientTag(text: ingredient)
-            ingredientsStackView.addArrangedSubview(tag)
-        }
-
-        // 나머지 재료가 있으면 +N 태그 추가
-        let remainingCount = matchedIngredients.count - displayIngredients.count
-        if remainingCount > 0 {
-            let remainingTag = createIngredientTag(text: "+\(remainingCount)")
-            ingredientsStackView.addArrangedSubview(remainingTag)
-        }
+        return attributedString
     }
 
-    private func createIngredientTag(text: String) -> ChipLabel {
-        return ChipLabel(text: text, style: .greenLight, size: .regular)
-    }
-
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        recipeId = nil
-        onBookmarkTapped = nil
-        recipeImageView.image = nil
-        recipeTitleLabel.text = nil
-        ingredientsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-    }
 }
