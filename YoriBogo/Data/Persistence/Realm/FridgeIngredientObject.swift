@@ -27,11 +27,17 @@ final class FridgeIngredientObject: Object {
     
     convenience init(from entity: FridgeIngredientDetail) {
         self.init()
+
+        // 기존 ObjectId가 있으면 사용 (수정 시), 없으면 새로 생성 (추가 시)
+        if let objectId = try? ObjectId(string: entity.id) {
+            self.id = objectId
+        }
+
         self.name = entity.name
         self.categoryId = entity.categoryId
         self.subcategoryId = entity.subcategoryId
         self.imageKey = entity.imageKey
-        
+
         self.qty = entity.qty
         self.unit = entity.unit
         self.altText = entity.altText

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import RealmSwift
 
 struct FridgeCategory: Identifiable, Hashable {
     let id: Int
@@ -130,10 +131,16 @@ struct FridgeIngredientDetail: Identifiable, Hashable {
     /// qty 기본값 적용
     func toSaveModel() -> FridgeIngredientDetail {
         var copy = self
-        
+
         if copy.qty == nil || copy.qty! <= 0 {
             copy.qty = 1
         }
+
+        // 수정 시 updatedAt 갱신 (기존 ObjectId가 있는 경우)
+        if let _ = try? ObjectId(string: copy.id) {
+            copy.updatedAt = Date()
+        }
+
         return copy
     }
 }
