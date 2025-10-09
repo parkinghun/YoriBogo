@@ -102,8 +102,8 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
 
     // MARK: - Setup
     private func setupNavigation() {
-        navigationItem.title = "냉장고"
-        navigationItem.rightBarButtonItem = addButtonItem
+        setNavigationTitle("냉장고")
+        addNavigationBarButton(addButtonItem, position: .right)
     }
 
     func configureHierachy() {
@@ -363,34 +363,13 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
     }
 
     private func createLayout() -> UICollectionViewLayout {
-        let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1/3),
-            heightDimension: .fractionalHeight(1.0)
+        return CompositionalLayoutFactory.createGridLayout(
+            columnsCount: 3,
+            itemHeight: 160,
+            spacing: 12,
+            contentInsets: NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 20, trailing: 20),
+            hasHeader: true,
+            headerHeight: 44
         )
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-        let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(160)
-        )
-        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-        group.interItemSpacing = .fixed(12)
-
-        let section = NSCollectionLayoutSection(group: group)
-        section.interGroupSpacing = 12
-        section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 20, trailing: 20)
-
-        let headerSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(44)
-        )
-        let header = NSCollectionLayoutBoundarySupplementaryItem(
-            layoutSize: headerSize,
-            elementKind: UICollectionView.elementKindSectionHeader,
-            alignment: .top
-        )
-        section.boundarySupplementaryItems = [header]
-
-        return UICollectionViewCompositionalLayout(section: section)
     }
 }

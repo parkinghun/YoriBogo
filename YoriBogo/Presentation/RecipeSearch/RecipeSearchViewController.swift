@@ -102,7 +102,7 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
     // MARK: - Setup
     private func setupNavigation() {
-        navigationItem.title = "레시피 검색"
+        setNavigationTitle("레시피 검색")
     }
 
     func configureHierachy() {
@@ -223,28 +223,23 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
     // MARK: - Private Methods
     private func toggleBookmark(recipeId: String) {
         do {
-            // Realm에서 북마크 토글
-            try recipeManager.toggleBookmark(recipeId: recipeId)
+            // RecipeBookmarkManager를 사용하여 북마크 토글
+            let updatedRecipe = try RecipeBookmarkManager.shared.toggleBookmark(recipeId: recipeId)
 
             // searchResults 배열에서 해당 레시피 찾아서 업데이트
-            for (index, data) in searchResults.enumerated() {
-                if data.recipe.id == recipeId {
-                    // 업데이트된 레시피 가져오기
-                    if let updatedRecipe = recipeManager.fetchRecipe(by: recipeId) {
-                        searchResults[index].recipe = updatedRecipe
+            guard let index = searchResults.firstIndex(where: { $0.recipe.id == recipeId }) else { return }
 
-                        // 해당 셀 리로드
-                        if let visibleIndexPaths = tableView.indexPathsForVisibleRows,
-                           let indexPath = visibleIndexPaths.first(where: { $0.row == index }),
-                           let cell = tableView.cellForRow(at: indexPath) as? RecipeSearchCell {
-                            cell.configure(with: updatedRecipe, matchRate: data.matchRate)
-                        }
-                    }
-                    break
-                }
+            searchResults[index].recipe = updatedRecipe
+
+            // 해당 셀 리로드
+            if let visibleIndexPaths = tableView.indexPathsForVisibleRows,
+               let indexPath = visibleIndexPaths.first(where: { $0.row == index }),
+               let cell = tableView.cellForRow(at: indexPath) as? RecipeSearchCell {
+                let data = searchResults[index]
+                cell.configure(with: updatedRecipe, matchRate: data.matchRate)
             }
         } catch {
-            print("❌ 북마크 토글 에러: \(error)")
+            showErrorAlert(title: "북마크 토글 실패", error: error)
         }
     }
 }

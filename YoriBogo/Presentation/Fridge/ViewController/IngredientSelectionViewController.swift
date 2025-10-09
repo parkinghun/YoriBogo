@@ -59,7 +59,7 @@ final class IngredientSelectionViewController: BaseViewController, ConfigureView
     }
     
     private func setupNavigation() {
-        navigationItem.title = "재료 선택"
+        setNavigationTitle("재료 선택")
     }
     
     

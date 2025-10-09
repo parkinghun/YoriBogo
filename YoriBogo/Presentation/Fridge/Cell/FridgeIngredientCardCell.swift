@@ -95,40 +95,15 @@ final class FridgeIngredientCardCell: UICollectionViewCell, ReusableView {
     }
 
     private func configureDDayBadge(for date: Date) {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let expiration = calendar.startOfDay(for: date)
-
-        let components = calendar.dateComponents([.day], from: today, to: expiration)
-        guard let daysLeft = components.day else {
+        guard let info = date.getDDayInfo() else {
             dDayBadge.isHidden = true
             return
         }
 
         dDayBadge.isHidden = false
-
-        switch daysLeft {
-        case ..<0:
-            dDayBadge.text = "만료"
-            dDayBadge.backgroundColor = .gray400
-            dDayBadge.textColor = .white
-        case 0:
-            dDayBadge.text = "D-Day"
-            dDayBadge.backgroundColor = .systemRed
-            dDayBadge.textColor = .white
-        case 1...3:
-            dDayBadge.text = "D-\(daysLeft)"
-            dDayBadge.backgroundColor = .systemRed
-            dDayBadge.textColor = .white
-        case 4...7:
-            dDayBadge.text = "D-\(daysLeft)"
-            dDayBadge.backgroundColor = .systemOrange
-            dDayBadge.textColor = .white
-        default:
-            dDayBadge.text = "D-\(daysLeft)"
-            dDayBadge.backgroundColor = .gray200
-            dDayBadge.textColor = .gray700
-        }
+        dDayBadge.text = info.text
+        dDayBadge.backgroundColor = info.backgroundColor
+        dDayBadge.textColor = info.textColor
     }
 
     private func setupUI() {

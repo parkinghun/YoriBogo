@@ -184,8 +184,8 @@ final class RecommendViewController: BaseViewController {
 
     // MARK: - Setup
     private func setNavigation() {
-        navigationItem.title = "레시피 추천"
-        navigationItem.rightBarButtonItem = searchButtonItem
+        setNavigationTitle("레시피 추천")
+        addNavigationBarButton(searchButtonItem, position: .right)
         searchButtonItem.isHidden = true
     }
     
@@ -408,39 +408,34 @@ extension RecommendViewController: UICollectionViewDelegate {
 
     private func toggleBookmark(recipeId: String) {
         do {
-            // Realm에서 북마크 토글
-            try recipeManager.toggleBookmark(recipeId: recipeId)
+            // RecipeBookmarkManager를 사용하여 북마크 토글
+            let updatedRecipe = try RecipeBookmarkManager.shared.toggleBookmark(recipeId: recipeId)
 
             // recommendedData 배열에서 해당 레시피 찾아서 업데이트
-            for (index, data) in recommendedData.enumerated() {
-                if data.recipe.id == recipeId {
-                    // 업데이트된 레시피 가져오기
-                    if let updatedRecipe = recipeManager.fetchRecipe(by: recipeId) {
-                        recommendedData[index].recipe = updatedRecipe
+            guard let index = recommendedData.firstIndex(where: { $0.recipe.id == recipeId }) else { return }
 
-                        // 모든 해당 셀들 리로드 (무한 스크롤이므로 여러 인덱스에 같은 데이터가 있음)
-                        collectionView.visibleCells.forEach { cell in
-                            if let indexPath = collectionView.indexPath(for: cell),
-                               let recipeCell = cell as? RecommendRecipeCell {
-                                let actualIndex = indexPath.item % recommendedData.count
-                                if actualIndex == index {
-                                    let neededIngredients = getNeededIngredients(recipe: updatedRecipe, matchedIngredients: data.matchedIngredients)
-                                    recipeCell.configure(
-                                        with: updatedRecipe,
-                                        hasIngredients: hasIngredients,
-                                        matchRate: data.matchRate,
-                                        matchedIngredients: data.matchedIngredients,
-                                        neededIngredients: neededIngredients
-                                    )
-                                }
-                            }
-                        }
+            let data = recommendedData[index]
+            recommendedData[index].recipe = updatedRecipe
+
+            // 모든 해당 셀들 리로드 (무한 스크롤이므로 여러 인덱스에 같은 데이터가 있음)
+            collectionView.visibleCells.forEach { cell in
+                if let indexPath = collectionView.indexPath(for: cell),
+                   let recipeCell = cell as? RecommendRecipeCell {
+                    let actualIndex = indexPath.item % recommendedData.count
+                    if actualIndex == index {
+                        let neededIngredients = getNeededIngredients(recipe: updatedRecipe, matchedIngredients: data.matchedIngredients)
+                        recipeCell.configure(
+                            with: updatedRecipe,
+                            hasIngredients: hasIngredients,
+                            matchRate: data.matchRate,
+                            matchedIngredients: data.matchedIngredients,
+                            neededIngredients: neededIngredients
+                        )
                     }
-                    break
                 }
             }
         } catch {
-            print("❌ 북마크 토글 에러: \(error)")
+            showErrorAlert(title: "북마크 토글 실패", error: error)
         }
     }
 }

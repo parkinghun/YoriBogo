@@ -8,10 +8,10 @@
 import UIKit
 import SnapKit
 
-final class RecipeSearchCell: UITableViewCell, ReusableView {
+final class RecipeSearchCell: UITableViewCell, ReusableView, BookmarkableCell {
 
     // MARK: - Properties
-    private var recipeId: String?
+    var recipeId: String?
     var onBookmarkTapped: ((String) -> Void)?
 
     // MARK: - UI Components

@@ -24,6 +24,7 @@ final class RecommendViewModel: ViewModelType {
 
     private let disposeBag = DisposeBag()
     private let recipeManager = RecipeRealmManager.shared
+    private let repository = FridgeIngredientRepository()
 
     init() { }
 
@@ -59,13 +60,6 @@ final class RecommendViewModel: ViewModelType {
 
     // MARK: - Private Methods
     private func fetchUserIngredients() -> [String] {
-        do {
-            let realm = try Realm()
-            let ingredientObjects = realm.objects(FridgeIngredientObject.self)
-            return ingredientObjects.map { $0.name }
-        } catch {
-            print("❌ Realm 조회 에러: \(error)")
-            return []
-        }
+        return repository.getIngredientNames()
     }
 }

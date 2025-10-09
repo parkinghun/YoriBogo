@@ -22,6 +22,7 @@ final class RecipeSearchViewModel: ViewModelType {
 
     private let disposeBag = DisposeBag()
     private let recipeManager = RecipeRealmManager.shared
+    private let repository = FridgeIngredientRepository()
 
     init() { }
 
@@ -46,15 +47,17 @@ final class RecipeSearchViewModel: ViewModelType {
                     let recipeIngredientNames = recipe.ingredients.map { $0.name.lowercased() }
                     let userIngredientsLower = userIngredients.map { $0.lowercased() }
 
-                    // 매칭되는 재료 찾기
-                    let matchedIngredients = recipeIngredientNames.filter { recipeIngredient in
-                        userIngredientsLower.contains { userIngredient in
-                            recipeIngredient.contains(userIngredient) || userIngredient.contains(recipeIngredient)
-                        }
-                    }
+                    // 매칭되는 재료 찾기 (IngredientMatcher 사용)
+                    let matchedIngredients = IngredientMatcher.findMatchedIngredients(
+                        recipeIngredients: recipeIngredientNames,
+                        userIngredients: userIngredientsLower
+                    )
 
-                    // 매칭률 계산
-                    let matchRate = recipeIngredientNames.isEmpty ? 0.0 : Double(matchedIngredients.count) / Double(recipeIngredientNames.count)
+                    // 매칭률 계산 (IngredientMatcher 사용)
+                    let matchRate = IngredientMatcher.calculateMatchRate(
+                        recipeIngredients: recipeIngredientNames,
+                        userIngredients: userIngredientsLower
+                    )
 
                     return (recipe, matchRate, matchedIngredients)
                 }
@@ -77,13 +80,6 @@ final class RecipeSearchViewModel: ViewModelType {
 
     // MARK: - Private Methods
     private func fetchUserIngredients() -> [String] {
-        do {
-            let realm = try Realm()
-            let ingredientObjects = realm.objects(FridgeIngredientObject.self)
-            return ingredientObjects.map { $0.name }
-        } catch {
-            print("❌ Realm 조회 에러: \(error)")
-            return []
-        }
+        return repository.getIngredientNames()
     }
 }

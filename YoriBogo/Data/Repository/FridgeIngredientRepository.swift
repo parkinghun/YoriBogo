@@ -12,6 +12,7 @@ protocol FridgeIngredientRepositoryType {
     func getIngredients(sortBy: SortOption) -> [FridgeIngredientDetail]
     func getIngredients(byCategoryIds categoryIds: [Int], sortBy: SortOption) -> [FridgeIngredientDetail]
     func removeIngredient(id: String) throws
+    func getIngredientNames() -> [String]
 }
 
 final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
@@ -50,5 +51,14 @@ final class FridgeIngredientRepository: FridgeIngredientRepositoryType {
     func getCategoryName(for categoryId: Int) -> String {
         let (categories, _, _) = getFridgeEntities()
         return categories.first { $0.id == categoryId}?.name ?? "기타"
+    }
+
+    /// 냉장고 재료 이름 목록 조회
+    /// - Returns: 재료 이름 배열
+    func getIngredientNames() -> [String] {
+        return RealmManager.performRead { realm in
+            let objects = realm.objects(FridgeIngredientObject.self)
+            return objects.map { $0.name }
+        } ?? []
     }
 }

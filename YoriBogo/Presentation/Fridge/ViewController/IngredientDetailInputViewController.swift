@@ -73,7 +73,7 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
     }
     
     private func setupNavigation() {
-        navigationItem.title = "재료 추가"
+        setNavigationTitle("재료 추가")
     }
     
     func configureHierachy() {
@@ -136,8 +136,8 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
                     // 성공 토스트 표시 (선택사항)
                     print("재료 저장 완료")
                 case .failure(let error):
-                    // 에러 알림
-                    owner.showErrorAlert(error)
+                    // 에러 알림 (UIViewController+Alert Extension 사용)
+                    owner.showErrorAlert(title: "저장 실패", error: error)
                 }
             }
             .disposed(by: disposeBag)
@@ -203,33 +203,11 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
     }
     
     private func createLayout() -> UICollectionViewLayout {
-        let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .estimated(280)
+        return CompositionalLayoutFactory.createVerticalListLayout(
+            estimatedHeight: 280,
+            spacing: 16,
+            contentInsets: NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
         )
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        
-        let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .estimated(280)
-        )
-        let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
-        
-        let section = NSCollectionLayoutSection(group: group)
-        section.interGroupSpacing = 16
-        section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
-        
-        return UICollectionViewCompositionalLayout(section: section)
-    }
-    
-    private func showErrorAlert(_ error: Error) {
-        let alert = UIAlertController(
-            title: "저장 실패",
-            message: error.localizedDescription,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "확인", style: .default))
-        present(alert, animated: true)
     }
 }
 

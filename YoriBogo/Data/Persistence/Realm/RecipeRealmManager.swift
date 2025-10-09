@@ -137,32 +137,6 @@ final class RecipeRealmManager {
         return objects.map { $0.toEntity() }
     }
 
-    // MARK: - 재료 매칭 헬퍼
-    private func isIngredientMatch(recipeIngredient: String, userIngredient: String) -> Bool {
-        // 1. 정확히 일치하는 경우
-        if recipeIngredient == userIngredient {
-            return true
-        }
-
-        // 2. 레시피 재료가 사용자 재료로 시작하고 다음 문자가 공백이거나 끝인 경우
-        // 예: userIngredient="딸기", recipeIngredient="딸기" (O), "딸기잼" (X), "딸기 잼" (O)
-        if recipeIngredient.hasPrefix(userIngredient) {
-            let nextIndex = recipeIngredient.index(recipeIngredient.startIndex, offsetBy: userIngredient.count)
-            if nextIndex == recipeIngredient.endIndex || recipeIngredient[nextIndex] == " " {
-                return true
-            }
-        }
-
-        // 3. 사용자 재료가 레시피 재료로 시작하고 다음 문자가 공백이거나 끝인 경우
-        if userIngredient.hasPrefix(recipeIngredient) {
-            let nextIndex = userIngredient.index(userIngredient.startIndex, offsetBy: recipeIngredient.count)
-            if nextIndex == userIngredient.endIndex || userIngredient[nextIndex] == " " {
-                return true
-            }
-        }
-
-        return false
-    }
 
     // MARK: - 보유 재료 기반 추천 레시피
     func fetchRecommendedRecipes(userIngredients: [String], maxCount: Int = 5) -> [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] {
@@ -180,15 +154,17 @@ final class RecipeRealmManager {
             let recipeIngredientNames = recipe.ingredients.map { $0.name.lowercased() }
             let userIngredientsLower = userIngredients.map { $0.lowercased() }
 
-            // 매칭되는 재료 찾기 (정확한 매칭)
-            let matchedIngredients = recipeIngredientNames.filter { recipeIngredient in
-                userIngredientsLower.contains { userIngredient in
-                    isIngredientMatch(recipeIngredient: recipeIngredient, userIngredient: userIngredient)
-                }
-            }
+            // 매칭되는 재료 찾기 (IngredientMatcher 사용)
+            let matchedIngredients = IngredientMatcher.findMatchedIngredients(
+                recipeIngredients: recipeIngredientNames,
+                userIngredients: userIngredientsLower
+            )
 
-            // 매칭률 계산 (매칭된 재료 수 / 전체 레시피 재료 수)
-            let matchRate = recipeIngredientNames.isEmpty ? 0.0 : Double(matchedIngredients.count) / Double(recipeIngredientNames.count)
+            // 매칭률 계산 (IngredientMatcher 사용)
+            let matchRate = IngredientMatcher.calculateMatchRate(
+                recipeIngredients: recipeIngredientNames,
+                userIngredients: userIngredientsLower
+            )
 
             return (recipe, matchRate, matchedIngredients)
         }

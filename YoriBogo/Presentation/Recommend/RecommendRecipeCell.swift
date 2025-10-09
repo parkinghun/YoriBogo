@@ -9,10 +9,10 @@ import UIKit
 import SnapKit
 import Kingfisher
 
-final class RecommendRecipeCell: UICollectionViewCell, ReusableView {
+final class RecommendRecipeCell: UICollectionViewCell, ReusableView, BookmarkableCell {
 
     // MARK: - Properties
-    private var recipeId: String?
+    var recipeId: String?
     var onBookmarkTapped: ((String) -> Void)?
 
     // MARK: - UI Components

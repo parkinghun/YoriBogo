@@ -457,9 +457,9 @@ final class RecipeDetailViewController: BaseViewController {
     private func createIngredientItemView(ingredient: RecipeIngredient) -> UIView {
         let containerView = UIView()
 
-        // 보유 재료 확인 (정확한 매칭)
+        // 보유 재료 확인 (IngredientMatcher 사용)
         let isOwned = matchedIngredientNames.contains { matchedName in
-            isIngredientMatch(
+            IngredientMatcher.isMatch(
                 recipeIngredient: ingredient.name.lowercased(),
                 userIngredient: matchedName.lowercased()
             )
@@ -532,30 +532,6 @@ final class RecipeDetailViewController: BaseViewController {
         return parts.joined(separator: " ")
     }
 
-    private func isIngredientMatch(recipeIngredient: String, userIngredient: String) -> Bool {
-        // 1. 정확히 일치하는 경우
-        if recipeIngredient == userIngredient {
-            return true
-        }
-
-        // 2. 레시피 재료가 사용자 재료로 시작하고 다음 문자가 공백이거나 끝인 경우
-        if recipeIngredient.hasPrefix(userIngredient) {
-            let nextIndex = recipeIngredient.index(recipeIngredient.startIndex, offsetBy: userIngredient.count)
-            if nextIndex == recipeIngredient.endIndex || recipeIngredient[nextIndex] == " " {
-                return true
-            }
-        }
-
-        // 3. 사용자 재료가 레시피 재료로 시작하고 다음 문자가 공백이거나 끝인 경우
-        if userIngredient.hasPrefix(recipeIngredient) {
-            let nextIndex = userIngredient.index(userIngredient.startIndex, offsetBy: recipeIngredient.count)
-            if nextIndex == userIngredient.endIndex || userIngredient[nextIndex] == " " {
-                return true
-            }
-        }
-
-        return false
-    }
 
     private func configureSteps(steps: [RecipeStep]) {
         stepsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
