@@ -8,7 +8,7 @@
 import UIKit
 import SnapKit
 
-final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
+final class IngredientDetailInputCell: UICollectionViewCell, ReusableView, UITextFieldDelegate {
     private let containerView = {
         let view = UIView()
         view.backgroundColor = .white
@@ -203,7 +203,12 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
     
     private func setupActions() {
         quantityTextFieldView.textField.addTarget(self, action: #selector(quantityTextFieldDidChange), for: .editingChanged)
+        quantityTextFieldView.textField.delegate = self
+        quantityTextFieldView.textField.returnKeyType = .done
+
         unitTextFieldView.textField.addTarget(self, action: #selector(unitTextFieldDidChange), for: .editingChanged)
+        unitTextFieldView.textField.delegate = self
+        unitTextFieldView.textField.returnKeyType = .done
 
         dateTextField.onDateSelected = { [weak self] date in
             self?.onDateSelected?(date)
@@ -213,8 +218,20 @@ final class IngredientDetailInputCell: UICollectionViewCell, ReusableView {
     @objc private func quantityTextFieldDidChange() {
         onQuantityChanged?(quantityTextFieldView.textField.text ?? "")
     }
-    
+
     @objc private func unitTextFieldDidChange() {
         onUnitChanged?(unitTextFieldView.textField.text ?? "")
+    }
+
+    // MARK: - UITextFieldDelegate
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+    
+    
+    /// 첫번째 셀의 텍스트 필드의 키보드를 올리기 위한 메서드
+    func becomeQuantityFirstResponder() {
+        quantityTextFieldView.textField.becomeFirstResponder()
     }
 }

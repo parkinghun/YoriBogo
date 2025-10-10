@@ -42,9 +42,10 @@ final class FridgeCategoryChipCell: UICollectionViewCell, ReusableView {
         contentView.clipsToBounds = true
 
         contentView.addSubview(titleLabel)
-
+        
+        contentView.snp.makeConstraints { $0.height.equalTo(40) }
         titleLabel.snp.makeConstraints {
-            $0.verticalEdges.equalToSuperview().inset(10)
+            $0.centerY.equalToSuperview()
             $0.horizontalEdges.equalToSuperview().inset(16)
         }
     }

@@ -36,6 +36,7 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
                     forCellWithReuseIdentifier: IngredientDetailInputCell.id)
         cv.backgroundColor = .gray50
         cv.contentInset = UIEdgeInsets(top: 16, left: 0, bottom: 16, right: 0)
+        cv.keyboardDismissMode = .onDrag
         return cv
     }()
     
@@ -70,7 +71,14 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
         configureLayout()
         configureDataSource()
         bind()
+        setupKeyboardDismissal()
     }
+    
+    
+//    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+//        super.touchesBegan(touches, with: event)
+//        view.endEditing(true)
+//    }
     
     private func setupNavigation() {
         setNavigationTitle("재료 추가")
@@ -145,7 +153,15 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
         // 화면 닫기
         output.dismissScreen
             .drive(with: self) { owner, _ in
+                owner.view.endEditing(true)
                 owner.navigationController?.popToRootViewController(animated: true)
+            }
+            .disposed(by: disposeBag)
+
+        // 완료 버튼 탭 시 키보드 내리기
+        saveButton.rx.tap
+            .subscribe(with: self) { owner, _ in
+                owner.view.endEditing(true)
             }
             .disposed(by: disposeBag)
         
@@ -200,6 +216,13 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
         snapshot.appendSections([.main])
         snapshot.appendItems(ingredients)
         dataSource.apply(snapshot, animatingDifferences: false)
+        
+        DispatchQueue.main.async { [weak self] in
+            let indexPath = IndexPath(item: 0, section: 0)
+            if let cell = self?.collectionView.cellForItem(at: indexPath) as? IngredientDetailInputCell {
+                cell.becomeQuantityFirstResponder()
+            }
+        }
     }
     
     private func createLayout() -> UICollectionViewLayout {
@@ -208,6 +231,16 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
             spacing: 16,
             contentInsets: NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
         )
+    }
+
+    private func setupKeyboardDismissal() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tapGesture.cancelsTouchesInView = false
+        view.addGestureRecognizer(tapGesture)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
     }
 }
 

@@ -9,7 +9,7 @@ import UIKit
 import SnapKit
 import RxSwift
 
-final class IngredientDetailCardView: UIView {
+final class IngredientDetailCardView: UIView, UITextFieldDelegate {
 
     private let dimmedBackgroundView = {
         let view = UIView()
@@ -163,6 +163,7 @@ final class IngredientDetailCardView: UIView {
             saveButton.backgroundColor = hasChanges ? .brandOrange500 : .gray300
         }
     }
+    private var cardCenterYConstraint: Constraint?
 
     var disposeBag = DisposeBag()
 
@@ -172,10 +173,15 @@ final class IngredientDetailCardView: UIView {
         setupUI()
         setupGesture()
         setupTextFieldActions()
+        setupKeyboardObservers()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Setup
@@ -214,7 +220,8 @@ final class IngredientDetailCardView: UIView {
         }
 
         cardContainerView.snp.makeConstraints {
-            $0.center.equalToSuperview()
+            $0.centerX.equalToSuperview()
+            cardCenterYConstraint = $0.centerY.equalToSuperview().constraint
             $0.horizontalEdges.equalToSuperview().inset(30)
         }
 
@@ -291,14 +298,23 @@ final class IngredientDetailCardView: UIView {
     }
 
     private func setupGesture() {
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dimmedViewTapped))
-        dimmedBackgroundView.addGestureRecognizer(tapGesture)
+        let dimmedTapGesture = UITapGestureRecognizer(target: self, action: #selector(dimmedViewTapped))
+        dimmedBackgroundView.addGestureRecognizer(dimmedTapGesture)
+
+        let cardTapGesture = UITapGestureRecognizer(target: self, action: #selector(cardViewTapped))
+        cardTapGesture.cancelsTouchesInView = false
+        cardContainerView.addGestureRecognizer(cardTapGesture)
     }
 
     private func setupTextFieldActions() {
         // Text field 변경 감지
         quantityTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        quantityTextField.delegate = self
+        quantityTextField.returnKeyType = .done
+
         unitTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        unitTextField.delegate = self
+        unitTextField.returnKeyType = .done
 
         // DatePicker 변경 감지
         expirationTextField.onDateSelected = { [weak self] _ in
@@ -309,8 +325,57 @@ final class IngredientDetailCardView: UIView {
         editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
     }
 
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
     @objc private func dimmedViewTapped() {
         dismiss()
+    }
+
+    @objc private func cardViewTapped() {
+        endEditing(true)
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard isEditMode,
+              let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else {
+            return
+        }
+
+        let keyboardHeight = keyboardFrame.height
+        let offset = -keyboardHeight / 4
+
+        cardCenterYConstraint?.update(offset: offset)
+
+        UIView.animate(withDuration: duration) {
+            self.layoutIfNeeded()
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double else {
+            return
+        }
+
+        cardCenterYConstraint?.update(offset: 0)
+
+        UIView.animate(withDuration: duration) {
+            self.layoutIfNeeded()
+        }
     }
 
     @objc private func textFieldDidChange() {
@@ -432,6 +497,12 @@ final class IngredientDetailCardView: UIView {
         } completion: { _ in
             self.removeFromSuperview()
         }
+    }
+
+    // MARK: - UITextFieldDelegate
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 
     // MARK: - Private
