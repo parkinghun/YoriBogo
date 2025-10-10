@@ -579,7 +579,7 @@ final class RecipeDetailViewController: BaseViewController {
         stepTextLabel.snp.makeConstraints {
             $0.leading.equalTo(stepNumberBadge.snp.trailing).offset(12)
             $0.trailing.equalToSuperview()
-            $0.centerY.equalTo(stepNumberBadge)
+            $0.top.equalTo(stepNumberBadge)
         }
 
         if !step.images.isEmpty {
