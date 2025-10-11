@@ -186,7 +186,6 @@ final class RecommendViewController: BaseViewController {
     private func setNavigation() {
         setNavigationTitle("레시피 추천")
         addNavigationBarButton(searchButtonItem, position: .right)
-        searchButtonItem.isHidden = true
     }
     
     private func setupUI() {
