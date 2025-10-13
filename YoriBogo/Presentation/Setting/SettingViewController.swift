@@ -11,6 +11,10 @@ final class SettingViewController: BaseViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupNavigation()
     }
-    
+
+    private func setupNavigation() {
+        setNavigationTitle("설정")
+    }
 }

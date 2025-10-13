@@ -84,6 +84,7 @@ enum CompositionalLayoutFactory {
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = spacing
         section.contentInsets = contentInsets
+        section.orthogonalScrollingBehavior = .none
 
         return UICollectionViewCompositionalLayout(section: section)
     }

@@ -20,7 +20,7 @@ final class BookmarkButton: UIButton {
     private func setupUI() {
         setImage(UIImage(systemName: "heart"), for: .normal)
         setImage(UIImage(systemName: "heart.fill"), for: .selected)
-        tintColor = .systemOrange
+        tintColor = .brandOrange500
         backgroundColor = .white
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.1

@@ -19,31 +19,38 @@ protocol RecipeDisplayable {
 }
 
 // TODO: - 북마크 기능도
-struct Recipe: RecipeDisplayable {
+struct Recipe: RecipeDisplayable, Hashable {
     let id: String
     let baseId: String
     let kind: RecipeKind
     let version: Int
-    
+
     let title: String
     let category: RecipeCategory?
     let method: RecipeMethod?
     let tags: [String]
     let tip: String?
-    
+
     let images: [RecipeImage]
     let nutrition: RecipeNutrition?
     let ingredients: [RecipeIngredient]
     let steps: [RecipeStep]
-    
+
     let isBookmarked: Bool
     let rating: Double?
     let cookCount: Int
     let lastCookedAt: Date?
-    
+
     let createdAt: Date
     let updatedAt: Date?
-    
+
+    static func == (lhs: Recipe, rhs: Recipe) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
 }
 
 extension Recipe {
@@ -88,22 +95,22 @@ struct RecipeChanges {
     let steps: [RecipeStep]?
 }
 
-enum RecipeKind: Int, CaseIterable {
+enum RecipeKind: Int, CaseIterable, Hashable {
     case api = 0           // API에서 가져온 원본
     case userOriginal = 1  // 사용자가 직접 만든 레시피
     case userModified = 2  // API 레시피를 사용자가 수정한 버전
 }
 
-enum RecipeImageSource: String, CaseIterable {
+enum RecipeImageSource: String, CaseIterable, Hashable {
     case remoteURL
     case localPath
 }
 
-struct RecipeImage {
+struct RecipeImage: Hashable {
     let source: RecipeImageSource
     let value: String
     let isThumbnail: Bool
-    
+
     init(source: RecipeImageSource, value: String, isThumbnail: Bool = false) {
         self.source = source
         self.value = value
@@ -111,7 +118,7 @@ struct RecipeImage {
     }
 }
 
-struct RecipeNutrition {
+struct RecipeNutrition: Hashable {
     let calories: String?
     let protein: String?
     let fat: String?
@@ -120,20 +127,20 @@ struct RecipeNutrition {
     let weight: String?
 }
 
-struct RecipeIngredient {
+struct RecipeIngredient: Hashable {
     let name: String
     let qty: Double?
     let unit: String?
     let altText: String?
 }
 
-struct RecipeStep {
+struct RecipeStep: Hashable {
     let index: Int
     let text: String
     let images: [RecipeImage]
 }
 
-enum RecipeCategory: Equatable {
+enum RecipeCategory: Equatable, Hashable {
     case sideDish        // 반찬
     case soup            // 국&탕
     case dessert         // 디저트
@@ -142,7 +149,7 @@ enum RecipeCategory: Equatable {
     case rice            // 밥
     case noodle          // 면
     case unknown(String) // fallback
-    
+
     init(rawValue: String) {
         switch rawValue {
         case "반찬": self = .sideDish
@@ -155,7 +162,7 @@ enum RecipeCategory: Equatable {
         default: self = .unknown(rawValue)
         }
     }
-    
+
     var displayName: String {
         switch self {
         case .sideDish: return "반찬"
@@ -168,13 +175,13 @@ enum RecipeCategory: Equatable {
         case .unknown(let raw): return raw
         }
     }
-    
+
     static var allCases: [RecipeCategory] {
         return [.sideDish, .soup, .dessert, .snack, .salad, .rice, .noodle]
     }
 }
 
-enum RecipeMethod: Equatable, CaseIterable {
+enum RecipeMethod: Equatable, CaseIterable, Hashable {
     case boil       // 끓이기
     case steam      // 찌기
     case fry        // 튀기기
@@ -184,7 +191,7 @@ enum RecipeMethod: Equatable, CaseIterable {
     case raw        // 생 / 무가열 조리
     case simmer     // 조리기
     case unknown(String)
-    
+
     init(rawValue: String) {
         switch rawValue {
         case "찌기": self = .steam
@@ -198,7 +205,7 @@ enum RecipeMethod: Equatable, CaseIterable {
         default: self = .unknown(rawValue)
         }
     }
-    
+
     var displayName: String {
         switch self {
         case .boil: return "끓이기"
@@ -212,7 +219,7 @@ enum RecipeMethod: Equatable, CaseIterable {
         case .unknown(let raw): return raw
         }
     }
-    
+
     static var allCases: [RecipeMethod] {
         return [.boil, .steam, .roast, .fry, .stirFry, .mix, .raw, .simmer]
     }
