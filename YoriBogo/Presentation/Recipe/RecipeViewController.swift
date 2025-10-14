@@ -61,6 +61,7 @@ final class RecipeViewController: BaseViewController {
     private let viewModel = RecipeViewModel()
     private let disposeBag = DisposeBag()
     private let refreshTrigger = PublishRelay<Void>()
+    private var currentTab: RecipeTab = .bookmarked
 
     private var dataSource: UICollectionViewDiffableDataSource<Section, Recipe>!
 
@@ -104,7 +105,8 @@ final class RecipeViewController: BaseViewController {
 
         collectionView.snp.makeConstraints {
             $0.top.equalTo(segmentControl.snp.bottom).offset(16)
-            $0.horizontalEdges.bottom.equalToSuperview()
+            $0.horizontalEdges.equalToSuperview()
+            $0.bottom.equalTo(view.safeAreaLayoutGuide)
         }
 
         emptyView.snp.makeConstraints {
@@ -144,7 +146,7 @@ final class RecipeViewController: BaseViewController {
             }
 
             // 현재 선택된 탭에 따라 북마크 버튼 표시 여부 결정
-            let isBookmarkTab = self.segmentControl.selectedSegmentIndex == 0
+            let isBookmarkTab = self.currentTab == .bookmarked
             cell.configure(with: recipe, showBookmark: isBookmarkTab)
 
             // 북마크 버튼 처리
@@ -173,6 +175,15 @@ final class RecipeViewController: BaseViewController {
         )
 
         let output = viewModel.transform(input: input)
+
+        // 선택된 탭
+        output.selectedTab
+            .drive(with: self) { owner, tab in
+                owner.currentTab = tab
+                // 탭이 변경되면 현재 snapshot의 모든 아이템을 reconfigure
+                owner.reconfigureVisibleCells()
+            }
+            .disposed(by: disposeBag)
 
         // 레시피 목록
         output.recipes
@@ -209,6 +220,22 @@ final class RecipeViewController: BaseViewController {
         snapshot.appendSections([.main])
         snapshot.appendItems(recipes)
         dataSource.apply(snapshot, animatingDifferences: true)
+    }
+
+    private func reconfigureVisibleCells() {
+        guard var snapshot = dataSource?.snapshot() else { return }
+
+        // 현재 snapshot의 모든 아이템을 reload
+        let allItems = snapshot.itemIdentifiers
+        if !allItems.isEmpty {
+            if #available(iOS 15.0, *) {
+                snapshot.reconfigureItems(allItems)
+                dataSource.apply(snapshot, animatingDifferences: false)
+            } else {
+                snapshot.reloadItems(allItems)
+                dataSource.apply(snapshot, animatingDifferences: false)
+            }
+        }
     }
 
     // MARK: - Actions

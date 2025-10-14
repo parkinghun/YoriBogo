@@ -630,7 +630,11 @@ final class RecipeDetailViewController: BaseViewController {
             }
         } else {
             stepTextLabel.snp.makeConstraints {
-                $0.bottom.equalToSuperview()
+                $0.bottom.lessThanOrEqualToSuperview()
+            }
+
+            containerView.snp.makeConstraints {
+                $0.height.greaterThanOrEqualTo(48)
             }
         }
 
