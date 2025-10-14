@@ -23,13 +23,28 @@ final class RecipeDetailViewController: BaseViewController {
     private let contentView = UIView()
 
     // 상단 이미지 및 정보
-    private let recipeImageView: UIImageView = {
-        let iv = UIImageView()
-        iv.contentMode = .scaleAspectFill
-        iv.clipsToBounds = true
-        iv.backgroundColor = .systemGray6
-        iv.isUserInteractionEnabled = true
-        return iv
+    private let recipeImageContainerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemGray6
+        view.clipsToBounds = true
+        return view
+    }()
+
+    private let recipeImageScrollView: UIScrollView = {
+        let sv = UIScrollView()
+        sv.isPagingEnabled = true
+        sv.showsHorizontalScrollIndicator = false
+        sv.backgroundColor = .clear
+        return sv
+    }()
+
+    private let recipeImagePageControl: UIPageControl = {
+        let pc = UIPageControl()
+        pc.currentPageIndicatorTintColor = .white
+        pc.pageIndicatorTintColor = UIColor.white.withAlphaComponent(0.5)
+        pc.hidesForSinglePage = true
+        pc.isUserInteractionEnabled = false
+        return pc
     }()
 
     private let bookmarkButton = BookmarkButton(radius: 20)
@@ -196,7 +211,7 @@ final class RecipeDetailViewController: BaseViewController {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
 
-        [recipeImageView, recipeTitleLabel, matchBadgeLabel,
+        [recipeImageContainerView, recipeTitleLabel, matchBadgeLabel,
          tagStackView, tipContainerView,
          ownedIngredientsContainerView,
          ingredientsContainerView,
@@ -204,7 +219,9 @@ final class RecipeDetailViewController: BaseViewController {
             contentView.addSubview($0)
         }
 
-        recipeImageView.addSubview(bookmarkButton)
+        recipeImageContainerView.addSubview(recipeImageScrollView)
+        recipeImageContainerView.addSubview(recipeImagePageControl)
+        recipeImageContainerView.addSubview(bookmarkButton)
         tipContainerView.addSubview(tipSectionHeaderLabel)
         tipContainerView.addSubview(tipLabel)
 
@@ -227,10 +244,20 @@ final class RecipeDetailViewController: BaseViewController {
             $0.width.equalTo(scrollView)
         }
 
-        // 이미지
-        recipeImageView.snp.makeConstraints {
+        // 이미지 컨테이너
+        recipeImageContainerView.snp.makeConstraints {
             $0.top.horizontalEdges.equalToSuperview()
             $0.height.equalTo(300)
+        }
+
+        recipeImageScrollView.snp.makeConstraints {
+            $0.edges.equalToSuperview()
+        }
+
+        recipeImagePageControl.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.bottom.equalToSuperview().inset(12)
+            $0.height.equalTo(20)
         }
 
         bookmarkButton.snp.makeConstraints {
@@ -241,7 +268,7 @@ final class RecipeDetailViewController: BaseViewController {
 
         // 타이틀 + 매칭률 (가로 배치)
         recipeTitleLabel.snp.makeConstraints {
-            $0.top.equalTo(recipeImageView.snp.bottom).offset(20)
+            $0.top.equalTo(recipeImageContainerView.snp.bottom).offset(20)
             $0.leading.equalToSuperview().inset(20)
             $0.trailing.equalTo(matchBadgeLabel.snp.leading).offset(-12)
         }
@@ -327,6 +354,8 @@ final class RecipeDetailViewController: BaseViewController {
             $0.top.equalTo(stepsSectionHeaderLabel.snp.bottom).offset(12)
             $0.horizontalEdges.bottom.equalToSuperview().inset(16)
         }
+
+        recipeImageScrollView.delegate = self
     }
 
     // MARK: - Bind
@@ -345,12 +374,7 @@ final class RecipeDetailViewController: BaseViewController {
                 owner.recipeTitleLabel.text = recipe.title
 
                 // 이미지
-                let imageURL = recipe.images.first(where: { $0.isThumbnail })?.value
-                owner.recipeImageView.setImageWithKF(
-                    urlString: imageURL,
-                    placeholder: UIImage(systemName: "photo"),
-                    downsamplingSize: CGSize(width: UIScreen.main.bounds.width, height: 300)
-                )
+                owner.configureMainImages(images: recipe.images)
             }
             .disposed(by: disposeBag)
 
@@ -411,6 +435,70 @@ final class RecipeDetailViewController: BaseViewController {
     }
 
     // MARK: - Private Methods
+    private func configureMainImages(images: [RecipeImage]) {
+        // 기존 서브뷰 제거
+        recipeImageScrollView.subviews.forEach { $0.removeFromSuperview() }
+
+        // 이미지가 없으면 플레이스홀더 표시
+        guard !images.isEmpty else {
+            let placeholderImageView = UIImageView()
+            placeholderImageView.image = UIImage(systemName: "photo")
+            placeholderImageView.contentMode = .scaleAspectFit
+            placeholderImageView.tintColor = .gray400
+            placeholderImageView.backgroundColor = .systemGray6
+
+            recipeImageScrollView.addSubview(placeholderImageView)
+            placeholderImageView.snp.makeConstraints {
+                $0.edges.equalToSuperview()
+                $0.width.equalTo(UIScreen.main.bounds.width)
+            }
+
+            recipeImagePageControl.numberOfPages = 0
+            return
+        }
+
+        let scrollViewWidth = UIScreen.main.bounds.width
+        let scrollViewHeight: CGFloat = 300
+
+        // 스크롤뷰 contentSize 설정
+        recipeImageScrollView.contentSize = CGSize(
+            width: scrollViewWidth * CGFloat(images.count),
+            height: scrollViewHeight
+        )
+
+        // 각 페이지에 이미지 추가
+        for (index, recipeImage) in images.enumerated() {
+            let pageView = UIView(frame: CGRect(
+                x: scrollViewWidth * CGFloat(index),
+                y: 0,
+                width: scrollViewWidth,
+                height: scrollViewHeight
+            ))
+
+            let imageView = UIImageView()
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            imageView.backgroundColor = .systemGray6
+
+            imageView.setImageWithKF(
+                urlString: recipeImage.value,
+                placeholder: UIImage(systemName: "photo"),
+                downsamplingSize: CGSize(width: scrollViewWidth, height: scrollViewHeight)
+            )
+
+            pageView.addSubview(imageView)
+            imageView.snp.makeConstraints {
+                $0.edges.equalToSuperview()
+            }
+
+            recipeImageScrollView.addSubview(pageView)
+        }
+
+        // PageControl 설정
+        recipeImagePageControl.numberOfPages = images.count
+        recipeImagePageControl.currentPage = 0
+    }
+
     private func configureTagStackView(tags: [String]) {
         tagStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
@@ -639,5 +727,16 @@ final class RecipeDetailViewController: BaseViewController {
         }
 
         return containerView
+    }
+}
+
+// MARK: - UIScrollViewDelegate
+extension RecipeDetailViewController: UIScrollViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard scrollView == recipeImageScrollView else { return }
+
+        let pageWidth = scrollView.bounds.width
+        let currentPage = Int((scrollView.contentOffset.x + pageWidth / 2) / pageWidth)
+        recipeImagePageControl.currentPage = currentPage
     }
 }

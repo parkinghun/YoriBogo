@@ -31,6 +31,18 @@ extension UIImageView {
             return
         }
 
+        // 로컬 파일 경로인 경우
+        if urlString.hasPrefix("/") {
+            // 로컬 파일에서 이미지 로드
+            let url = URL(fileURLWithPath: urlString)
+            if let image = UIImage(contentsOfFile: url.path) {
+                self.image = image
+            } else {
+                self.image = placeholderImage
+            }
+            return
+        }
+
         // HTTP -> HTTPS 변환
         let httpsURLString = urlString.replacingOccurrences(of: "http://", with: "https://")
 
