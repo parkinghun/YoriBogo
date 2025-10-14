@@ -73,8 +73,7 @@ final class RecipeViewModel: ViewModelType {
                     recipes = self.recipeManager.fetchBookmarkedRecipes()
                     emptyMessage = "북마크한 레시피가 없습니다"
                 case .myRecipes:
-                    // TODO: 사용자가 추가한 레시피 가져오기
-                    recipes = []
+                    recipes = self.recipeManager.fetchUserRecipes()
                     emptyMessage = "작성한 레시피가 없습니다"
                 }
 

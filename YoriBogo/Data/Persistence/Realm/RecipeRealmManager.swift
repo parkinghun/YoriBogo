@@ -137,6 +137,13 @@ final class RecipeRealmManager {
         return objects.map { $0.toEntity() }
     }
 
+    // MARK: - 사용자가 추가한 레시피만 가져오기
+    func fetchUserRecipes() -> [Recipe] {
+        let realm = try! getRealm()
+        let objects = realm.objects(RecipeObject.self).filter("kind == %@ OR kind == %@", RecipeKind.userOriginal.rawValue, RecipeKind.userModified.rawValue)
+        return objects.map { $0.toEntity() }
+    }
+
 
     // MARK: - 보유 재료 기반 추천 레시피
     func fetchRecommendedRecipes(userIngredients: [String], maxCount: Int = 5) -> [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] {

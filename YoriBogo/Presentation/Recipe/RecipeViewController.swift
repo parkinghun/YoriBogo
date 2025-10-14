@@ -54,6 +54,8 @@ final class RecipeViewController: BaseViewController {
         label.textAlignment = .center
         return label
     }()
+    
+    private let addButtonItem = UIBarButtonItem(image: UIImage(systemName: "plus"), style: .plain, target: nil, action: nil)
 
     // MARK: - Properties
     private let viewModel = RecipeViewModel()
@@ -83,6 +85,7 @@ final class RecipeViewController: BaseViewController {
     // MARK: - Setup
     private func setupNavigation() {
         setNavigationTitle("나의 레시피")
+        addNavigationBarButton(addButtonItem, position: .right)
     }
 
     private func setupUI() {
@@ -192,6 +195,13 @@ final class RecipeViewController: BaseViewController {
                 owner.emptyLabel.text = message
             }
             .disposed(by: disposeBag)
+
+        // 레시피 추가 버튼
+        addButtonItem.rx.tap
+            .subscribe(with: self) { owner, _ in
+                owner.presentRecipeAddView()
+            }
+            .disposed(by: disposeBag)
     }
 
     private func applySnapshot(_ recipes: [Recipe]) {
@@ -214,5 +224,12 @@ final class RecipeViewController: BaseViewController {
     private func navigateToDetail(recipe: Recipe) {
         let vc = RecipeDetailViewController(recipe: recipe, matchRate: 0, matchedIngredients: [])
         navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func presentRecipeAddView() {
+        let vc = RecipeAddViewController()
+        let nav = BaseNavigationController(rootViewController: vc)
+        nav.modalPresentationStyle = .fullScreen
+        present(nav, animated: true)
     }
 }
