@@ -35,7 +35,7 @@ final class RecipeAddViewController: BaseViewController {
         return label
     }()
 
-    private let titleTextField: UITextField = {
+    let titleTextField: UITextField = {
         let tf = UITextField()
         tf.placeholder = "레시피 이름을 입력하세요"
         tf.font = .systemFont(ofSize: 16)
@@ -67,7 +67,7 @@ final class RecipeAddViewController: BaseViewController {
         return button
     }()
 
-    private let mainImageScrollView: UIScrollView = {
+    let mainImageScrollView: UIScrollView = {
         let sv = UIScrollView()
         sv.isPagingEnabled = true
         sv.showsHorizontalScrollIndicator = false
@@ -77,7 +77,7 @@ final class RecipeAddViewController: BaseViewController {
         return sv
     }()
 
-    private let mainImagePageControl: UIPageControl = {
+    let mainImagePageControl: UIPageControl = {
         let pc = UIPageControl()
         pc.currentPageIndicatorTintColor = .brandOrange500
         pc.pageIndicatorTintColor = .gray300
@@ -86,7 +86,7 @@ final class RecipeAddViewController: BaseViewController {
         return pc
     }()
 
-    private let emptyMainImageView: UIView = {
+    let emptyMainImageView: UIView = {
         let view = UIView()
         view.backgroundColor = .gray100
         view.layer.cornerRadius = 16
@@ -127,7 +127,7 @@ final class RecipeAddViewController: BaseViewController {
         return label
     }()
 
-    private lazy var categoryButton: UIButton = {
+    lazy var categoryButton: UIButton = {
         let button = UIButton()
         button.setTitle("한식", for: .normal)
         button.setTitleColor(.black, for: .normal)
@@ -161,7 +161,7 @@ final class RecipeAddViewController: BaseViewController {
         return label
     }()
 
-    private let tagTextField: UITextField = {
+    let tagTextField: UITextField = {
         let tf = UITextField()
         tf.placeholder = "다이어트, 식단"
         tf.font = .systemFont(ofSize: 16)
@@ -176,7 +176,7 @@ final class RecipeAddViewController: BaseViewController {
         return tf
     }()
 
-    private let tagChipsContainer: UIView = {
+    let tagChipsContainer: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
         return view
@@ -200,7 +200,7 @@ final class RecipeAddViewController: BaseViewController {
         return button
     }()
 
-    private let ingredientsStackView: UIStackView = {
+    let ingredientsStackView: UIStackView = {
         let sv = UIStackView()
         sv.axis = .vertical
         sv.spacing = 12
@@ -226,7 +226,7 @@ final class RecipeAddViewController: BaseViewController {
         return button
     }()
 
-    private let stepsStackView: UIStackView = {
+    let stepsStackView: UIStackView = {
         let sv = UIStackView()
         sv.axis = .vertical
         sv.spacing = 16
@@ -243,7 +243,7 @@ final class RecipeAddViewController: BaseViewController {
         return label
     }()
 
-    private let tipTextView: UITextView = {
+    let tipTextView: UITextView = {
         let tv = UITextView()
         tv.font = .systemFont(ofSize: 16)
         tv.textColor = .gray400
@@ -256,10 +256,27 @@ final class RecipeAddViewController: BaseViewController {
 
     // MARK: - Properties
     private let disposeBag = DisposeBag()
-    private var tags: [String] = []
-    private let imagePickerManager = ImagePickerManager()
-    private var mainImages: [UIImage] = [] // 메인 이미지 (최대 5장)
-    private var stepImages: [Int: [UIImage]] = [:] // stepNumber: images
+    var tags: [String] = []
+    let imagePickerManager = ImagePickerManager()
+    var mainImages: [UIImage] = [] // 메인 이미지 (최대 5장)
+    var stepImages: [Int: [UIImage]] = [:] // stepNumber: images
+
+    // 편집 모드
+    var isEditMode: Bool = false
+    var editingRecipe: Recipe?
+    var originalRecipeSnapshot: Recipe?
+
+    // MARK: - Initialization
+    init(editingRecipe: Recipe? = nil) {
+        self.isEditMode = editingRecipe != nil
+        self.editingRecipe = editingRecipe
+        self.originalRecipeSnapshot = editingRecipe
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -267,19 +284,33 @@ final class RecipeAddViewController: BaseViewController {
         setupNavigation()
         setupUI()
         setupKeyboard()
-        addInitialIngredient()
-        addInitialStep()
+
+        if isEditMode {
+            loadRecipeData()
+        } else {
+            addInitialIngredient()
+            addInitialStep()
+        }
     }
+
+    lazy var saveButton: UIBarButtonItem = {
+        let button = UIBarButtonItem(title: "저장", style: .done, target: self, action: #selector(saveTapped))
+        return button
+    }()
 
     // MARK: - Setup
     private func setupNavigation() {
-        setNavigationTitle("레시피 추가")
+        setNavigationTitle(isEditMode ? "레시피 수정" : "레시피 추가")
 
         let cancelButton = UIBarButtonItem(title: "취소", style: .plain, target: self, action: #selector(cancelTapped))
-        let saveButton = UIBarButtonItem(title: "저장", style: .done, target: self, action: #selector(saveTapped))
 
         navigationItem.leftBarButtonItem = cancelButton
         navigationItem.rightBarButtonItem = saveButton
+
+        // 편집 모드일 때는 초기에 저장 버튼 비활성화 (변경사항 없음)
+        if isEditMode {
+            saveButton.isEnabled = false
+        }
     }
 
     private func setupUI() {
@@ -448,518 +479,9 @@ final class RecipeAddViewController: BaseViewController {
         return UIMenu(children: actions)
     }
 
-    // MARK: - Main Image Management
-    @objc private func addMainImageButtonTapped() {
-        let currentImageCount = mainImages.count
-        let remainingCount = 5 - currentImageCount
 
-        guard remainingCount > 0 else {
-            showAlert(message: "메인 이미지는 최대 5장까지 추가할 수 있습니다")
-            return
-        }
 
-        imagePickerManager.presentImagePicker(
-            from: self,
-            maxSelectionCount: remainingCount
-        ) { [weak self] images in
-            self?.addMainImages(images)
-        }
-    }
 
-    private func addMainImages(_ images: [UIImage]) {
-        mainImages.append(contentsOf: images)
-        updateMainImageDisplay()
-    }
-
-    private func updateMainImageDisplay() {
-        if mainImages.isEmpty {
-            // 이미지 없음: emptyView 표시
-            emptyMainImageView.isHidden = false
-            mainImageScrollView.isHidden = true
-            mainImagePageControl.isHidden = true
-        } else {
-            // 이미지 있음: 페이징 스크롤뷰 표시
-            emptyMainImageView.isHidden = true
-            mainImageScrollView.isHidden = false
-            mainImagePageControl.isHidden = false
-
-            // 기존 서브뷰 제거
-            mainImageScrollView.subviews.forEach { $0.removeFromSuperview() }
-
-            let scrollViewWidth = UIScreen.main.bounds.width - 40
-            let scrollViewHeight: CGFloat = 240
-
-            // 스크롤뷰 contentSize 설정
-            mainImageScrollView.contentSize = CGSize(
-                width: scrollViewWidth * CGFloat(mainImages.count),
-                height: scrollViewHeight
-            )
-
-            // 각 페이지에 이미지 추가
-            for (index, image) in mainImages.enumerated() {
-                let pageView = UIView(frame: CGRect(
-                    x: scrollViewWidth * CGFloat(index),
-                    y: 0,
-                    width: scrollViewWidth,
-                    height: scrollViewHeight
-                ))
-
-                let imageView = UIImageView()
-                imageView.image = image
-                imageView.contentMode = .scaleAspectFill
-                imageView.clipsToBounds = true
-                imageView.layer.cornerRadius = 16
-
-                let deleteButton = UIButton()
-                deleteButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-                deleteButton.tintColor = .white
-                deleteButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-                deleteButton.layer.cornerRadius = 16
-                deleteButton.tag = index
-                deleteButton.addTarget(self, action: #selector(deleteMainImageButtonTapped(_:)), for: .touchUpInside)
-
-                pageView.addSubview(imageView)
-                pageView.addSubview(deleteButton)
-
-                imageView.snp.makeConstraints {
-                    $0.edges.equalToSuperview()
-                }
-
-                deleteButton.snp.makeConstraints {
-                    $0.top.trailing.equalToSuperview().inset(12)
-                    $0.size.equalTo(32)
-                }
-
-                mainImageScrollView.addSubview(pageView)
-            }
-
-            // PageControl 설정
-            mainImagePageControl.numberOfPages = mainImages.count
-            mainImagePageControl.currentPage = 0
-        }
-    }
-
-    @objc private func deleteMainImageButtonTapped(_ sender: UIButton) {
-        let index = sender.tag
-        guard index < mainImages.count else { return }
-
-        mainImages.remove(at: index)
-        updateMainImageDisplay()
-    }
-
-    // MARK: - Ingredient Management
-    private func addInitialIngredient() {
-        let ingredientView = createIngredientView()
-        ingredientsStackView.addArrangedSubview(ingredientView)
-    }
-
-    private func createIngredientView() -> UIView {
-        let containerView = UIView()
-
-        let nameTextField = UITextField()
-        nameTextField.placeholder = "재료명"
-        nameTextField.font = .systemFont(ofSize: 16)
-        nameTextField.borderStyle = .none
-        nameTextField.backgroundColor = .gray50
-        nameTextField.layer.cornerRadius = 12
-        nameTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 0))
-        nameTextField.leftViewMode = .always
-
-        let qtyTextField = UITextField()
-        qtyTextField.placeholder = "1"
-        qtyTextField.font = .systemFont(ofSize: 16)
-        qtyTextField.borderStyle = .none
-        qtyTextField.backgroundColor = .gray50
-        qtyTextField.layer.cornerRadius = 12
-        qtyTextField.textAlignment = .center
-        qtyTextField.keyboardType = .decimalPad
-
-        let unitTextField = UITextField()
-        unitTextField.placeholder = "개"
-        unitTextField.font = .systemFont(ofSize: 16)
-        unitTextField.borderStyle = .none
-        unitTextField.backgroundColor = .gray50
-        unitTextField.layer.cornerRadius = 12
-        unitTextField.textAlignment = .center
-
-        containerView.addSubview(nameTextField)
-        containerView.addSubview(qtyTextField)
-        containerView.addSubview(unitTextField)
-
-        nameTextField.snp.makeConstraints {
-            $0.top.bottom.leading.equalToSuperview()
-            $0.height.equalTo(52)
-        }
-
-        qtyTextField.snp.makeConstraints {
-            $0.top.bottom.equalToSuperview()
-            $0.leading.equalTo(nameTextField.snp.trailing).offset(8)
-            $0.width.equalTo(70)
-        }
-
-        unitTextField.snp.makeConstraints {
-            $0.top.bottom.trailing.equalToSuperview()
-            $0.leading.equalTo(qtyTextField.snp.trailing).offset(8)
-            $0.width.equalTo(80)
-        }
-
-        return containerView
-    }
-
-    @objc private func addIngredientTapped() {
-        let ingredientView = createIngredientView()
-        ingredientsStackView.addArrangedSubview(ingredientView)
-    }
-
-    // MARK: - Step Management
-    private func addInitialStep() {
-        let stepView = createStepView(stepNumber: 1)
-        stepsStackView.addArrangedSubview(stepView)
-    }
-
-    private func createStepView(stepNumber: Int) -> UIView {
-        let containerView = UIView()
-        containerView.backgroundColor = .gray50
-        containerView.layer.cornerRadius = 16
-        containerView.tag = stepNumber
-
-        let numberLabel = UILabel()
-        numberLabel.text = "\(stepNumber)"
-        numberLabel.font = .systemFont(ofSize: 20, weight: .bold)
-        numberLabel.textColor = .brandOrange500
-        numberLabel.textAlignment = .center
-        numberLabel.backgroundColor = .brandOrange50
-        numberLabel.layer.cornerRadius = 20
-        numberLabel.clipsToBounds = true
-
-        let stepTextField = UITextField()
-        stepTextField.placeholder = "요리 단계를 입력하세요"
-        stepTextField.font = .systemFont(ofSize: 16)
-        stepTextField.borderStyle = .none
-        stepTextField.tag = 1000 + stepNumber // unique tag for finding later
-
-        let imageLabel = UILabel()
-        imageLabel.text = "단계 이미지 (선택사항)"
-        imageLabel.font = .systemFont(ofSize: 14)
-        imageLabel.textColor = .gray600
-
-        let addImageButton = UIButton()
-        addImageButton.setTitle("+ 이미지 추가", for: .normal)
-        addImageButton.setTitleColor(.brandOrange500, for: .normal)
-        addImageButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        addImageButton.setImage(UIImage(systemName: "photo"), for: .normal)
-        addImageButton.tintColor = .brandOrange500
-        addImageButton.contentHorizontalAlignment = .leading
-        addImageButton.semanticContentAttribute = .forceLeftToRight
-        addImageButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 8)
-        addImageButton.tag = stepNumber
-        addImageButton.addTarget(self, action: #selector(addImageButtonTapped(_:)), for: .touchUpInside)
-
-        // 이미지 스크롤뷰
-        let imageScrollView = UIScrollView()
-        imageScrollView.showsHorizontalScrollIndicator = false
-        imageScrollView.tag = 2000 + stepNumber // unique tag for finding later
-
-        let imageStackView = UIStackView()
-        imageStackView.axis = .horizontal
-        imageStackView.spacing = 8
-        imageStackView.alignment = .leading
-        imageStackView.distribution = .fillEqually
-        imageStackView.tag = 3000 + stepNumber // unique tag for finding later
-
-        imageScrollView.addSubview(imageStackView)
-        imageStackView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
-            $0.height.equalToSuperview()
-        }
-
-        containerView.addSubview(numberLabel)
-        containerView.addSubview(stepTextField)
-        containerView.addSubview(imageLabel)
-        containerView.addSubview(addImageButton)
-        containerView.addSubview(imageScrollView)
-
-        numberLabel.snp.makeConstraints {
-            $0.top.leading.equalToSuperview().offset(16)
-            $0.size.equalTo(40)
-        }
-
-        stepTextField.snp.makeConstraints {
-            $0.top.equalToSuperview().offset(16)
-            $0.leading.equalTo(numberLabel.snp.trailing).offset(16)
-            $0.trailing.equalToSuperview().inset(16)
-            $0.height.equalTo(40)
-        }
-
-        imageLabel.snp.makeConstraints {
-            $0.top.equalTo(stepTextField.snp.bottom).offset(16)
-            $0.leading.equalTo(stepTextField)
-            $0.trailing.equalToSuperview().inset(16)
-        }
-
-        addImageButton.snp.makeConstraints {
-            $0.top.equalTo(imageLabel.snp.bottom).offset(8)
-            $0.leading.equalTo(stepTextField)
-            $0.trailing.equalToSuperview().inset(16)
-            $0.height.equalTo(32)
-        }
-
-        imageScrollView.snp.makeConstraints {
-            $0.top.equalTo(addImageButton.snp.bottom).offset(12)
-            $0.leading.equalTo(stepTextField)
-            $0.trailing.equalToSuperview().inset(16)
-            $0.bottom.equalToSuperview().inset(16)
-            $0.height.equalTo(0) // 초기에는 높이 0
-        }
-
-        return containerView
-    }
-
-    @objc private func addImageButtonTapped(_ sender: UIButton) {
-        let stepNumber = sender.tag
-
-        // 현재 선택된 이미지 개수 확인
-        let currentImageCount = stepImages[stepNumber]?.count ?? 0
-        let remainingCount = 5 - currentImageCount
-
-        guard remainingCount > 0 else {
-            showAlert(message: "이미지는 최대 5장까지 추가할 수 있습니다")
-            return
-        }
-
-        imagePickerManager.presentImagePicker(
-            from: self,
-            maxSelectionCount: remainingCount
-        ) { [weak self] images in
-            self?.addImagesToStep(stepNumber: stepNumber, images: images)
-        }
-    }
-
-    private func addImagesToStep(stepNumber: Int, images: [UIImage]) {
-        // 기존 이미지에 추가
-        var currentImages = stepImages[stepNumber] ?? []
-        currentImages.append(contentsOf: images)
-        stepImages[stepNumber] = currentImages
-
-        // UI 업데이트
-        updateStepImagesDisplay(stepNumber: stepNumber)
-    }
-
-    private func updateStepImagesDisplay(stepNumber: Int) {
-        guard let images = stepImages[stepNumber],
-              !images.isEmpty else {
-            // 이미지가 없으면 스크롤뷰 높이를 0으로
-            if let scrollView = view.viewWithTag(2000 + stepNumber) {
-                scrollView.snp.updateConstraints {
-                    $0.height.equalTo(0)
-                }
-            }
-            return
-        }
-
-        // 이미지 스택뷰 찾기
-        guard let stackView = view.viewWithTag(3000 + stepNumber) as? UIStackView else { return }
-
-        // 기존 이미지뷰 제거
-        stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-
-        // 새로운 이미지뷰 추가
-        for (index, image) in images.enumerated() {
-            let imageContainer = UIView()
-
-            let imageView = UIImageView()
-            imageView.image = image
-            imageView.contentMode = .scaleAspectFill
-            imageView.clipsToBounds = true
-            imageView.layer.cornerRadius = 8
-            imageView.backgroundColor = .systemGray6
-
-            let deleteButton = UIButton()
-            deleteButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
-            deleteButton.tintColor = .white
-            deleteButton.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-            deleteButton.layer.cornerRadius = 12
-            deleteButton.tag = index
-            deleteButton.addTarget(self, action: #selector(deleteImageButtonTapped(_:)), for: .touchUpInside)
-
-            imageContainer.addSubview(imageView)
-            imageContainer.addSubview(deleteButton)
-
-            imageView.snp.makeConstraints {
-                $0.edges.equalToSuperview()
-                $0.width.equalTo(100)
-                $0.height.equalTo(100)
-            }
-
-            deleteButton.snp.makeConstraints {
-                $0.top.trailing.equalToSuperview().inset(4)
-                $0.size.equalTo(24)
-            }
-
-            // 컨테이너에 stepNumber 정보 저장
-            imageContainer.tag = stepNumber * 10000 + index
-
-            stackView.addArrangedSubview(imageContainer)
-        }
-
-        // 스크롤뷰 높이 업데이트
-        if let scrollView = view.viewWithTag(2000 + stepNumber) {
-            scrollView.snp.updateConstraints {
-                $0.height.equalTo(100)
-            }
-        }
-    }
-
-    @objc private func deleteImageButtonTapped(_ sender: UIButton) {
-        guard let container = sender.superview,
-              let stackView = container.superview as? UIStackView else { return }
-
-        let stepNumber = container.tag / 10000
-        let imageIndex = sender.tag
-
-        // 이미지 배열에서 제거
-        stepImages[stepNumber]?.remove(at: imageIndex)
-
-        // UI 업데이트
-        updateStepImagesDisplay(stepNumber: stepNumber)
-    }
-
-    @objc private func addStepTapped() {
-        let stepNumber = stepsStackView.arrangedSubviews.count + 1
-        let stepView = createStepView(stepNumber: stepNumber)
-        stepsStackView.addArrangedSubview(stepView)
-    }
-
-    // MARK: - Tag Management
-    private func addTagChip(_ tag: String) {
-        guard !tag.isEmpty, !tags.contains(tag) else { return }
-
-        tags.append(tag)
-        updateTagChips()
-    }
-
-    private func updateTagChips() {
-        // Clear existing chips
-        tagChipsContainer.subviews.forEach { $0.removeFromSuperview() }
-
-        guard !tags.isEmpty else {
-            tagChipsContainer.snp.updateConstraints {
-                $0.height.equalTo(0)
-            }
-            return
-        }
-
-        let containerStack = UIStackView()
-        containerStack.axis = .vertical
-        containerStack.spacing = 8
-        containerStack.alignment = .leading
-        containerStack.distribution = .fill
-
-        tagChipsContainer.addSubview(containerStack)
-        containerStack.snp.makeConstraints {
-            $0.edges.equalToSuperview()
-        }
-
-        // 화면에서 사용 가능한 너비 (좌우 padding 40pt 제외)
-        let availableWidth = UIScreen.main.bounds.width - 40
-        let horizontalSpacing: CGFloat = 8
-        let chipHeight: CGFloat = 32
-
-        var currentRowStack: UIStackView?
-        var currentRowWidth: CGFloat = 0
-        var rowCount = 0
-
-        for (index, tag) in tags.enumerated() {
-            // 임시로 chipView를 생성해서 너비 계산
-            let chipWidth = calculateChipWidth(for: tag)
-
-            // 새로운 줄이 필요한지 확인
-            if currentRowStack == nil || (currentRowWidth + chipWidth + horizontalSpacing) > availableWidth {
-                // 새로운 줄 생성
-                let newRowStack = UIStackView()
-                newRowStack.axis = .horizontal
-                newRowStack.spacing = horizontalSpacing
-                newRowStack.alignment = .leading
-                newRowStack.distribution = .fill
-                containerStack.addArrangedSubview(newRowStack)
-                currentRowStack = newRowStack
-                currentRowWidth = 0
-                rowCount += 1
-            }
-
-            // chipView 생성 및 추가
-            let chipView = createTagChip(tag: tag, index: index)
-            currentRowStack?.addArrangedSubview(chipView)
-
-            // 현재 줄의 너비 업데이트
-            if currentRowWidth > 0 {
-                currentRowWidth += horizontalSpacing
-            }
-            currentRowWidth += chipWidth
-        }
-
-        // 컨테이너 높이 업데이트
-        let totalHeight = CGFloat(rowCount) * chipHeight + CGFloat(max(0, rowCount - 1)) * 8
-        tagChipsContainer.snp.updateConstraints {
-            $0.height.equalTo(totalHeight)
-        }
-    }
-
-    private func calculateChipWidth(for tag: String) -> CGFloat {
-        // 레이블 텍스트 너비 계산
-        let text = "#\(tag)"
-        let font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let textWidth = (text as NSString).size(withAttributes: attributes).width
-
-        // 좌우 padding(12 + 8) + 아이콘(16) + 아이콘과 텍스트 사이 간격(8) + 우측 padding(8)
-        return textWidth + 12 + 8 + 16 + 8 + 8
-    }
-
-    private func createTagChip(tag: String, index: Int) -> UIView {
-        let chipView = UIView()
-        chipView.backgroundColor = .brandOrange50
-        chipView.layer.cornerRadius = 16
-
-        let label = UILabel()
-        label.text = "#\(tag)"
-        label.font = .systemFont(ofSize: 14, weight: .medium)
-        label.textColor = .brandOrange600
-
-        let deleteButton = UIButton()
-        deleteButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        deleteButton.tintColor = .brandOrange500
-        deleteButton.tag = index
-        deleteButton.addTarget(self, action: #selector(removeTagChip(_:)), for: .touchUpInside)
-
-        chipView.addSubview(label)
-        chipView.addSubview(deleteButton)
-
-        label.snp.makeConstraints {
-            $0.leading.equalToSuperview().offset(12)
-            $0.centerY.equalToSuperview()
-        }
-
-        deleteButton.snp.makeConstraints {
-            $0.leading.equalTo(label.snp.trailing).offset(8)
-            $0.trailing.equalToSuperview().inset(8)
-            $0.centerY.equalToSuperview()
-            $0.size.equalTo(16)
-        }
-
-        chipView.snp.makeConstraints {
-            $0.height.equalTo(32)
-        }
-
-        return chipView
-    }
-
-    @objc private func removeTagChip(_ sender: UIButton) {
-        let index = sender.tag
-        guard index < tags.count else { return }
-        tags.remove(at: index)
-        updateTagChips()
-    }
 
     // MARK: - Actions
     @objc private func dismissKeyboard() {
@@ -1003,27 +525,54 @@ final class RecipeAddViewController: BaseViewController {
         let mainRecipeImages = saveMainImagesToLocal()
 
         // Recipe 객체 생성
-        let recipe = Recipe(
-            id: UUID().uuidString,
-            baseId: UUID().uuidString,
-            kind: .userOriginal,
-            version: 1,
-            title: title,
-            category: category,
-            method: nil,
-            tags: tags,
-            tip: tip,
-            images: mainRecipeImages,
-            nutrition: nil,
-            ingredients: ingredients,
-            steps: steps,
-            isBookmarked: false,
-            rating: nil,
-            cookCount: 0,
-            lastCookedAt: nil,
-            createdAt: Date(),
-            updatedAt: nil
-        )
+        let recipe: Recipe
+        if isEditMode, let existingRecipe = editingRecipe {
+            // 편집 모드: 기존 레시피 정보 유지
+            recipe = Recipe(
+                id: existingRecipe.id,
+                baseId: existingRecipe.baseId,
+                kind: existingRecipe.kind == .userOriginal ? .userOriginal : .userModified,
+                version: existingRecipe.version + 1,
+                title: title,
+                category: category,
+                method: existingRecipe.method,
+                tags: tags,
+                tip: tip,
+                images: mainRecipeImages,
+                nutrition: existingRecipe.nutrition,
+                ingredients: ingredients,
+                steps: steps,
+                isBookmarked: existingRecipe.isBookmarked,
+                rating: existingRecipe.rating,
+                cookCount: existingRecipe.cookCount,
+                lastCookedAt: existingRecipe.lastCookedAt,
+                createdAt: existingRecipe.createdAt,
+                updatedAt: Date()
+            )
+        } else {
+            // 신규 추가 모드
+            recipe = Recipe(
+                id: UUID().uuidString,
+                baseId: UUID().uuidString,
+                kind: .userOriginal,
+                version: 1,
+                title: title,
+                category: category,
+                method: nil,
+                tags: tags,
+                tip: tip,
+                images: mainRecipeImages,
+                nutrition: nil,
+                ingredients: ingredients,
+                steps: steps,
+                isBookmarked: false,
+                rating: nil,
+                cookCount: 0,
+                lastCookedAt: nil,
+                createdAt: Date(),
+                updatedAt: nil
+            )
+        }
 
         // Realm에 저장
         do {
@@ -1034,134 +583,18 @@ final class RecipeAddViewController: BaseViewController {
         }
     }
 
-    private func collectIngredients() -> [RecipeIngredient] {
-        var ingredients: [RecipeIngredient] = []
 
-        for view in ingredientsStackView.arrangedSubviews {
-            guard let nameTextField = view.subviews.first(where: { $0 is UITextField && ($0 as! UITextField).placeholder == "재료명" }) as? UITextField,
-                  let name = nameTextField.text?.trimmingCharacters(in: .whitespaces),
-                  !name.isEmpty else {
-                continue
-            }
 
-            // qty와 unit 찾기
-            var qty: Double?
-            var unit: String?
 
-            for subview in view.subviews {
-                if let textField = subview as? UITextField {
-                    if textField.placeholder == "1" {
-                        if let text = textField.text, let value = Double(text) {
-                            qty = value
-                        }
-                    } else if textField.placeholder == "개" {
-                        unit = textField.text?.trimmingCharacters(in: .whitespaces)
-                    }
-                }
-            }
-
-            let ingredient = RecipeIngredient(
-                name: name,
-                qty: qty,
-                unit: unit,
-                altText: nil
-            )
-            ingredients.append(ingredient)
-        }
-
-        return ingredients
-    }
-
-    private func collectSteps() -> [RecipeStep] {
-        var steps: [RecipeStep] = []
-
-        for (index, view) in stepsStackView.arrangedSubviews.enumerated() {
-            let stepNumber = index + 1
-
-            // stepTextField 찾기
-            guard let stepTextField = view.viewWithTag(1000 + stepNumber) as? UITextField,
-                  let text = stepTextField.text?.trimmingCharacters(in: .whitespaces),
-                  !text.isEmpty else {
-                continue
-            }
-
-            // 이미지 수집 및 저장
-            var recipeImages: [RecipeImage] = []
-            if let images = stepImages[stepNumber] {
-                for (imageIndex, image) in images.enumerated() {
-                    if let savedPath = saveImageToLocal(image: image, stepNumber: stepNumber, imageIndex: imageIndex) {
-                        let recipeImage = RecipeImage(
-                            source: .localPath,
-                            value: savedPath,
-                            isThumbnail: false
-                        )
-                        recipeImages.append(recipeImage)
-                    }
-                }
-            }
-
-            let step = RecipeStep(
-                index: stepNumber,
-                text: text,
-                images: recipeImages
-            )
-            steps.append(step)
-        }
-
-        return steps
-    }
-
-    private func saveMainImagesToLocal() -> [RecipeImage] {
-        var recipeImages: [RecipeImage] = []
-
-        for (index, image) in mainImages.enumerated() {
-            if let savedPath = saveImageToLocal(image: image, prefix: "main", index: index) {
-                let recipeImage = RecipeImage(
-                    source: .localPath,
-                    value: savedPath,
-                    isThumbnail: index == 0 // 첫 번째 이미지를 썸네일로
-                )
-                recipeImages.append(recipeImage)
-            }
-        }
-
-        return recipeImages
-    }
-
-    private func saveImageToLocal(image: UIImage, stepNumber: Int, imageIndex: Int) -> String? {
-        return saveImageToLocal(image: image, prefix: "step_\(stepNumber)", index: imageIndex)
-    }
-
-    private func saveImageToLocal(image: UIImage, prefix: String, index: Int) -> String? {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return nil }
-
-        // Documents 디렉토리 경로
-        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-
-        // 레시피 이미지 저장 디렉토리 생성
-        let recipeImagesDirectory = documentsDirectory.appendingPathComponent("RecipeImages", isDirectory: true)
-        try? FileManager.default.createDirectory(at: recipeImagesDirectory, withIntermediateDirectories: true)
-
-        // 고유한 파일 이름 생성
-        let fileName = "\(prefix)_\(index)_\(UUID().uuidString).jpg"
-        let fileURL = recipeImagesDirectory.appendingPathComponent(fileName)
-
-        do {
-            try data.write(to: fileURL)
-            return fileURL.path
-        } catch {
-            print("❌ 이미지 저장 실패: \(error)")
-            return nil
-        }
-    }
-
-    private func showAlert(message: String) {
+    func showAlert(message: String) {
         let alert = UIAlertController(title: "알림", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default))
         present(alert, animated: true)
     }
+
+
+
+
 }
 
 // MARK: - UITextFieldDelegate

@@ -179,10 +179,22 @@ final class RecipeDetailViewController: BaseViewController {
         return stack
     }()
 
+    // 나의 레시피로 만들기 버튼
+    private lazy var makeMyRecipeButton: ActionButton = {
+        let button = ActionButton(
+            title: "나의 레시피로 만들기",
+            backgroundColor: .brandOrange500
+        )
+        button.addTarget(self, action: #selector(makeMyRecipeButtonTapped), for: .touchUpInside)
+        return button
+    }()
+
     // MARK: - Properties
     private let viewModel: RecipeDetailViewModel
     private let disposeBag = DisposeBag()
     private var matchedIngredientNames: [String] = []
+    private var currentRecipe: Recipe?
+    private var scrollViewBottomConstraint: Constraint?
 
     // MARK: - Initialization
     init(recipe: Recipe, matchRate: Double, matchedIngredients: [String]) {
@@ -191,6 +203,7 @@ final class RecipeDetailViewController: BaseViewController {
             matchRate: matchRate,
             matchedIngredients: matchedIngredients
         )
+        self.currentRecipe = recipe
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
     }
@@ -206,10 +219,15 @@ final class RecipeDetailViewController: BaseViewController {
         bind()
     }
     
+    override func setBackgroundColor() {
+        view.backgroundColor = .gray50
+    }
+    
     // MARK: - Setup
     private func setupUI() {
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
+        view.addSubview(makeMyRecipeButton)
 
         [recipeImageContainerView, recipeTitleLabel, matchBadgeLabel,
          tagStackView, tipContainerView,
@@ -236,13 +254,26 @@ final class RecipeDetailViewController: BaseViewController {
         stepsContainerView.addSubview(stepsStackView)
 
         scrollView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
+            $0.top.horizontalEdges.equalToSuperview()
+            scrollViewBottomConstraint = $0.bottom.equalToSuperview().constraint
         }
 
         contentView.snp.makeConstraints {
             $0.edges.equalTo(scrollView)
             $0.width.equalTo(scrollView)
         }
+
+        makeMyRecipeButton.snp.makeConstraints {
+            $0.horizontalEdges.equalToSuperview().inset(20)
+            $0.bottom.equalTo(view.safeAreaLayoutGuide).inset(16)
+            $0.height.equalTo(56)
+        }
+
+        // 버튼에 그림자 효과 추가 (탭바처럼)
+        makeMyRecipeButton.layer.shadowColor = UIColor.black.cgColor
+        makeMyRecipeButton.layer.shadowOpacity = 0.1
+        makeMyRecipeButton.layer.shadowOffset = CGSize(width: 0, height: -2)
+        makeMyRecipeButton.layer.shadowRadius = 8
 
         // 이미지 컨테이너
         recipeImageContainerView.snp.makeConstraints {
@@ -372,9 +403,18 @@ final class RecipeDetailViewController: BaseViewController {
             .drive(with: self) { owner, recipe in
                 owner.navigationItem.title = recipe.title
                 owner.recipeTitleLabel.text = recipe.title
+                owner.currentRecipe = recipe
 
                 // 이미지
                 owner.configureMainImages(images: recipe.images)
+
+                // 나의 레시피일 때 수정 버튼 표시
+                owner.setupEditButtonIfNeeded(recipe: recipe)
+
+                // API 레시피일 때 "나의 레시피로 만들기" 버튼 표시
+                let isButtonHidden = recipe.kind != .api
+                owner.makeMyRecipeButton.isHidden = isButtonHidden
+                owner.updateScrollViewConstraint(isButtonHidden: isButtonHidden)
             }
             .disposed(by: disposeBag)
 
@@ -727,6 +767,54 @@ final class RecipeDetailViewController: BaseViewController {
         }
 
         return containerView
+    }
+
+    // MARK: - Update ScrollView Constraint
+    private func updateScrollViewConstraint(isButtonHidden: Bool) {
+        scrollViewBottomConstraint?.deactivate()
+
+        scrollView.snp.makeConstraints {
+            if isButtonHidden {
+                scrollViewBottomConstraint = $0.bottom.equalToSuperview().constraint
+            } else {
+                scrollViewBottomConstraint = $0.bottom.equalTo(makeMyRecipeButton.snp.top).offset(-12).constraint
+            }
+        }
+    }
+
+    // MARK: - Edit Button
+    private func setupEditButtonIfNeeded(recipe: Recipe) {
+        // 나의 레시피(userOriginal, userModified)일 때만 수정 버튼 표시
+        guard recipe.kind == .userOriginal || recipe.kind == .userModified else {
+            navigationItem.rightBarButtonItem = nil
+            return
+        }
+
+        let editButton = UIBarButtonItem(
+            title: "수정",
+            style: .plain,
+            target: self,
+            action: #selector(editButtonTapped)
+        )
+        navigationItem.rightBarButtonItem = editButton
+    }
+
+    @objc private func editButtonTapped() {
+        guard let recipe = currentRecipe else { return }
+
+        let editVC = RecipeAddViewController(editingRecipe: recipe)
+        let nav = BaseNavigationController(rootViewController: editVC)
+        nav.modalPresentationStyle = .fullScreen
+        present(nav, animated: true)
+    }
+
+    @objc private func makeMyRecipeButtonTapped() {
+        guard let recipe = currentRecipe else { return }
+
+        let addVC = RecipeAddViewController(editingRecipe: recipe)
+        let nav = BaseNavigationController(rootViewController: addVC)
+        nav.modalPresentationStyle = .fullScreen
+        present(nav, animated: true)
     }
 }
 

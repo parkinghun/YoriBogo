@@ -116,39 +116,29 @@ final class IngredientDetailCardView: UIView, UITextFieldDelegate {
         return sv
     }()
 
-    let consumeButton = {
-        let button = UIButton()
-        button.backgroundColor = .statusGreen500
-        button.setTitle("소진", for: .normal)
-        button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = Pretendard.semiBold.of(size: 16)
-        button.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .normal)
-        button.tintColor = .white
-        button.layer.cornerRadius = 12
-        button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 8)
+    let consumeButton: ActionButton = {
+        let button = ActionButton(
+            title: "소진",
+            backgroundColor: .statusGreen500,
+            image: UIImage(systemName: "checkmark.circle.fill")
+        )
         return button
     }()
 
-    let discardButton = {
-        let button = UIButton()
-        button.backgroundColor = .statusRed500
-        button.setTitle("폐기", for: .normal)
-        button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = Pretendard.semiBold.of(size: 16)
-        button.setImage(UIImage(systemName: "trash.fill"), for: .normal)
-        button.tintColor = .white
-        button.layer.cornerRadius = 12
-        button.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 8)  // titlePadding
+    let discardButton: ActionButton = {
+        let button = ActionButton(
+            title: "폐기",
+            backgroundColor: .statusRed500,
+            image: UIImage(systemName: "trash.fill")
+        )
         return button
     }()
 
-    let saveButton = {
-        let button = UIButton()
-        button.backgroundColor = .brandOrange500
-        button.setTitle("수정하기", for: .normal)
-        button.setTitleColor(.white, for: .normal)
-        button.titleLabel?.font = Pretendard.semiBold.of(size: 16)
-        button.layer.cornerRadius = 12
+    let saveButton: ActionButton = {
+        let button = ActionButton(
+            title: "수정하기",
+            backgroundColor: .brandOrange500
+        )
         button.isHidden = true
         button.isEnabled = false
         return button
@@ -160,7 +150,7 @@ final class IngredientDetailCardView: UIView, UITextFieldDelegate {
     private var hasChanges = false {
         didSet {
             saveButton.isEnabled = hasChanges
-            saveButton.backgroundColor = hasChanges ? .brandOrange500 : .gray300
+            saveButton.updateBackgroundColor(hasChanges ? .brandOrange500 : .gray300)
         }
     }
     private var cardCenterYConstraint: Constraint?
