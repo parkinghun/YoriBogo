@@ -9,6 +9,7 @@ import UIKit
 import SnapKit
 import RxSwift
 import RxCocoa
+import Toast
 
 final class RecipeDetailViewController: BaseViewController {
 
@@ -811,7 +812,26 @@ final class RecipeDetailViewController: BaseViewController {
     @objc private func makeMyRecipeButtonTapped() {
         guard let recipe = currentRecipe else { return }
 
-        let addVC = RecipeAddViewController(editingRecipe: recipe)
+        let addVC = RecipeAddViewController(editingRecipe: recipe, isCreateFromApi: true)
+
+        // 저장 완료 후 콜백 설정
+        addVC.onSaveCompleted = { [weak self] savedRecipe in
+            guard let self = self else { return }
+
+            // 레시피 업데이트
+            self.currentRecipe = savedRecipe
+
+            // UI 업데이트 (버튼 숨기기 및 수정 버튼 표시)
+            self.makeMyRecipeButton.isHidden = true
+            self.updateScrollViewConstraint(isButtonHidden: true)
+            self.setupEditButtonIfNeeded(recipe: savedRecipe)
+
+            // 토스트 메시지 표시
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.view.makeToast("나의 레시피로 저장되었습니다", duration: 2.0, position: .bottom)
+            }
+        }
+
         let nav = BaseNavigationController(rootViewController: addVC)
         nav.modalPresentationStyle = .fullScreen
         present(nav, animated: true)

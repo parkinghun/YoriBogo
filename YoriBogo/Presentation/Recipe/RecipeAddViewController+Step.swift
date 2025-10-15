@@ -7,6 +7,7 @@
 
 import UIKit
 import SnapKit
+import Kingfisher
 
 // MARK: - Step Management
 extension RecipeAddViewController {
@@ -233,14 +234,35 @@ extension RecipeAddViewController {
 
             var recipeImages: [RecipeImage] = []
             if let images = stepImages[stepNumber] {
+                let originalPaths = originalStepImagePaths[stepNumber] ?? []
+
                 for (imageIndex, image) in images.enumerated() {
-                    if let savedPath = saveImageToLocal(image: image, stepNumber: stepNumber, imageIndex: imageIndex) {
+                    // 기존 이미지인지 확인 (originalStepImagePaths와 같은 인덱스에 있으면 기존 이미지)
+                    if imageIndex < originalPaths.count {
+                        // 기존 이미지 경로 재사용
                         let recipeImage = RecipeImage(
                             source: .localPath,
-                            value: savedPath,
+                            value: originalPaths[imageIndex],
                             isThumbnail: false
                         )
                         recipeImages.append(recipeImage)
+                    } else {
+                        // 새로운 이미지 저장
+                        if let savedPath = saveImageToLocal(image: image, stepNumber: stepNumber, imageIndex: imageIndex) {
+                            let recipeImage = RecipeImage(
+                                source: .localPath,
+                                value: savedPath,
+                                isThumbnail: false
+                            )
+                            recipeImages.append(recipeImage)
+                        }
+                    }
+                }
+
+                // 삭제된 이미지 처리 (originalPaths보다 images가 적으면)
+                if images.count < originalPaths.count {
+                    for index in images.count..<originalPaths.count {
+                        deleteImageFile(at: originalPaths[index])
                     }
                 }
             }
@@ -264,6 +286,8 @@ extension RecipeAddViewController {
             return
         }
 
+        let group = DispatchGroup()
+
         for (index, step) in steps.enumerated() {
             let stepNumber = index + 1
             let stepView = createStepView(stepNumber: stepNumber)
@@ -273,16 +297,57 @@ extension RecipeAddViewController {
                 stepTextField.text = step.text
             }
 
-            var images: [UIImage] = []
-            for recipeImage in step.images {
-                if let image = UIImage(contentsOfFile: recipeImage.value) {
-                    images.append(image)
+            guard !step.images.isEmpty else { continue }
+
+            var loadedImages: [(index: Int, image: UIImage)] = []
+            var imagePaths: [String] = []
+
+            for (imageIndex, recipeImage) in step.images.enumerated() {
+                imagePaths.append(recipeImage.value)
+                group.enter()
+
+                switch recipeImage.source {
+                case .remoteURL:
+                    // HTTP -> HTTPS 변환
+                    let httpsURLString = recipeImage.value.replacingOccurrences(of: "http://", with: "https://")
+
+                    // URL에서 이미지 다운로드
+                    guard let url = URL(string: httpsURLString) else {
+                        group.leave()
+                        continue
+                    }
+
+                    KingfisherManager.shared.retrieveImage(with: url) { result in
+                        switch result {
+                        case .success(let imageResult):
+                            loadedImages.append((imageIndex, imageResult.image))
+                        case .failure(let error):
+                            print("❌ Step \(stepNumber) 이미지 다운로드 실패: \(error)")
+                        }
+                        group.leave()
+                    }
+
+                case .localPath:
+                    // 로컬 파일에서 이미지 로드
+                    if let image = UIImage(contentsOfFile: recipeImage.value) {
+                        loadedImages.append((imageIndex, image))
+                    }
+                    group.leave()
                 }
             }
 
-            if !images.isEmpty {
-                stepImages[stepNumber] = images
-                updateStepImagesDisplay(stepNumber: stepNumber)
+            group.notify(queue: .main) { [weak self] in
+                guard let self = self else { return }
+
+                // 인덱스 순서대로 정렬
+                loadedImages.sort { $0.index < $1.index }
+                let images = loadedImages.map { $0.image }
+
+                if !images.isEmpty {
+                    self.stepImages[stepNumber] = images
+                    self.originalStepImagePaths[stepNumber] = imagePaths
+                    self.updateStepImagesDisplay(stepNumber: stepNumber)
+                }
             }
         }
     }

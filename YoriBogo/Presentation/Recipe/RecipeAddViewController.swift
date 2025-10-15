@@ -263,12 +263,19 @@ final class RecipeAddViewController: BaseViewController {
 
     // 편집 모드
     var isEditMode: Bool = false
+    var isCreateFromApi: Bool = false // API 레시피로부터 나의 레시피 만들기
     var editingRecipe: Recipe?
     var originalRecipeSnapshot: Recipe?
+    var originalMainImagePaths: [String] = [] // 원본 메인 이미지 경로
+    var originalStepImagePaths: [Int: [String]] = [:] // 원본 단계별 이미지 경로
+
+    // Completion handler
+    var onSaveCompleted: ((Recipe) -> Void)?
 
     // MARK: - Initialization
-    init(editingRecipe: Recipe? = nil) {
+    init(editingRecipe: Recipe? = nil, isCreateFromApi: Bool = false) {
         self.isEditMode = editingRecipe != nil
+        self.isCreateFromApi = isCreateFromApi
         self.editingRecipe = editingRecipe
         self.originalRecipeSnapshot = editingRecipe
         super.init(nibName: nil, bundle: nil)
@@ -300,7 +307,11 @@ final class RecipeAddViewController: BaseViewController {
 
     // MARK: - Setup
     private func setupNavigation() {
-        setNavigationTitle(isEditMode ? "레시피 수정" : "레시피 추가")
+        if isCreateFromApi {
+            setNavigationTitle("나의 레시피로 만들기")
+        } else {
+            setNavigationTitle(isEditMode ? "레시피 수정" : "레시피 추가")
+        }
 
         let cancelButton = UIBarButtonItem(title: "취소", style: .plain, target: self, action: #selector(cancelTapped))
 
@@ -308,7 +319,8 @@ final class RecipeAddViewController: BaseViewController {
         navigationItem.rightBarButtonItem = saveButton
 
         // 편집 모드일 때는 초기에 저장 버튼 비활성화 (변경사항 없음)
-        if isEditMode {
+        // 단, API로부터 만들기일 때는 활성화
+        if isEditMode && !isCreateFromApi {
             saveButton.isEnabled = false
         }
     }
@@ -577,6 +589,10 @@ final class RecipeAddViewController: BaseViewController {
         // Realm에 저장
         do {
             try RecipeRealmManager.shared.updateRecipe(recipe)
+
+            // Completion handler 호출
+            onSaveCompleted?(recipe)
+
             dismiss(animated: true)
         } catch {
             showAlert(message: "레시피 저장에 실패했습니다: \(error.localizedDescription)")

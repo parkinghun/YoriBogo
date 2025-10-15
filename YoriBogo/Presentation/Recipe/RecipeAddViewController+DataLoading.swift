@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import Kingfisher
 
 // MARK: - Data Loading & Change Detection
 extension RecipeAddViewController {
@@ -37,13 +38,53 @@ extension RecipeAddViewController {
     func loadMainImages(from recipeImages: [RecipeImage]) {
         guard !recipeImages.isEmpty else { return }
 
-        for recipeImage in recipeImages {
-            if let image = UIImage(contentsOfFile: recipeImage.value) {
-                mainImages.append(image)
+        // 원본 이미지 경로 저장
+        originalMainImagePaths = recipeImages.map { $0.value }
+
+        let group = DispatchGroup()
+        var loadedImages: [(index: Int, image: UIImage)] = []
+
+        for (index, recipeImage) in recipeImages.enumerated() {
+            group.enter()
+
+            switch recipeImage.source {
+            case .remoteURL:
+                // HTTP -> HTTPS 변환
+                let httpsURLString = recipeImage.value.replacingOccurrences(of: "http://", with: "https://")
+
+                // URL에서 이미지 다운로드
+                guard let url = URL(string: httpsURLString) else {
+                    group.leave()
+                    continue
+                }
+
+                KingfisherManager.shared.retrieveImage(with: url) { result in
+                    switch result {
+                    case .success(let imageResult):
+                        loadedImages.append((index, imageResult.image))
+                    case .failure(let error):
+                        print("❌ 이미지 다운로드 실패: \(error)")
+                    }
+                    group.leave()
+                }
+
+            case .localPath:
+                // 로컬 파일에서 이미지 로드
+                if let image = UIImage(contentsOfFile: recipeImage.value) {
+                    loadedImages.append((index, image))
+                }
+                group.leave()
             }
         }
 
-        updateMainImageDisplay()
+        group.notify(queue: .main) { [weak self] in
+            guard let self = self else { return }
+
+            // 인덱스 순서대로 정렬
+            loadedImages.sort { $0.index < $1.index }
+            self.mainImages = loadedImages.map { $0.image }
+            self.updateMainImageDisplay()
+        }
     }
 
     func setupChangeDetection() {
@@ -70,18 +111,50 @@ extension RecipeAddViewController {
     func saveMainImagesToLocal() -> [RecipeImage] {
         var recipeImages: [RecipeImage] = []
 
+        // 이미지별로 처리
         for (index, image) in mainImages.enumerated() {
-            if let savedPath = saveImageToLocal(image: image, prefix: "main", index: index) {
+            // 기존 이미지인지 확인 (originalMainImagePaths와 같은 인덱스에 있으면 기존 이미지)
+            if index < originalMainImagePaths.count {
+                // 기존 이미지 경로 재사용
                 let recipeImage = RecipeImage(
                     source: .localPath,
-                    value: savedPath,
+                    value: originalMainImagePaths[index],
                     isThumbnail: index == 0
                 )
                 recipeImages.append(recipeImage)
+            } else {
+                // 새로운 이미지 저장
+                if let savedPath = saveImageToLocal(image: image, prefix: "main", index: index) {
+                    let recipeImage = RecipeImage(
+                        source: .localPath,
+                        value: savedPath,
+                        isThumbnail: index == 0
+                    )
+                    recipeImages.append(recipeImage)
+                }
+            }
+        }
+
+        // 삭제된 이미지 처리 (originalMainImagePaths보다 mainImages가 적으면)
+        if mainImages.count < originalMainImagePaths.count {
+            for index in mainImages.count..<originalMainImagePaths.count {
+                deleteImageFile(at: originalMainImagePaths[index])
             }
         }
 
         return recipeImages
+    }
+
+    func deleteImageFile(at path: String) {
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: path) {
+            do {
+                try fileManager.removeItem(atPath: path)
+                print("✅ 이미지 삭제 성공: \(path)")
+            } catch {
+                print("❌ 이미지 삭제 실패: \(error)")
+            }
+        }
     }
 
     func saveImageToLocal(image: UIImage, stepNumber: Int, imageIndex: Int) -> String? {

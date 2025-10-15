@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B51753FB2E92890900422EAE /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B51753FA2E92890900422EAE /* FirebaseAnalyticsCore */; };
 		B51753FD2E92890900422EAE /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = B51753FC2E92890900422EAE /* FirebaseCrashlytics */; };
+		B537C2E92EA0039A006D23FB /* Toast in Frameworks */ = {isa = PBXBuildFile; productRef = B537C2E82EA0039A006D23FB /* Toast */; };
 		B574AB132E89CB3A00D8AA58 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = B574AB122E89CB3A00D8AA58 /* .gitignore */; };
 		B574AB2E2E89CF9500D8AA58 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB2D2E89CF9500D8AA58 /* RealmSwift */; };
 		B574AB312E89D05500D8AA58 /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB302E89D05500D8AA58 /* SnapKit */; };
@@ -73,6 +74,7 @@
 				B574AB2E2E89CF9500D8AA58 /* RealmSwift in Frameworks */,
 				B51753FD2E92890900422EAE /* FirebaseCrashlytics in Frameworks */,
 				B574AB312E89D05500D8AA58 /* SnapKit in Frameworks */,
+				B537C2E92EA0039A006D23FB /* Toast in Frameworks */,
 				B51753FB2E92890900422EAE /* FirebaseAnalyticsCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -128,6 +130,7 @@
 				B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */,
 				B51753FA2E92890900422EAE /* FirebaseAnalyticsCore */,
 				B51753FC2E92890900422EAE /* FirebaseCrashlytics */,
+				B537C2E82EA0039A006D23FB /* Toast */,
 			);
 			productName = YoriBogo;
 			productReference = B574A9412E89BBC400D8AA58 /* YoriBogo.app */;
@@ -165,6 +168,7 @@
 				B574AB382E89D08100D8AA58 /* XCRemoteSwiftPackageReference "RxSwift" */,
 				B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */,
 				B51753F92E92890900422EAE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				B537C2E72EA0039A006D23FB /* XCRemoteSwiftPackageReference "Toast-Swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B574A9422E89BBC400D8AA58 /* Products */;
@@ -451,6 +455,14 @@
 				minimumVersion = 12.3.0;
 			};
 		};
+		B537C2E72EA0039A006D23FB /* XCRemoteSwiftPackageReference "Toast-Swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/scalessec/Toast-Swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.1.1;
+			};
+		};
 		B574AB2C2E89CF9500D8AA58 /* XCRemoteSwiftPackageReference "realm-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/realm/realm-swift.git";
@@ -511,6 +523,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B51753F92E92890900422EAE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCrashlytics;
+		};
+		B537C2E82EA0039A006D23FB /* Toast */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B537C2E72EA0039A006D23FB /* XCRemoteSwiftPackageReference "Toast-Swift" */;
+			productName = Toast;
 		};
 		B574AB2D2E89CF9500D8AA58 /* RealmSwift */ = {
 			isa = XCSwiftPackageProductDependency;
