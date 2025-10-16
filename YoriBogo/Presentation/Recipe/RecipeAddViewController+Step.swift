@@ -39,23 +39,6 @@ extension RecipeAddViewController {
         stepTextField.tag = 1000 + stepNumber
         stepTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
 
-        let imageLabel = UILabel()
-        imageLabel.text = "단계 이미지 (선택사항)"
-        imageLabel.font = .systemFont(ofSize: 14)
-        imageLabel.textColor = .gray600
-
-        let addImageButton = UIButton()
-        addImageButton.setTitle("+ 이미지 추가", for: .normal)
-        addImageButton.setTitleColor(.brandOrange500, for: .normal)
-        addImageButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        addImageButton.setImage(UIImage(systemName: "photo"), for: .normal)
-        addImageButton.tintColor = .brandOrange500
-        addImageButton.contentHorizontalAlignment = .leading
-        addImageButton.semanticContentAttribute = .forceLeftToRight
-        addImageButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 8)
-        addImageButton.tag = stepNumber
-        addImageButton.addTarget(self, action: #selector(addImageButtonTapped(_:)), for: .touchUpInside)
-
         let imageScrollView = UIScrollView()
         imageScrollView.showsHorizontalScrollIndicator = false
         imageScrollView.tag = 2000 + stepNumber
@@ -64,8 +47,42 @@ extension RecipeAddViewController {
         imageStackView.axis = .horizontal
         imageStackView.spacing = 8
         imageStackView.alignment = .leading
-        imageStackView.distribution = .fillEqually
+        imageStackView.distribution = .fill
         imageStackView.tag = 3000 + stepNumber
+
+        // 이미지 추가 버튼을 셀 형태로 생성
+        let addImageButton = UIButton()
+        addImageButton.backgroundColor = .gray100
+        addImageButton.layer.cornerRadius = 8
+        addImageButton.tag = stepNumber
+        addImageButton.addTarget(self, action: #selector(addImageButtonTapped(_:)), for: .touchUpInside)
+
+        // 갤러리 아이콘
+        let galleryIcon = UIImageView(image: UIImage(systemName: "photo.on.rectangle.angled"))
+        galleryIcon.tintColor = .gray400
+        galleryIcon.contentMode = .scaleAspectFit
+
+        // 카운터 레이블
+        let counterLabel = UILabel()
+        counterLabel.text = "(0/5)"
+        counterLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        counterLabel.textColor = .gray500
+        counterLabel.textAlignment = .center
+        counterLabel.tag = 4000 + stepNumber // 카운터 레이블 태그
+
+        addImageButton.addSubview(galleryIcon)
+        addImageButton.addSubview(counterLabel)
+
+        galleryIcon.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.centerY.equalToSuperview().offset(-10)
+            $0.size.equalTo(32)
+        }
+
+        counterLabel.snp.makeConstraints {
+            $0.top.equalTo(galleryIcon.snp.bottom).offset(4)
+            $0.centerX.equalToSuperview()
+        }
 
         imageScrollView.addSubview(imageStackView)
         imageStackView.snp.makeConstraints {
@@ -73,10 +90,14 @@ extension RecipeAddViewController {
             $0.height.equalToSuperview()
         }
 
+        // 버튼을 스택뷰의 첫 번째로 추가
+        imageStackView.addArrangedSubview(addImageButton)
+        addImageButton.snp.makeConstraints {
+            $0.width.height.equalTo(100)
+        }
+
         containerView.addSubview(numberLabel)
         containerView.addSubview(stepTextField)
-        containerView.addSubview(imageLabel)
-        containerView.addSubview(addImageButton)
         containerView.addSubview(imageScrollView)
 
         numberLabel.snp.makeConstraints {
@@ -91,25 +112,12 @@ extension RecipeAddViewController {
             $0.height.equalTo(40)
         }
 
-        imageLabel.snp.makeConstraints {
+        imageScrollView.snp.makeConstraints {
             $0.top.equalTo(stepTextField.snp.bottom).offset(16)
             $0.leading.equalTo(stepTextField)
             $0.trailing.equalToSuperview().inset(16)
-        }
-
-        addImageButton.snp.makeConstraints {
-            $0.top.equalTo(imageLabel.snp.bottom).offset(8)
-            $0.leading.equalTo(stepTextField)
-            $0.trailing.equalToSuperview().inset(16)
-            $0.height.equalTo(32)
-        }
-
-        imageScrollView.snp.makeConstraints {
-            $0.top.equalTo(addImageButton.snp.bottom).offset(12)
-            $0.leading.equalTo(stepTextField)
-            $0.trailing.equalToSuperview().inset(16)
             $0.bottom.equalToSuperview().inset(16)
-            $0.height.equalTo(0)
+            $0.height.equalTo(100)
         }
 
         return containerView
@@ -147,20 +155,26 @@ extension RecipeAddViewController {
     }
 
     func updateStepImagesDisplay(stepNumber: Int) {
-        guard let imagePaths = stepImagePaths[stepNumber],
-              !imagePaths.isEmpty else {
-            if let scrollView = view.viewWithTag(2000 + stepNumber) {
-                scrollView.snp.updateConstraints {
-                    $0.height.equalTo(0)
-                }
-            }
-            return
-        }
-
         guard let stackView = view.viewWithTag(3000 + stepNumber) as? UIStackView else { return }
 
-        stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let imagePaths = stepImagePaths[stepNumber] ?? []
+        let imageCount = imagePaths.count
 
+        // 카운터 레이블 업데이트
+        if let counterLabel = view.viewWithTag(4000 + stepNumber) as? UILabel {
+            counterLabel.text = "(\(imageCount)/5)"
+        }
+
+        // 첫 번째 버튼 가져오기 (이미 생성되어 있음)
+        let addButton = stackView.arrangedSubviews.first
+
+        // 버튼을 제외한 나머지 이미지들 제거
+        stackView.arrangedSubviews.dropFirst().forEach { $0.removeFromSuperview() }
+
+        // 이미지 5개일 때 버튼 숨기기
+        addButton?.isHidden = (imageCount >= 5)
+
+        // 이미지들 추가
         for (index, imagePath) in imagePaths.enumerated() {
             let imageContainer = UIView()
 
@@ -196,12 +210,6 @@ extension RecipeAddViewController {
 
             imageContainer.tag = stepNumber * 10000 + index
             stackView.addArrangedSubview(imageContainer)
-        }
-
-        if let scrollView = view.viewWithTag(2000 + stepNumber) {
-            scrollView.snp.updateConstraints {
-                $0.height.equalTo(100)
-            }
         }
     }
 

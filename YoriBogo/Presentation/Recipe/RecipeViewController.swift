@@ -76,11 +76,16 @@ final class RecipeViewController: BaseViewController {
         setupUI()
         configureDataSource()
         bind()
+        setupNotifications()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         refreshTrigger.accept(())
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Setup
@@ -213,6 +218,45 @@ final class RecipeViewController: BaseViewController {
                 owner.presentRecipeAddView()
             }
             .disposed(by: disposeBag)
+    }
+
+    // MARK: - Notifications
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidUpdate),
+            name: .recipeDidUpdate,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidDelete),
+            name: .recipeDidDelete,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidCreate),
+            name: .recipeDidCreate,
+            object: nil
+        )
+    }
+
+    @objc private func recipeDidUpdate() {
+        // 레시피가 수정되면 목록 새로고침
+        refreshTrigger.accept(())
+    }
+
+    @objc private func recipeDidDelete() {
+        // 레시피가 삭제되면 목록 새로고침
+        refreshTrigger.accept(())
+    }
+
+    @objc private func recipeDidCreate() {
+        // 새 레시피가 생성되면 목록 새로고침
+        refreshTrigger.accept(())
     }
 
     private func applySnapshot(_ recipes: [Recipe]) {

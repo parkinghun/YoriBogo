@@ -11,7 +11,7 @@ enum TabBarType: CaseIterable {
     case refrigerator
     case recommend
     case myRecipe
-    case setting
+//    case setting
     
     var navigationController: UINavigationController {
         return BaseNavigationController(rootViewController: viewController)
@@ -31,10 +31,10 @@ enum TabBarType: CaseIterable {
             let vc = RecipeViewController()
             vc.tabBarItem = self.tabBarItem
             return vc
-        case .setting:
-            let vc = SettingViewController()
-            vc.tabBarItem = self.tabBarItem
-            return vc
+//        case .setting:
+//            let vc = SettingViewController()
+//            vc.tabBarItem = self.tabBarItem
+//            return vc
         }
     }
     
@@ -46,8 +46,8 @@ enum TabBarType: CaseIterable {
             return UITabBarItem(title: title, image: itemImage, tag: 1)
         case .myRecipe:
             return UITabBarItem(title: title, image: itemImage, tag: 2)
-        case .setting:
-            return UITabBarItem(title: title, image: itemImage, tag: 3)
+//        case .setting:
+//            return UITabBarItem(title: title, image: itemImage, tag: 3)
         }
     }
     
@@ -59,8 +59,8 @@ enum TabBarType: CaseIterable {
             return "추천"
         case .myRecipe:
             return "나의 레시피"
-        case .setting:
-            return "설정"
+//        case .setting:
+//            return "설정"
         }
     }
     
@@ -72,8 +72,8 @@ enum TabBarType: CaseIterable {
             return UIImage(systemName: "text.book.closed")
         case .myRecipe:
             return UIImage(systemName: "fork.knife")
-        case .setting:
-            return UIImage(systemName: "gearshape")
+//        case .setting:
+//            return UIImage(systemName: "gearshape")
         }
     }
 }

@@ -142,10 +142,46 @@ final class RecommendViewController: BaseViewController {
             name: .fridgeIngredientsDidChange,
             object: nil
         )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidUpdate),
+            name: .recipeDidUpdate,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidDelete),
+            name: .recipeDidDelete,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidCreate),
+            name: .recipeDidCreate,
+            object: nil
+        )
     }
 
     @objc private func fridgeIngredientsDidChange() {
         // 냉장고 재료가 변경되면 추천 레시피 갱신
+        viewWillAppearTrigger.accept(())
+    }
+
+    @objc private func recipeDidUpdate() {
+        // 레시피가 수정되면 추천 목록 재계산
+        viewWillAppearTrigger.accept(())
+    }
+
+    @objc private func recipeDidDelete() {
+        // 레시피가 삭제되면 추천 목록 재계산
+        viewWillAppearTrigger.accept(())
+    }
+
+    @objc private func recipeDidCreate() {
+        // 새 레시피가 생성되면 추천 목록 재계산
         viewWillAppearTrigger.accept(())
     }
 

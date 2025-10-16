@@ -62,6 +62,7 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
         configureLayout()
         setupGestures()
         bind()
+        setupNotifications()
 
         emptyView.configure(state: .initial)
     }
@@ -71,6 +72,10 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
         // DetailViewController에서 돌아올 때 북마크 상태 업데이트
         updateBookmarkStates()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func updateBookmarkStates() {
@@ -141,6 +146,64 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
     @objc private func dismissKeyboard() {
         view.endEditing(true)
+    }
+
+    // MARK: - Notifications
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidUpdate),
+            name: .recipeDidUpdate,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidDelete),
+            name: .recipeDidDelete,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeDidCreate),
+            name: .recipeDidCreate,
+            object: nil
+        )
+    }
+
+    @objc private func recipeDidUpdate(_ notification: Notification) {
+        // 레시피가 수정되면 검색 결과 업데이트
+        guard let updatedRecipe = notification.userInfo?[Notification.RecipeKey.recipe] as? Recipe else { return }
+
+        if let index = searchResults.firstIndex(where: { $0.recipe.id == updatedRecipe.id }) {
+            let data = searchResults[index]
+            searchResults[index].recipe = updatedRecipe
+
+            // 해당 셀만 리로드
+            let indexPath = IndexPath(row: index, section: 0)
+            tableView.reloadRows(at: [indexPath], with: .none)
+        }
+    }
+
+    @objc private func recipeDidDelete(_ notification: Notification) {
+        // 레시피가 삭제되면 검색 결과에서 제거
+        guard let recipeId = notification.userInfo?[Notification.RecipeKey.recipeId] as? String else { return }
+
+        if let index = searchResults.firstIndex(where: { $0.recipe.id == recipeId }) {
+            searchResults.remove(at: index)
+            tableView.reloadData()
+        }
+    }
+
+    @objc private func recipeDidCreate(_ notification: Notification) {
+        // 새 레시피가 생성되면 검색 재실행 (검색어가 있을 경우)
+        guard !(searchBar.text ?? "").isEmpty else { return }
+
+        // 검색바 텍스트를 재설정하여 검색 재실행
+        let currentText = searchBar.text ?? ""
+        searchBar.text = currentText
+        searchBar.searchTextField.sendActions(for: .valueChanged)
     }
 
     // MARK: - Bind

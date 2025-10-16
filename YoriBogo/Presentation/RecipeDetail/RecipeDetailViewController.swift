@@ -476,6 +476,46 @@ final class RecipeDetailViewController: BaseViewController {
     }
 
     // MARK: - Private Methods
+    private func refreshUI(with recipe: Recipe) {
+        // 네비게이션 타이틀
+        navigationItem.title = recipe.title
+
+        // 레시피 제목
+        recipeTitleLabel.text = recipe.title
+
+        // 이미지
+        configureMainImages(images: recipe.images)
+
+        // 태그
+        let tags = [recipe.category?.displayName, recipe.method?.displayName]
+            .compactMap { $0 }
+        configureTagStackView(tags: tags)
+
+        // 요리 팁
+        if let tip = recipe.tip, !tip.isEmpty {
+            tipLabel.text = tip
+        } else {
+            tipLabel.text = "-"
+        }
+
+        // 재료
+        configureIngredients(ingredients: recipe.ingredients)
+
+        // 조리 단계
+        configureSteps(steps: recipe.steps)
+
+        // 북마크 상태
+        bookmarkButton.setBookmarked(recipe.isBookmarked)
+
+        // 나의 레시피일 때 수정 버튼 표시
+        setupEditButtonIfNeeded(recipe: recipe)
+
+        // API 레시피일 때 "나의 레시피로 만들기" 버튼 표시
+        let isButtonHidden = recipe.kind != .api
+        makeMyRecipeButton.isHidden = isButtonHidden
+        updateScrollViewConstraint(isButtonHidden: isButtonHidden)
+    }
+
     private func configureMainImages(images: [RecipeImage]) {
         // 기존 서브뷰 제거
         recipeImageScrollView.subviews.forEach { $0.removeFromSuperview() }
@@ -843,8 +883,15 @@ final class RecipeDetailViewController: BaseViewController {
             // currentRecipe 업데이트
             self.currentRecipe = updatedRecipe
 
-            // ViewModel에 업데이트 알림 (북마크 상태 등 유지)
-            // RecipeDetailViewModel을 업데이트하거나 화면을 다시 로드할 수 있음
+            // UI 즉시 새로고침
+            self.refreshUI(with: updatedRecipe)
+
+            // 레시피 업데이트 알림 전송 (다른 화면 업데이트용)
+            NotificationCenter.default.post(
+                name: .recipeDidUpdate,
+                object: nil,
+                userInfo: [Notification.RecipeKey.recipe: updatedRecipe]
+            )
         }
 
         let nav = BaseNavigationController(rootViewController: editVC)
@@ -876,6 +923,13 @@ final class RecipeDetailViewController: BaseViewController {
     private func deleteRecipe(_ recipe: Recipe) {
         do {
             try RecipeRealmManager.shared.deleteRecipe(by: recipe.id)
+
+            // 레시피 삭제 알림 전송
+            NotificationCenter.default.post(
+                name: .recipeDidDelete,
+                object: nil,
+                userInfo: [Notification.RecipeKey.recipeId: recipe.id]
+            )
 
             // 삭제 성공 시 이전 화면으로 돌아가기
             DispatchQueue.main.async { [weak self] in
@@ -909,6 +963,13 @@ final class RecipeDetailViewController: BaseViewController {
             self.makeMyRecipeButton.isHidden = true
             self.updateScrollViewConstraint(isButtonHidden: true)
             self.setupEditButtonIfNeeded(recipe: savedRecipe)
+
+            // 새 레시피 생성 알림 전송
+            NotificationCenter.default.post(
+                name: .recipeDidCreate,
+                object: nil,
+                userInfo: [Notification.RecipeKey.recipe: savedRecipe]
+            )
 
             // 토스트 메시지 표시
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
