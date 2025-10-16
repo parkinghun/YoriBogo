@@ -37,6 +37,7 @@ extension RecipeAddViewController {
         stepTextField.font = .systemFont(ofSize: 16)
         stepTextField.borderStyle = .none
         stepTextField.tag = 1000 + stepNumber
+        stepTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
 
         let imageLabel = UILabel()
         imageLabel.text = "단계 이미지 (선택사항)"
@@ -117,7 +118,7 @@ extension RecipeAddViewController {
     @objc func addImageButtonTapped(_ sender: UIButton) {
         let stepNumber = sender.tag
 
-        let currentImageCount = stepImages[stepNumber]?.count ?? 0
+        let currentImageCount = stepImagePaths[stepNumber]?.count ?? 0
         let remainingCount = 5 - currentImageCount
 
         guard remainingCount > 0 else {
@@ -134,17 +135,20 @@ extension RecipeAddViewController {
     }
 
     func addImagesToStep(stepNumber: Int, images: [UIImage]) {
-        var currentImages = stepImages[stepNumber] ?? []
-        currentImages.append(contentsOf: images)
-        stepImages[stepNumber] = currentImages
+        // 이미지를 임시 캐시에 저장하고 경로만 보관
+        let tempPaths = images.map { ImageCacheHelper.shared.cacheTempImage($0) }
+
+        var currentPaths = stepImagePaths[stepNumber] ?? []
+        currentPaths.append(contentsOf: tempPaths)
+        stepImagePaths[stepNumber] = currentPaths
 
         updateStepImagesDisplay(stepNumber: stepNumber)
         checkForChanges()
     }
 
     func updateStepImagesDisplay(stepNumber: Int) {
-        guard let images = stepImages[stepNumber],
-              !images.isEmpty else {
+        guard let imagePaths = stepImagePaths[stepNumber],
+              !imagePaths.isEmpty else {
             if let scrollView = view.viewWithTag(2000 + stepNumber) {
                 scrollView.snp.updateConstraints {
                     $0.height.equalTo(0)
@@ -157,11 +161,12 @@ extension RecipeAddViewController {
 
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
-        for (index, image) in images.enumerated() {
+        for (index, imagePath) in imagePaths.enumerated() {
             let imageContainer = UIView()
 
             let imageView = UIImageView()
-            imageView.image = image
+            // 경로에서 이미지 로드 (임시 캐시 또는 파일 시스템)
+            imageView.image = ImageCacheHelper.shared.loadImage(at: imagePath)
             imageView.contentMode = .scaleAspectFill
             imageView.clipsToBounds = true
             imageView.layer.cornerRadius = 8
@@ -207,7 +212,13 @@ extension RecipeAddViewController {
         let stepNumber = container.tag / 10000
         let imageIndex = sender.tag
 
-        stepImages[stepNumber]?.remove(at: imageIndex)
+        // 임시 캐시에서 이미지 삭제
+        if let pathToRemove = stepImagePaths[stepNumber]?[imageIndex],
+           ImageCacheHelper.shared.isTempPath(pathToRemove) {
+            ImageCacheHelper.shared.removeTempImage(at: pathToRemove)
+        }
+
+        stepImagePaths[stepNumber]?.remove(at: imageIndex)
 
         updateStepImagesDisplay(stepNumber: stepNumber)
         checkForChanges()
@@ -233,21 +244,15 @@ extension RecipeAddViewController {
             }
 
             var recipeImages: [RecipeImage] = []
-            if let images = stepImages[stepNumber] {
-                let originalPaths = originalStepImagePaths[stepNumber] ?? []
+            if let imagePaths = stepImagePaths[stepNumber] {
+                // API 레시피로부터 만들기인 경우, 모든 이미지를 새로 저장
+                if isCreateFromApi {
+                    for (imageIndex, imagePath) in imagePaths.enumerated() {
+                        // 경로에서 이미지 로드 (임시 캐시 또는 파일)
+                        guard let image = ImageCacheHelper.shared.loadImage(at: imagePath) else {
+                            continue
+                        }
 
-                for (imageIndex, image) in images.enumerated() {
-                    // 기존 이미지인지 확인 (originalStepImagePaths와 같은 인덱스에 있으면 기존 이미지)
-                    if imageIndex < originalPaths.count {
-                        // 기존 이미지 경로 재사용
-                        let recipeImage = RecipeImage(
-                            source: .localPath,
-                            value: originalPaths[imageIndex],
-                            isThumbnail: false
-                        )
-                        recipeImages.append(recipeImage)
-                    } else {
-                        // 새로운 이미지 저장
                         if let savedPath = saveImageToLocal(image: image, stepNumber: stepNumber, imageIndex: imageIndex) {
                             let recipeImage = RecipeImage(
                                 source: .localPath,
@@ -257,12 +262,42 @@ extension RecipeAddViewController {
                             recipeImages.append(recipeImage)
                         }
                     }
-                }
+                } else {
+                    // 일반 편집 모드: 기존 이미지는 재사용, 새 이미지만 저장
+                    let originalPaths = originalStepImagePaths[stepNumber] ?? []
 
-                // 삭제된 이미지 처리 (originalPaths보다 images가 적으면)
-                if images.count < originalPaths.count {
-                    for index in images.count..<originalPaths.count {
-                        deleteImageFile(at: originalPaths[index])
+                    for (imageIndex, imagePath) in imagePaths.enumerated() {
+                        // 기존 이미지인지 확인 (originalStepImagePaths와 같은 인덱스에 있으면 기존 이미지)
+                        if imageIndex < originalPaths.count {
+                            // 기존 이미지 경로 재사용
+                            let recipeImage = RecipeImage(
+                                source: .localPath,
+                                value: originalPaths[imageIndex],
+                                isThumbnail: false
+                            )
+                            recipeImages.append(recipeImage)
+                        } else {
+                            // 새로운 이미지 저장 (임시 캐시에서 로드)
+                            guard let image = ImageCacheHelper.shared.loadImage(at: imagePath) else {
+                                continue
+                            }
+
+                            if let savedPath = saveImageToLocal(image: image, stepNumber: stepNumber, imageIndex: imageIndex) {
+                                let recipeImage = RecipeImage(
+                                    source: .localPath,
+                                    value: savedPath,
+                                    isThumbnail: false
+                                )
+                                recipeImages.append(recipeImage)
+                            }
+                        }
+                    }
+
+                    // 삭제된 이미지 처리 (originalPaths보다 imagePaths가 적으면)
+                    if imagePaths.count < originalPaths.count {
+                        for index in imagePaths.count..<originalPaths.count {
+                            deleteImageFile(at: originalPaths[index])
+                        }
                     }
                 }
             }
@@ -286,8 +321,6 @@ extension RecipeAddViewController {
             return
         }
 
-        let group = DispatchGroup()
-
         for (index, step) in steps.enumerated() {
             let stepNumber = index + 1
             let stepView = createStepView(stepNumber: stepNumber)
@@ -299,6 +332,8 @@ extension RecipeAddViewController {
 
             guard !step.images.isEmpty else { continue }
 
+            // 각 단계마다 독립적인 DispatchGroup 생성
+            let group = DispatchGroup()
             var loadedImages: [(index: Int, image: UIImage)] = []
             var imagePaths: [String] = []
 
@@ -328,9 +363,11 @@ extension RecipeAddViewController {
                     }
 
                 case .localPath:
-                    // 로컬 파일에서 이미지 로드
-                    if let image = UIImage(contentsOfFile: recipeImage.value) {
+                    // 로컬 파일에서 이미지 로드 (파일 존재 확인 포함)
+                    if let image = ImagePathHelper.shared.loadImage(at: recipeImage.value) {
                         loadedImages.append((imageIndex, image))
+                    } else {
+                        print("⚠️ Step \(stepNumber) 이미지 파일을 찾을 수 없음: \(recipeImage.value)")
                     }
                     group.leave()
                 }
@@ -341,10 +378,14 @@ extension RecipeAddViewController {
 
                 // 인덱스 순서대로 정렬
                 loadedImages.sort { $0.index < $1.index }
-                let images = loadedImages.map { $0.image }
 
-                if !images.isEmpty {
-                    self.stepImages[stepNumber] = images
+                // 이미지를 임시 캐시에 저장하고 경로 반환
+                let tempPaths = loadedImages.map { _, image in
+                    ImageCacheHelper.shared.cacheTempImage(image)
+                }
+
+                if !tempPaths.isEmpty {
+                    self.stepImagePaths[stepNumber] = tempPaths
                     self.originalStepImagePaths[stepNumber] = imagePaths
                     self.updateStepImagesDisplay(stepNumber: stepNumber)
                 }

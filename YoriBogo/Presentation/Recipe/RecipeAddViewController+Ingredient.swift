@@ -27,6 +27,7 @@ extension RecipeAddViewController {
         nameTextField.layer.cornerRadius = 12
         nameTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 0))
         nameTextField.leftViewMode = .always
+        nameTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
 
         let qtyTextField = UITextField()
         qtyTextField.placeholder = "1"
@@ -36,6 +37,7 @@ extension RecipeAddViewController {
         qtyTextField.layer.cornerRadius = 12
         qtyTextField.textAlignment = .center
         qtyTextField.keyboardType = .decimalPad
+        qtyTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
 
         let unitTextField = UITextField()
         unitTextField.placeholder = "개"
@@ -44,6 +46,7 @@ extension RecipeAddViewController {
         unitTextField.backgroundColor = .gray50
         unitTextField.layer.cornerRadius = 12
         unitTextField.textAlignment = .center
+        unitTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
 
         containerView.addSubview(nameTextField)
         containerView.addSubview(qtyTextField)

@@ -11,7 +11,7 @@ import UIKit
 extension RecipeAddViewController {
 
     @objc func addMainImageButtonTapped() {
-        let currentImageCount = mainImages.count
+        let currentImageCount = mainImagePaths.count
         let remainingCount = 5 - currentImageCount
 
         guard remainingCount > 0 else {
@@ -28,13 +28,16 @@ extension RecipeAddViewController {
     }
 
     func addMainImages(_ images: [UIImage]) {
-        mainImages.append(contentsOf: images)
+        // 이미지를 임시 캐시에 저장하고 경로만 보관
+        let tempPaths = images.map { ImageCacheHelper.shared.cacheTempImage($0) }
+        mainImagePaths.append(contentsOf: tempPaths)
+
         updateMainImageDisplay()
         checkForChanges()
     }
 
     func updateMainImageDisplay() {
-        if mainImages.isEmpty {
+        if mainImagePaths.isEmpty {
             emptyMainImageView.isHidden = false
             mainImageScrollView.isHidden = true
             mainImagePageControl.isHidden = true
@@ -49,11 +52,11 @@ extension RecipeAddViewController {
             let scrollViewHeight: CGFloat = 240
 
             mainImageScrollView.contentSize = CGSize(
-                width: scrollViewWidth * CGFloat(mainImages.count),
+                width: scrollViewWidth * CGFloat(mainImagePaths.count),
                 height: scrollViewHeight
             )
 
-            for (index, image) in mainImages.enumerated() {
+            for (index, imagePath) in mainImagePaths.enumerated() {
                 let pageView = UIView(frame: CGRect(
                     x: scrollViewWidth * CGFloat(index),
                     y: 0,
@@ -62,7 +65,8 @@ extension RecipeAddViewController {
                 ))
 
                 let imageView = UIImageView()
-                imageView.image = image
+                // 경로에서 이미지 로드 (임시 캐시 또는 파일 시스템)
+                imageView.image = ImageCacheHelper.shared.loadImage(at: imagePath)
                 imageView.contentMode = .scaleAspectFill
                 imageView.clipsToBounds = true
                 imageView.layer.cornerRadius = 16
@@ -90,16 +94,22 @@ extension RecipeAddViewController {
                 mainImageScrollView.addSubview(pageView)
             }
 
-            mainImagePageControl.numberOfPages = mainImages.count
+            mainImagePageControl.numberOfPages = mainImagePaths.count
             mainImagePageControl.currentPage = 0
         }
     }
 
     @objc func deleteMainImageButtonTapped(_ sender: UIButton) {
         let index = sender.tag
-        guard index < mainImages.count else { return }
+        guard index < mainImagePaths.count else { return }
 
-        mainImages.remove(at: index)
+        // 임시 캐시에서 이미지 삭제
+        let pathToRemove = mainImagePaths[index]
+        if ImageCacheHelper.shared.isTempPath(pathToRemove) {
+            ImageCacheHelper.shared.removeTempImage(at: pathToRemove)
+        }
+
+        mainImagePaths.remove(at: index)
         updateMainImageDisplay()
         checkForChanges()
     }

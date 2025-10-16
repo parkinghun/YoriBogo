@@ -258,8 +258,10 @@ final class RecipeAddViewController: BaseViewController {
     private let disposeBag = DisposeBag()
     var tags: [String] = []
     let imagePickerManager = ImagePickerManager()
-    var mainImages: [UIImage] = [] // 메인 이미지 (최대 5장)
-    var stepImages: [Int: [UIImage]] = [:] // stepNumber: images
+
+    // 이미지 경로 저장 (메모리 최적화)
+    var mainImagePaths: [String] = [] // 임시 경로(temp_UUID) 또는 실제 경로
+    var stepImagePaths: [Int: [String]] = [:] // stepNumber: [임시 경로 또는 실제 경로]
 
     // 편집 모드
     var isEditMode: Bool = false
@@ -271,6 +273,13 @@ final class RecipeAddViewController: BaseViewController {
 
     // Completion handler
     var onSaveCompleted: ((Recipe) -> Void)?
+
+    // MARK: - Deinit
+    deinit {
+        // 화면 종료 시 임시 이미지 캐시 정리
+        ImageCacheHelper.shared.clearAllTempImages()
+        print("✅ RecipeAddViewController deinit - 임시 이미지 정리 완료")
+    }
 
     // MARK: - Initialization
     init(editingRecipe: Recipe? = nil, isCreateFromApi: Bool = false) {
@@ -486,6 +495,7 @@ final class RecipeAddViewController: BaseViewController {
         let actions = categories.map { categoryName in
             UIAction(title: categoryName) { [weak self] _ in
                 self?.categoryButton.setTitle(categoryName, for: .normal)
+                self?.checkForChanges()
             }
         }
         return UIMenu(children: actions)
@@ -539,12 +549,12 @@ final class RecipeAddViewController: BaseViewController {
         // Recipe 객체 생성
         let recipe: Recipe
         if isEditMode, let existingRecipe = editingRecipe {
-            // 편집 모드: 기존 레시피 정보 유지
+            // 편집 모드: 기존 레시피 정보 유지 (버전은 유지)
             recipe = Recipe(
                 id: existingRecipe.id,
                 baseId: existingRecipe.baseId,
                 kind: existingRecipe.kind == .userOriginal ? .userOriginal : .userModified,
-                version: existingRecipe.version + 1,
+                version: existingRecipe.version, // 버전 유지
                 title: title,
                 category: category,
                 method: existingRecipe.method,
@@ -640,6 +650,10 @@ extension RecipeAddViewController: UITextViewDelegate {
             textView.text = "맛있게 만드는 비법을 알려주세요"
             textView.textColor = .gray400
         }
+    }
+
+    func textViewDidChange(_ textView: UITextView) {
+        checkForChanges()
     }
 }
 

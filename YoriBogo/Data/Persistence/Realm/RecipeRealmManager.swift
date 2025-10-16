@@ -85,9 +85,16 @@ final class RecipeRealmManager {
             return
         }
 
+        // 레시피의 이미지 파일 먼저 삭제
+        let recipe = object.toEntity()
+        ImagePathHelper.shared.deleteAllImagesForRecipe(recipe)
+
+        // Realm에서 레시피 삭제
         try realm.write {
             realm.delete(object)
         }
+
+        print("🗑️ 레시피 '\(recipe.title)' 삭제 완료")
     }
 
     // MARK: - 전체 레시피 삭제 (테스트/리셋용)
@@ -141,7 +148,14 @@ final class RecipeRealmManager {
     func fetchUserRecipes() -> [Recipe] {
         let realm = try! getRealm()
         let objects = realm.objects(RecipeObject.self).filter("kind == %@ OR kind == %@", RecipeKind.userOriginal.rawValue, RecipeKind.userModified.rawValue)
-        return objects.map { $0.toEntity() }
+        let recipes = objects.map { $0.toEntity() }
+
+        // 최근 편집된 순으로 정렬 (updatedAt이 있으면 updatedAt, 없으면 createdAt 기준)
+        return recipes.sorted { recipe1, recipe2 in
+            let date1 = recipe1.updatedAt ?? recipe1.createdAt
+            let date2 = recipe2.updatedAt ?? recipe2.createdAt
+            return date1 > date2
+        }
     }
 
 

@@ -31,11 +31,10 @@ extension UIImageView {
             return
         }
 
-        // 로컬 파일 경로인 경우
-        if urlString.hasPrefix("/") {
-            // 로컬 파일에서 이미지 로드
-            let url = URL(fileURLWithPath: urlString)
-            if let image = UIImage(contentsOfFile: url.path) {
+        // 로컬 파일 경로인 경우 (절대 경로 또는 상대 경로)
+        if urlString.hasPrefix("/") || urlString.hasPrefix("RecipeImages/") {
+            // ImagePathHelper를 사용하여 파일 존재 확인 및 로드
+            if let image = ImagePathHelper.shared.loadImage(at: urlString, fallback: placeholderImage) {
                 self.image = image
             } else {
                 self.image = placeholderImage

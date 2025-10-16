@@ -54,29 +54,29 @@ struct Recipe: RecipeDisplayable, Hashable {
 }
 
 extension Recipe {
-    // 사용자 수정 버전 생성
+    // 사용자 수정 버전 생성 (버전은 유지, 유저가 명시적으로 업데이트할 때만 증가)
     init(modifying original: Recipe, with changes: RecipeChanges) {
         self.id = UUID().uuidString
         self.baseId = original.baseId
         self.kind = .userModified
-        self.version = original.version + 1
-        
+        self.version = original.version // 버전 유지
+
         self.title = changes.title ?? original.title
         self.category = changes.category ?? original.category
         self.method = changes.method ?? original.method
         self.tags = changes.tags ?? original.tags
         self.tip = changes.tip ?? original.tip
-        
+
         self.images = changes.images ?? original.images
         self.nutrition = changes.nutrition ?? original.nutrition
         self.ingredients = changes.ingredients ?? original.ingredients
         self.steps = changes.steps ?? original.steps
-        
+
         self.isBookmarked = original.isBookmarked
         self.rating = original.rating
         self.cookCount = original.cookCount
         self.lastCookedAt = original.lastCookedAt
-        
+
         self.createdAt = Date()
         self.updatedAt = nil
     }
