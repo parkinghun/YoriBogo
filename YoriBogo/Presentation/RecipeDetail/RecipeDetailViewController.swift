@@ -783,30 +783,114 @@ final class RecipeDetailViewController: BaseViewController {
         }
     }
 
-    // MARK: - Edit Button
+    // MARK: - Menu Button
     private func setupEditButtonIfNeeded(recipe: Recipe) {
-        // 나의 레시피(userOriginal, userModified)일 때만 수정 버튼 표시
+        // 나의 레시피(userOriginal, userModified)일 때만 메뉴 버튼 표시
         guard recipe.kind == .userOriginal || recipe.kind == .userModified else {
             navigationItem.rightBarButtonItem = nil
             return
         }
 
-        let editButton = UIBarButtonItem(
-            title: "수정",
+        let menuButton = UIBarButtonItem(
+            image: UIImage(systemName: "ellipsis"),
             style: .plain,
-            target: self,
-            action: #selector(editButtonTapped)
+            target: nil,
+            action: nil
         )
-        navigationItem.rightBarButtonItem = editButton
+        menuButton.menu = createRecipeMenu()
+        navigationItem.rightBarButtonItem = menuButton
     }
 
-    @objc private func editButtonTapped() {
+    private func createRecipeMenu() -> UIMenu {
+        // 수정하기
+        let editAction = UIAction(
+            title: "수정하기",
+            image: UIImage(systemName: "pencil")
+        ) { [weak self] _ in
+            self?.handleEditRecipe()
+        }
+
+        // 삭제하기
+        let deleteAction = UIAction(
+            title: "삭제하기",
+            image: UIImage(systemName: "trash"),
+            attributes: .destructive
+        ) { [weak self] _ in
+            self?.handleDeleteRecipe()
+        }
+
+        // 공유하기 (준비중)
+        let shareAction = UIAction(
+            title: "공유하기",
+            image: UIImage(systemName: "square.and.arrow.up"),
+            attributes: .disabled
+        ) { _ in
+            // 다음에 구현
+        }
+
+        return UIMenu(children: [editAction, deleteAction, shareAction])
+    }
+
+    private func handleEditRecipe() {
         guard let recipe = currentRecipe else { return }
 
         let editVC = RecipeAddViewController(editingRecipe: recipe)
+
+        // 수정 완료 후 콜백 설정
+        editVC.onSaveCompleted = { [weak self] updatedRecipe in
+            guard let self = self else { return }
+
+            // currentRecipe 업데이트
+            self.currentRecipe = updatedRecipe
+
+            // ViewModel에 업데이트 알림 (북마크 상태 등 유지)
+            // RecipeDetailViewModel을 업데이트하거나 화면을 다시 로드할 수 있음
+        }
+
         let nav = BaseNavigationController(rootViewController: editVC)
         nav.modalPresentationStyle = .fullScreen
         present(nav, animated: true)
+    }
+
+    private func handleDeleteRecipe() {
+        guard let recipe = currentRecipe else { return }
+
+        let alert = UIAlertController(
+            title: "레시피 삭제",
+            message: "'\(recipe.title)'을(를) 삭제하시겠습니까?\n삭제된 레시피는 복구할 수 없습니다.",
+            preferredStyle: .alert
+        )
+
+        let deleteAction = UIAlertAction(title: "삭제", style: .destructive) { [weak self] _ in
+            self?.deleteRecipe(recipe)
+        }
+
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+
+        alert.addAction(deleteAction)
+        alert.addAction(cancelAction)
+
+        present(alert, animated: true)
+    }
+
+    private func deleteRecipe(_ recipe: Recipe) {
+        do {
+            try RecipeRealmManager.shared.deleteRecipe(by: recipe.id)
+
+            // 삭제 성공 시 이전 화면으로 돌아가기
+            DispatchQueue.main.async { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+        } catch {
+            // 삭제 실패 시 에러 알럿
+            let errorAlert = UIAlertController(
+                title: "삭제 실패",
+                message: "레시피 삭제에 실패했습니다.\n\(error.localizedDescription)",
+                preferredStyle: .alert
+            )
+            errorAlert.addAction(UIAlertAction(title: "확인", style: .default))
+            present(errorAlert, animated: true)
+        }
     }
 
     @objc private func makeMyRecipeButtonTapped() {
