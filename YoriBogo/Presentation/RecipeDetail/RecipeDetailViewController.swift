@@ -522,16 +522,39 @@ final class RecipeDetailViewController: BaseViewController {
 
         // 이미지가 없으면 플레이스홀더 표시
         guard !images.isEmpty else {
+            let placeholderContainer = UIView()
+            placeholderContainer.backgroundColor = .gray100
+
             let placeholderImageView = UIImageView()
-            placeholderImageView.image = UIImage(systemName: "photo")
+            placeholderImageView.image = UIImage(systemName: "photo.on.rectangle.angled")
             placeholderImageView.contentMode = .scaleAspectFit
             placeholderImageView.tintColor = .gray400
-            placeholderImageView.backgroundColor = .systemGray6
 
-            recipeImageScrollView.addSubview(placeholderImageView)
+            let placeholderLabel = UILabel()
+            placeholderLabel.text = "이미지가 없습니다"
+            placeholderLabel.font = .systemFont(ofSize: 16, weight: .medium)
+            placeholderLabel.textColor = .gray500
+            placeholderLabel.textAlignment = .center
+
+            placeholderContainer.addSubview(placeholderImageView)
+            placeholderContainer.addSubview(placeholderLabel)
+
             placeholderImageView.snp.makeConstraints {
+                $0.centerX.equalToSuperview()
+                $0.centerY.equalToSuperview().offset(-20)
+                $0.size.equalTo(80)
+            }
+
+            placeholderLabel.snp.makeConstraints {
+                $0.top.equalTo(placeholderImageView.snp.bottom).offset(16)
+                $0.centerX.equalToSuperview()
+            }
+
+            recipeImageScrollView.addSubview(placeholderContainer)
+            placeholderContainer.snp.makeConstraints {
                 $0.edges.equalToSuperview()
                 $0.width.equalTo(UIScreen.main.bounds.width)
+                $0.height.equalTo(300)
             }
 
             recipeImagePageControl.numberOfPages = 0
@@ -973,7 +996,15 @@ final class RecipeDetailViewController: BaseViewController {
 
             // 토스트 메시지 표시
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.view.makeToast("나의 레시피로 저장되었습니다", duration: 2.0, position: .bottom)
+                var style = ToastStyle()
+                style.backgroundColor = .brandOrange500
+                style.titleColor = .white
+                style.titleFont = .systemFont(ofSize: 16, weight: .medium)
+                style.horizontalPadding = 20
+                style.verticalPadding = 16
+                style.cornerRadius = 12
+
+                self.view.makeToast("나의 레시피로 저장되었습니다", duration: 2.0, position: .bottom, style: style)
             }
         }
 
