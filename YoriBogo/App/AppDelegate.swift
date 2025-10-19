@@ -15,6 +15,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     //TODO: - Remote Notification 추가
+    //TODO: - Local Notification 추가
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         IQKeyboardManager.shared.isEnabled = true
