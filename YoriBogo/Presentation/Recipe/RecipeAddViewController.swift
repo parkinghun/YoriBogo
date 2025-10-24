@@ -12,6 +12,9 @@ import RxCocoa
 
 final class RecipeAddViewController: BaseViewController {
 
+    // MARK: - ViewModel
+    private let viewModel: RecipeAddViewModel
+
     // MARK: - UI Components
     private let scrollView: UIScrollView = {
         let sv = UIScrollView()
@@ -63,7 +66,6 @@ final class RecipeAddViewController: BaseViewController {
         button.setTitle("+ 이미지 추가", for: .normal)
         button.setTitleColor(.brandOrange500, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        button.addTarget(self, action: #selector(addMainImageButtonTapped), for: .touchUpInside)
         return button
     }()
 
@@ -129,7 +131,7 @@ final class RecipeAddViewController: BaseViewController {
 
     lazy var categoryButton: UIButton = {
         let button = UIButton()
-        button.setTitle("한식", for: .normal)
+        button.setTitle("반찬", for: .normal)
         button.setTitleColor(.black, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16)
         button.contentHorizontalAlignment = .left
@@ -151,6 +153,8 @@ final class RecipeAddViewController: BaseViewController {
         button.showsMenuAsPrimaryAction = true
         return button
     }()
+
+    private let categorySelectedRelay = PublishRelay<RecipeCategory>()
 
     // 태그
     private let tagLabel: UILabel = {
@@ -182,6 +186,8 @@ final class RecipeAddViewController: BaseViewController {
         return view
     }()
 
+    private let tagRemovedRelay = PublishRelay<Int>()
+
     // 재료
     private let ingredientLabel: UILabel = {
         let label = UILabel()
@@ -196,7 +202,6 @@ final class RecipeAddViewController: BaseViewController {
         button.setTitle("+ 재료 추가", for: .normal)
         button.setTitleColor(.brandOrange500, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        button.addTarget(self, action: #selector(addIngredientTapped), for: .touchUpInside)
         return button
     }()
 
@@ -222,7 +227,6 @@ final class RecipeAddViewController: BaseViewController {
         button.setTitle("+ 단계 추가", for: .normal)
         button.setTitleColor(.brandOrange500, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
-        button.addTarget(self, action: #selector(addStepTapped), for: .touchUpInside)
         return button
     }()
 
@@ -260,33 +264,27 @@ final class RecipeAddViewController: BaseViewController {
     let imagePickerManager = ImagePickerManager()
 
     // 이미지 경로 저장 (메모리 최적화)
-    var mainImagePaths: [String] = [] // 임시 경로(temp_UUID) 또는 실제 경로
-    var stepImagePaths: [Int: [String]] = [:] // stepNumber: [임시 경로 또는 실제 경로]
+    var mainImagePaths: [String] = []
+    var stepImagePaths: [Int: [String]] = [:]
+
+    // Relays for ViewModel input (internal for extension access)
+    let mainImagesAddedRelay = PublishRelay<[UIImage]>()
+    let mainImageRemovedRelay = PublishRelay<Int>()
+    let stepImagesAddedRelay = PublishRelay<(stepNumber: Int, images: [UIImage])>()
+    let stepImageRemovedRelay = PublishRelay<(stepNumber: Int, index: Int)>()
 
     // 편집 모드
     var isEditMode: Bool = false
-    var isCreateFromApi: Bool = false // API 레시피로부터 나의 레시피 만들기
-    var editingRecipe: Recipe?
-    var originalRecipeSnapshot: Recipe?
-    var originalMainImagePaths: [String] = [] // 원본 메인 이미지 경로
-    var originalStepImagePaths: [Int: [String]] = [:] // 원본 단계별 이미지 경로
+    var isCreateFromApi: Bool = false
 
     // Completion handler
     var onSaveCompleted: ((Recipe) -> Void)?
-
-    // MARK: - Deinit
-    deinit {
-        // 화면 종료 시 임시 이미지 캐시 정리
-        ImageCacheHelper.shared.clearAllTempImages()
-        print("✅ RecipeAddViewController deinit - 임시 이미지 정리 완료")
-    }
 
     // MARK: - Initialization
     init(editingRecipe: Recipe? = nil, isCreateFromApi: Bool = false) {
         self.isEditMode = editingRecipe != nil
         self.isCreateFromApi = isCreateFromApi
-        self.editingRecipe = editingRecipe
-        self.originalRecipeSnapshot = editingRecipe
+        self.viewModel = RecipeAddViewModel(editingRecipe: editingRecipe, isCreateFromApi: isCreateFromApi)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -294,25 +292,25 @@ final class RecipeAddViewController: BaseViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    lazy var saveButton: UIBarButtonItem = {
+        let button = UIBarButtonItem(title: "저장", style: .done, target: nil, action: nil)
+        return button
+    }()
+
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupNavigation()
         setupUI()
         setupKeyboard()
+        bindViewModel()
 
-        if isEditMode {
-            loadRecipeData()
-        } else {
+        // 신규 추가 모드일 때 초기 재료와 단계 추가
+        if !isEditMode {
             addInitialIngredient()
             addInitialStep()
         }
     }
-
-    lazy var saveButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(title: "저장", style: .done, target: self, action: #selector(saveTapped))
-        return button
-    }()
 
     // MARK: - Setup
     private func setupNavigation() {
@@ -326,12 +324,6 @@ final class RecipeAddViewController: BaseViewController {
 
         navigationItem.leftBarButtonItem = cancelButton
         navigationItem.rightBarButtonItem = saveButton
-
-        // 편집 모드일 때는 초기에 저장 버튼 비활성화 (변경사항 없음)
-        // 단, API로부터 만들기일 때는 활성화
-        if isEditMode && !isCreateFromApi {
-            saveButton.isEnabled = false
-        }
     }
 
     private func setupUI() {
@@ -489,21 +481,193 @@ final class RecipeAddViewController: BaseViewController {
         view.addGestureRecognizer(tapGesture)
     }
 
+    // MARK: - Bind ViewModel
+    private func bindViewModel() {
+        // 재료 변경 감지
+        let ingredientsChanged = Observable<Void>.merge(
+            addIngredientButton.rx.tap.asObservable(),
+            NotificationCenter.default.rx.notification(Notification.Name("IngredientChanged")).map { _ in () }
+        )
+        .map { [weak self] _ -> [RecipeIngredient] in
+            return self?.collectIngredients() ?? []
+        }
+
+        // 단계 변경 감지
+        let stepsChanged = Observable<Void>.merge(
+            addStepButton.rx.tap.asObservable(),
+            NotificationCenter.default.rx.notification(Notification.Name("StepChanged")).map { _ in () }
+        )
+        .map { [weak self] _ -> [RecipeStep] in
+            return self?.collectSteps() ?? []
+        }
+
+        // Tag 텍스트 입력 (Return 키 눌렀을 때)
+        let tagText = tagTextField.rx.controlEvent(.editingDidEndOnExit)
+            .map { [weak self] _ in self?.tagTextField.text?.trimmingCharacters(in: .whitespaces) ?? "" }
+            .filter { !$0.isEmpty }
+            .do(onNext: { [weak self] _ in self?.tagTextField.text = "" })
+
+        // Tip 텍스트
+        let tipText = tipTextView.rx.text
+            .map { [weak self] text -> String? in
+                guard let self = self else { return nil }
+                if self.tipTextView.textColor == .gray400 || text?.isEmpty == true {
+                    return nil
+                }
+                return text
+            }
+
+        // Input 생성
+        let input = RecipeAddViewModel.Input(
+            viewDidLoad: Observable.just(()),
+            titleText: titleTextField.rx.text.asObservable(),
+            categorySelected: categorySelectedRelay.asObservable(),
+            tagText: tagText,
+            tagRemoved: tagRemovedRelay.asObservable(),
+            mainImagesAdded: mainImagesAddedRelay.asObservable(),
+            mainImageRemoved: mainImageRemovedRelay.asObservable(),
+            ingredientsChanged: ingredientsChanged,
+            stepsChanged: stepsChanged,
+            stepImagesAdded: stepImagesAddedRelay.asObservable(),
+            stepImageRemoved: stepImageRemovedRelay.asObservable(),
+            tipText: tipText,
+            saveTapped: saveButton.rx.tap.asObservable()
+        )
+
+        // Transform
+        let output = viewModel.transform(input: input)
+
+        // Output 바인딩
+        output.title
+            .drive(onNext: { [weak self] title in
+                print("📥 RecipeAddVC: Received title: '\(title ?? "nil")'")
+                self?.titleTextField.text = title
+            })
+            .disposed(by: disposeBag)
+
+        output.category
+            .drive(onNext: { [weak self] (category: RecipeCategory) in
+                print("📥 RecipeAddVC: Received category: \(category.displayName)")
+                self?.categoryButton.setTitle(category.displayName, for: .normal)
+            })
+            .disposed(by: disposeBag)
+
+        output.tags
+            .drive(onNext: { [weak self] (tags: [String]) in
+                print("📥 RecipeAddVC: Received tags: \(tags)")
+                self?.tags = tags
+                self?.updateTagChips()
+            })
+            .disposed(by: disposeBag)
+
+        output.mainImagePaths
+            .drive(onNext: { [weak self] (paths: [String]) in
+                self?.mainImagePaths = paths
+                self?.updateMainImageDisplay()
+            })
+            .disposed(by: disposeBag)
+
+        output.stepImagePaths
+            .drive(onNext: { [weak self] (paths: [Int: [String]]) in
+                self?.stepImagePaths = paths
+                // 모든 단계의 이미지 업데이트
+                paths.keys.forEach { stepNumber in
+                    self?.updateStepImagesDisplay(stepNumber: stepNumber)
+                }
+            })
+            .disposed(by: disposeBag)
+
+        output.ingredients
+            .drive(onNext: { [weak self] ingredients in
+                guard let self = self else { return }
+                print("📥 RecipeAddVC: Received ingredients count: \(ingredients.count)")
+                if !ingredients.isEmpty {
+                    print("✅ RecipeAddVC: Loading ingredients to UI")
+                    self.loadIngredients(ingredients)
+                } else {
+                    print("⚠️ RecipeAddVC: Ingredients is empty, skipping loadIngredients")
+                }
+            })
+            .disposed(by: disposeBag)
+
+        output.steps
+            .drive(onNext: { [weak self] steps in
+                guard let self = self else { return }
+                print("📥 RecipeAddVC: Received steps count: \(steps.count)")
+                if !steps.isEmpty {
+                    print("✅ RecipeAddVC: Loading steps to UI")
+                    self.loadSteps(steps)
+                } else {
+                    print("⚠️ RecipeAddVC: Steps is empty, skipping loadSteps")
+                }
+            })
+            .disposed(by: disposeBag)
+
+        output.tip
+            .drive(onNext: { [weak self] (tip: String?) in
+                if let tip = tip, !tip.isEmpty {
+                    self?.tipTextView.text = tip
+                    self?.tipTextView.textColor = .black
+                }
+            })
+            .disposed(by: disposeBag)
+
+        output.saveEnabled
+            .drive(saveButton.rx.isEnabled)
+            .disposed(by: disposeBag)
+
+        output.saveSuccess
+            .drive(onNext: { [weak self] recipe in
+                self?.onSaveCompleted?(recipe)
+            })
+            .disposed(by: disposeBag)
+
+        output.error
+            .drive(onNext: { [weak self] message in
+                self?.showAlert(message: message)
+            })
+            .disposed(by: disposeBag)
+
+        output.dismissView
+            .drive(onNext: { [weak self] (_: Void) in
+                self?.dismiss(animated: true)
+            })
+            .disposed(by: disposeBag)
+
+        // 메인 이미지 추가 버튼
+        addMainImageButton.rx.tap
+            .subscribe(onNext: { [weak self] in
+                self?.addMainImageButtonTapped()
+            })
+            .disposed(by: disposeBag)
+
+        // 재료 추가 버튼
+        addIngredientButton.rx.tap
+            .subscribe(onNext: { [weak self] in
+                self?.addIngredientTapped()
+            })
+            .disposed(by: disposeBag)
+
+        // 단계 추가 버튼
+        addStepButton.rx.tap
+            .subscribe(onNext: { [weak self] in
+                self?.addStepTapped()
+            })
+            .disposed(by: disposeBag)
+    }
+
     // MARK: - Category Menu
     private func createCategoryMenu() -> UIMenu {
         let categories = RecipeCategory.allCases.map { $0.displayName }
         let actions = categories.map { categoryName in
             UIAction(title: categoryName) { [weak self] _ in
                 self?.categoryButton.setTitle(categoryName, for: .normal)
-                self?.checkForChanges()
+                let category = RecipeCategory(rawValue: categoryName)
+                self?.categorySelectedRelay.accept(category)
             }
         }
         return UIMenu(children: actions)
     }
-
-
-
-
 
     // MARK: - Actions
     @objc private func dismissKeyboard() {
@@ -514,124 +678,17 @@ final class RecipeAddViewController: BaseViewController {
         dismiss(animated: true)
     }
 
-    @objc private func saveTapped() {
-        // 레시피 이름 검증
-        guard let title = titleTextField.text?.trimmingCharacters(in: .whitespaces),
-              !title.isEmpty else {
-            showAlert(message: "레시피 이름을 입력해주세요")
-            return
-        }
-
-        // 재료 수집
-        let ingredients = collectIngredients()
-        guard !ingredients.isEmpty else {
-            showAlert(message: "재료를 최소 1개 이상 입력해주세요")
-            return
-        }
-
-        // 요리 단계 수집
-        let steps = collectSteps()
-        guard !steps.isEmpty else {
-            showAlert(message: "요리 단계를 최소 1개 이상 입력해주세요")
-            return
-        }
-
-        // 카테고리 가져오기
-        let categoryText = categoryButton.titleLabel?.text ?? "한식"
-        let category = RecipeCategory(rawValue: categoryText)
-
-        // 팁 가져오기
-        let tip: String? = (tipTextView.textColor == .gray400 || tipTextView.text.isEmpty) ? nil : tipTextView.text
-
-        // 메인 이미지 저장
-        let mainRecipeImages = saveMainImagesToLocal()
-
-        // Recipe 객체 생성
-        let recipe: Recipe
-        if isEditMode, let existingRecipe = editingRecipe {
-            // 편집 모드: 기존 레시피 정보 유지 (버전은 유지)
-            recipe = Recipe(
-                id: existingRecipe.id,
-                baseId: existingRecipe.baseId,
-                kind: existingRecipe.kind == .userOriginal ? .userOriginal : .userModified,
-                version: existingRecipe.version, // 버전 유지
-                title: title,
-                category: category,
-                method: existingRecipe.method,
-                tags: tags,
-                tip: tip,
-                images: mainRecipeImages,
-                nutrition: existingRecipe.nutrition,
-                ingredients: ingredients,
-                steps: steps,
-                isBookmarked: existingRecipe.isBookmarked,
-                rating: existingRecipe.rating,
-                cookCount: existingRecipe.cookCount,
-                lastCookedAt: existingRecipe.lastCookedAt,
-                createdAt: existingRecipe.createdAt,
-                updatedAt: Date()
-            )
-        } else {
-            // 신규 추가 모드
-            recipe = Recipe(
-                id: UUID().uuidString,
-                baseId: UUID().uuidString,
-                kind: .userOriginal,
-                version: 1,
-                title: title,
-                category: category,
-                method: nil,
-                tags: tags,
-                tip: tip,
-                images: mainRecipeImages,
-                nutrition: nil,
-                ingredients: ingredients,
-                steps: steps,
-                isBookmarked: false,
-                rating: nil,
-                cookCount: 0,
-                lastCookedAt: nil,
-                createdAt: Date(),
-                updatedAt: nil
-            )
-        }
-
-        // Realm에 저장
-        do {
-            try RecipeRealmManager.shared.updateRecipe(recipe)
-
-            // Completion handler 호출
-            onSaveCompleted?(recipe)
-
-            dismiss(animated: true)
-        } catch {
-            showAlert(message: "레시피 저장에 실패했습니다: \(error.localizedDescription)")
-        }
-    }
-
-
-
-
     func showAlert(message: String) {
         let alert = UIAlertController(title: "알림", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default))
         present(alert, animated: true)
     }
-
-
-
-
 }
 
 // MARK: - UITextFieldDelegate
 extension RecipeAddViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        if textField == tagTextField {
-            if let text = textField.text?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
-                addTagChip(text)
-                textField.text = ""
-            }
-        }
+        textField.resignFirstResponder()
         return true
     }
 }
@@ -650,10 +707,6 @@ extension RecipeAddViewController: UITextViewDelegate {
             textView.text = "맛있게 만드는 비법을 알려주세요"
             textView.textColor = .gray400
         }
-    }
-
-    func textViewDidChange(_ textView: UITextView) {
-        checkForChanges()
     }
 }
 

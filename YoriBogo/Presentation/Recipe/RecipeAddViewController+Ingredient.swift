@@ -27,7 +27,7 @@ extension RecipeAddViewController {
         nameTextField.layer.cornerRadius = 12
         nameTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 0))
         nameTextField.leftViewMode = .always
-        nameTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        nameTextField.addTarget(self, action: #selector(ingredientTextFieldDidChange), for: .editingChanged)
 
         let qtyTextField = UITextField()
         qtyTextField.placeholder = "1"
@@ -37,7 +37,7 @@ extension RecipeAddViewController {
         qtyTextField.layer.cornerRadius = 12
         qtyTextField.textAlignment = .center
         qtyTextField.keyboardType = .decimalPad
-        qtyTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        qtyTextField.addTarget(self, action: #selector(ingredientTextFieldDidChange), for: .editingChanged)
 
         let unitTextField = UITextField()
         unitTextField.placeholder = "개"
@@ -46,7 +46,7 @@ extension RecipeAddViewController {
         unitTextField.backgroundColor = .gray50
         unitTextField.layer.cornerRadius = 12
         unitTextField.textAlignment = .center
-        unitTextField.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        unitTextField.addTarget(self, action: #selector(ingredientTextFieldDidChange), for: .editingChanged)
 
         containerView.addSubview(nameTextField)
         containerView.addSubview(qtyTextField)
@@ -75,7 +75,13 @@ extension RecipeAddViewController {
     @objc func addIngredientTapped() {
         let ingredientView = createIngredientView()
         ingredientsStackView.addArrangedSubview(ingredientView)
-        checkForChanges()
+        // 재료 추가 이벤트를 NotificationCenter로 알림
+        NotificationCenter.default.post(name: Notification.Name("IngredientChanged"), object: nil)
+    }
+
+    @objc func ingredientTextFieldDidChange() {
+        // 재료 변경 이벤트를 NotificationCenter로 알림
+        NotificationCenter.default.post(name: Notification.Name("IngredientChanged"), object: nil)
     }
 
     func collectIngredients() -> [RecipeIngredient] {

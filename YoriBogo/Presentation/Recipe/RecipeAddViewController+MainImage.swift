@@ -28,12 +28,8 @@ extension RecipeAddViewController {
     }
 
     func addMainImages(_ images: [UIImage]) {
-        // 이미지를 임시 캐시에 저장하고 경로만 보관
-        let tempPaths = images.map { ImageCacheHelper.shared.cacheTempImage($0) }
-        mainImagePaths.append(contentsOf: tempPaths)
-
-        updateMainImageDisplay()
-        checkForChanges()
+        // ViewModel에게 이미지 추가 알림
+        mainImagesAddedRelay.accept(images)
     }
 
     func updateMainImageDisplay() {
@@ -103,14 +99,7 @@ extension RecipeAddViewController {
         let index = sender.tag
         guard index < mainImagePaths.count else { return }
 
-        // 임시 캐시에서 이미지 삭제
-        let pathToRemove = mainImagePaths[index]
-        if ImageCacheHelper.shared.isTempPath(pathToRemove) {
-            ImageCacheHelper.shared.removeTempImage(at: pathToRemove)
-        }
-
-        mainImagePaths.remove(at: index)
-        updateMainImageDisplay()
-        checkForChanges()
+        // ViewModel에게 이미지 삭제 알림
+        mainImageRemovedRelay.accept(index)
     }
 }

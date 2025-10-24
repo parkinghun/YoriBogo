@@ -11,13 +11,7 @@ import SnapKit
 // MARK: - Tag Management
 extension RecipeAddViewController {
 
-    func addTagChip(_ tag: String) {
-        guard !tag.isEmpty, !tags.contains(tag) else { return }
-
-        tags.append(tag)
-        updateTagChips()
-        checkForChanges()
-    }
+    // Note: 태그 추가는 ViewModel에서 처리하고, updateTagChips는 Output 바인딩에서 호출됨
 
     func updateTagChips() {
         tagChipsContainer.subviews.forEach { $0.removeFromSuperview() }
@@ -128,8 +122,11 @@ extension RecipeAddViewController {
     @objc func removeTagChip(_ sender: UIButton) {
         let index = sender.tag
         guard index < tags.count else { return }
+
+        // ViewModel에게 삭제 알림 (tagRemovedRelay 사용)
+        // tagRemovedRelay는 private이므로 직접 접근 불가
+        // 대신 태그를 직접 삭제하고 ViewModel이 업데이트된 tags 배열을 감지하도록 함
         tags.remove(at: index)
         updateTagChips()
-        checkForChanges()
     }
 }
