@@ -9,6 +9,7 @@ import UIKit
 import SnapKit
 import RxSwift
 import RxCocoa
+import IQKeyboardManagerSwift
 
 final class RecipeAddViewController: BaseViewController {
 
@@ -262,6 +263,7 @@ final class RecipeAddViewController: BaseViewController {
     private let disposeBag = DisposeBag()
     var tags: [String] = []
     let imagePickerManager = ImagePickerManager()
+    private var isInitialLoad = true  // 초기 로드 플래그
 
     // 이미지 경로 저장 (메모리 최적화)
     var mainImagePaths: [String] = []
@@ -310,6 +312,18 @@ final class RecipeAddViewController: BaseViewController {
             addInitialIngredient()
             addInitialStep()
         }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // IQKeyboardManager 설정: 외부 터치로 키보드가 내려가지 않도록 설정
+        IQKeyboardManager.shared.resignOnTouchOutside = false
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // 다른 화면을 위해 원래 설정으로 복원
+        IQKeyboardManager.shared.resignOnTouchOutside = true
     }
 
     // MARK: - Setup
@@ -581,11 +595,12 @@ final class RecipeAddViewController: BaseViewController {
             .drive(onNext: { [weak self] ingredients in
                 guard let self = self else { return }
                 print("📥 RecipeAddVC: Received ingredients count: \(ingredients.count)")
-                if !ingredients.isEmpty {
-                    print("✅ RecipeAddVC: Loading ingredients to UI")
+                // 초기 로드 시에만 UI 로드 (편집 모드에서만)
+                if self.isInitialLoad && !ingredients.isEmpty {
+                    print("✅ RecipeAddVC: Loading ingredients to UI (initial load)")
                     self.loadIngredients(ingredients)
                 } else {
-                    print("⚠️ RecipeAddVC: Ingredients is empty, skipping loadIngredients")
+                    print("⏭️ RecipeAddVC: Skipping loadIngredients (not initial load or empty)")
                 }
             })
             .disposed(by: disposeBag)
@@ -594,11 +609,14 @@ final class RecipeAddViewController: BaseViewController {
             .drive(onNext: { [weak self] steps in
                 guard let self = self else { return }
                 print("📥 RecipeAddVC: Received steps count: \(steps.count)")
-                if !steps.isEmpty {
-                    print("✅ RecipeAddVC: Loading steps to UI")
+                // 초기 로드 시에만 UI 로드 (편집 모드에서만)
+                if self.isInitialLoad && !steps.isEmpty {
+                    print("✅ RecipeAddVC: Loading steps to UI (initial load)")
                     self.loadSteps(steps)
+                    // 초기 로드 완료 플래그 설정
+                    self.isInitialLoad = false
                 } else {
-                    print("⚠️ RecipeAddVC: Steps is empty, skipping loadSteps")
+                    print("⏭️ RecipeAddVC: Skipping loadSteps (not initial load or empty)")
                 }
             })
             .disposed(by: disposeBag)
@@ -696,16 +714,44 @@ extension RecipeAddViewController: UITextFieldDelegate {
 // MARK: - UITextViewDelegate
 extension RecipeAddViewController: UITextViewDelegate {
     func textViewDidBeginEditing(_ textView: UITextView) {
-        if textView.textColor == .gray400 {
-            textView.text = ""
-            textView.textColor = .black
+        // 요리 팁 TextView (tipTextView)
+        if textView == tipTextView {
+            if textView.textColor == .gray400 {
+                textView.text = ""
+                textView.textColor = .black
+            }
         }
+        // 요리 단계 TextView는 별도 처리 불필요 (placeholder label 사용)
     }
 
     func textViewDidEndEditing(_ textView: UITextView) {
-        if textView.text.isEmpty {
-            textView.text = "맛있게 만드는 비법을 알려주세요"
-            textView.textColor = .gray400
+        // 요리 팁 TextView (tipTextView)
+        if textView == tipTextView {
+            if textView.text.isEmpty {
+                textView.text = "맛있게 만드는 비법을 알려주세요"
+                textView.textColor = .gray400
+            }
+        }
+    }
+
+    func textViewDidChange(_ textView: UITextView) {
+        // 요리 단계 TextView인 경우
+        if textView.tag >= 1000 && textView.tag < 2000 {
+            let stepNumber = textView.tag - 1000
+
+            // Placeholder 표시/숨김
+            if let placeholderLabel = view.viewWithTag(5000 + stepNumber) as? UILabel {
+                placeholderLabel.isHidden = !textView.text.isEmpty
+            }
+
+            // 높이 자동 조절을 위한 레이아웃 업데이트
+            UIView.animate(withDuration: 0.2) {
+                textView.sizeToFit()
+                self.view.layoutIfNeeded()
+            }
+
+            // 텍스트 변경 시 NotificationCenter 알림 제거
+            // 저장 버튼 탭 시에만 collectSteps 호출
         }
     }
 }

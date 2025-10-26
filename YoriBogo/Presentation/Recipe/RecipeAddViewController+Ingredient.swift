@@ -27,6 +27,8 @@ extension RecipeAddViewController {
         nameTextField.layer.cornerRadius = 12
         nameTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 0))
         nameTextField.leftViewMode = .always
+        nameTextField.returnKeyType = .done
+        nameTextField.delegate = self
         nameTextField.addTarget(self, action: #selector(ingredientTextFieldDidChange), for: .editingChanged)
 
         let qtyTextField = UITextField()
@@ -37,6 +39,8 @@ extension RecipeAddViewController {
         qtyTextField.layer.cornerRadius = 12
         qtyTextField.textAlignment = .center
         qtyTextField.keyboardType = .decimalPad
+        qtyTextField.returnKeyType = .done
+        qtyTextField.delegate = self
         qtyTextField.addTarget(self, action: #selector(ingredientTextFieldDidChange), for: .editingChanged)
 
         let unitTextField = UITextField()
@@ -46,6 +50,8 @@ extension RecipeAddViewController {
         unitTextField.backgroundColor = .gray50
         unitTextField.layer.cornerRadius = 12
         unitTextField.textAlignment = .center
+        unitTextField.returnKeyType = .done
+        unitTextField.delegate = self
         unitTextField.addTarget(self, action: #selector(ingredientTextFieldDidChange), for: .editingChanged)
 
         containerView.addSubview(nameTextField)
@@ -75,13 +81,13 @@ extension RecipeAddViewController {
     @objc func addIngredientTapped() {
         let ingredientView = createIngredientView()
         ingredientsStackView.addArrangedSubview(ingredientView)
-        // 재료 추가 이벤트를 NotificationCenter로 알림
+        // 재료 추가 이벤트는 버튼 탭으로만 알림 (텍스트 변경은 제외)
         NotificationCenter.default.post(name: Notification.Name("IngredientChanged"), object: nil)
     }
 
     @objc func ingredientTextFieldDidChange() {
-        // 재료 변경 이벤트를 NotificationCenter로 알림
-        NotificationCenter.default.post(name: Notification.Name("IngredientChanged"), object: nil)
+        // 텍스트 변경 시 NotificationCenter 알림 제거
+        // 저장 버튼 탭 시에만 collectIngredients 호출
     }
 
     func collectIngredients() -> [RecipeIngredient] {

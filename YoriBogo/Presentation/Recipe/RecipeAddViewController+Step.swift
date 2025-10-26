@@ -32,12 +32,22 @@ extension RecipeAddViewController {
         numberLabel.layer.cornerRadius = 20
         numberLabel.clipsToBounds = true
 
-        let stepTextField = UITextField()
-        stepTextField.placeholder = "요리 단계를 입력하세요"
-        stepTextField.font = .systemFont(ofSize: 16)
-        stepTextField.borderStyle = .none
-        stepTextField.tag = 1000 + stepNumber
-        stepTextField.addTarget(self, action: #selector(stepTextFieldDidChange), for: .editingChanged)
+        let stepTextView = UITextView()
+        stepTextView.text = ""
+        stepTextView.font = .systemFont(ofSize: 16)
+        stepTextView.backgroundColor = .clear
+        stepTextView.isScrollEnabled = false
+        stepTextView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
+        stepTextView.textContainer.lineFragmentPadding = 0
+        stepTextView.tag = 1000 + stepNumber
+        stepTextView.delegate = self
+
+        // Placeholder 설정을 위한 레이블
+        let placeholderLabel = UILabel()
+        placeholderLabel.text = "요리 단계를 입력하세요"
+        placeholderLabel.font = .systemFont(ofSize: 16)
+        placeholderLabel.textColor = .placeholderText
+        placeholderLabel.tag = 5000 + stepNumber
 
         let imageScrollView = UIScrollView()
         imageScrollView.showsHorizontalScrollIndicator = false
@@ -97,7 +107,8 @@ extension RecipeAddViewController {
         }
 
         containerView.addSubview(numberLabel)
-        containerView.addSubview(stepTextField)
+        containerView.addSubview(stepTextView)
+        containerView.addSubview(placeholderLabel)
         containerView.addSubview(imageScrollView)
 
         numberLabel.snp.makeConstraints {
@@ -105,16 +116,22 @@ extension RecipeAddViewController {
             $0.size.equalTo(40)
         }
 
-        stepTextField.snp.makeConstraints {
+        stepTextView.snp.makeConstraints {
             $0.top.equalToSuperview().offset(16)
             $0.leading.equalTo(numberLabel.snp.trailing).offset(16)
             $0.trailing.equalToSuperview().inset(16)
-            $0.height.equalTo(40)
+            $0.height.greaterThanOrEqualTo(40)
+        }
+
+        placeholderLabel.snp.makeConstraints {
+            $0.top.equalTo(stepTextView).offset(8)
+            $0.leading.equalTo(stepTextView)
+            $0.trailing.equalTo(stepTextView)
         }
 
         imageScrollView.snp.makeConstraints {
-            $0.top.equalTo(stepTextField.snp.bottom).offset(16)
-            $0.leading.equalTo(stepTextField)
+            $0.top.equalTo(stepTextView.snp.bottom).offset(16)
+            $0.leading.equalTo(stepTextView)
             $0.trailing.equalToSuperview().inset(16)
             $0.bottom.equalToSuperview().inset(16)
             $0.height.equalTo(100)
@@ -225,19 +242,14 @@ extension RecipeAddViewController {
         NotificationCenter.default.post(name: Notification.Name("StepChanged"), object: nil)
     }
 
-    @objc func stepTextFieldDidChange() {
-        // 단계 변경 이벤트를 NotificationCenter로 알림
-        NotificationCenter.default.post(name: Notification.Name("StepChanged"), object: nil)
-    }
-
     func collectSteps() -> [RecipeStep] {
         var steps: [RecipeStep] = []
 
         for (index, view) in stepsStackView.arrangedSubviews.enumerated() {
             let stepNumber = index + 1
 
-            guard let stepTextField = view.viewWithTag(1000 + stepNumber) as? UITextField,
-                  let text = stepTextField.text?.trimmingCharacters(in: .whitespaces),
+            guard let stepTextView = view.viewWithTag(1000 + stepNumber) as? UITextView,
+                  let text = stepTextView.text?.trimmingCharacters(in: .whitespaces),
                   !text.isEmpty else {
                 continue
             }
@@ -267,8 +279,12 @@ extension RecipeAddViewController {
             let stepView = createStepView(stepNumber: stepNumber)
             stepsStackView.addArrangedSubview(stepView)
 
-            if let stepTextField = stepView.viewWithTag(1000 + stepNumber) as? UITextField {
-                stepTextField.text = step.text
+            if let stepTextView = stepView.viewWithTag(1000 + stepNumber) as? UITextView {
+                stepTextView.text = step.text
+                // Placeholder 숨기기
+                if let placeholderLabel = stepView.viewWithTag(5000 + stepNumber) as? UILabel {
+                    placeholderLabel.isHidden = !step.text.isEmpty
+                }
             }
         }
 
