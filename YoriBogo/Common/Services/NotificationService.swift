@@ -34,8 +34,14 @@ final class NotificationService {
 
                 if granted {
                     print("✅ NotificationService: 알림 권한 허용됨")
+                    // Analytics 로깅: 권한 허용
+                    AnalyticsService.shared.logPushPermissionGranted()
+                    AnalyticsService.shared.setUserProperty(key: "push_permission", value: "granted")
                 } else {
                     print("⚠️ NotificationService: 알림 권한 거부됨")
+                    // Analytics 로깅: 권한 거부
+                    AnalyticsService.shared.logPushPermissionDenied()
+                    AnalyticsService.shared.setUserProperty(key: "push_permission", value: "denied")
                 }
 
                 completion?(granted)
@@ -157,6 +163,12 @@ final class NotificationService {
         }
 
         print("🧪 [TEST] 테스트 알림 3개 스케줄링 완료\n")
+
+        // Analytics 로깅: 테스트 알림 스케줄 등록
+        AnalyticsService.shared.logNotificationScheduled(
+            notificationType: "test",
+            count: testNotifications.count
+        )
     }
 
     /// 테스트 알림 모두 삭제
@@ -309,6 +321,16 @@ extension NotificationService {
 
         group.notify(queue: .main) {
             print("✅ NotificationService: 알림 스케줄링 완료 [\(ingredient.name)] - \(successCount)개 등록\n")
+
+            // Analytics 로깅: 알림 스케줄 등록
+            if successCount > 0 {
+                AnalyticsService.shared.logNotificationScheduled(
+                    notificationType: "expiry",
+                    count: successCount,
+                    ingredientName: ingredient.name
+                )
+            }
+
             completion?(successCount)
         }
     }

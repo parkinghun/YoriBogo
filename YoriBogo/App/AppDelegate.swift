@@ -10,6 +10,7 @@ import IQKeyboardManagerSwift
 import RealmSwift
 import FirebaseCore
 import FirebaseMessaging
+import FirebaseAnalytics
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -20,8 +21,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         IQKeyboardManager.shared.isEnabled = true
 
         configureRealm()
-        FirebaseApp.configure()
         configurePushNotifications(application)
+
+        FirebaseApp.configure()
+        // 기본 이벤트 자동 수집 활성화
+        Analytics.setAnalyticsCollectionEnabled(true)
+
+        // 앱 실행 이벤트 로깅
+        AnalyticsService.shared.logAppOpen()
 
         return true
     }
@@ -117,7 +124,16 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // 앱이 실행 중이어도 알림 배너, 소리, 배지 표시
         completionHandler([.banner, .list, .sound, .badge])
 
-        print("📬 Foreground 알림 수신: \(notification.request.content.title)")
+        let title = notification.request.content.title
+        let identifier = notification.request.identifier
+        print("📬 Foreground 알림 수신: \(title)")
+
+        // Analytics 로깅: 알림 실제 발송
+        let notificationType = identifier.hasPrefix("expiry_") ? "expiry" : (identifier.hasPrefix("test_") ? "test" : "push")
+        AnalyticsService.shared.logNotificationTriggered(
+            notificationTitle: title,
+            notificationType: notificationType
+        )
     }
 
     /// 사용자가 알림을 탭했을 때 호출
@@ -128,6 +144,13 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) {
         let identifier = response.notification.request.identifier
         print("🔔 알림 탭됨: \(identifier)")
+
+        // Analytics 로깅: 알림 클릭
+        let notificationType = identifier.hasPrefix("expiry_") ? "expiry" : (identifier.hasPrefix("test_") ? "test" : "push")
+        AnalyticsService.shared.logNotificationClicked(
+            notificationId: identifier,
+            notificationType: notificationType
+        )
 
         // 뱃지 초기화
         NotificationService.shared.clearBadge()
@@ -181,6 +204,9 @@ extension AppDelegate: MessagingDelegate {
             print("📲 FCM Token:")
             print(token)
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+            // Analytics 로깅: FCM 토큰 수신
+            AnalyticsService.shared.logFCMTokenReceived(tokenLength: token.count)
 
             // TODO: 서버에 FCM 토큰 전송
             // 예: APIService.shared.registerFCMToken(token)

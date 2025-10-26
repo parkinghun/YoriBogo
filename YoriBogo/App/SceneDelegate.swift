@@ -49,6 +49,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // 앱이 활성화될 때 뱃지 초기화
         NotificationService.shared.clearBadge()
 
+        // 앱 포커스 변경 이벤트 로깅 (활성화)
+        AnalyticsService.shared.logAppFocusChanged(isFocused: true)
+
         // FCM 토큰 출력 (디버그용)
         #if DEBUG
         NotificationService.shared.printFCMToken()
@@ -58,6 +61,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillResignActive(_ scene: UIScene) {
         // Called when the scene will move from an active state to an inactive state.
         // This may occur due to temporary interruptions (ex. an incoming phone call).
+
+        // 앱 포커스 변경 이벤트 로깅 (비활성화)
+        AnalyticsService.shared.logAppFocusChanged(isFocused: false)
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {

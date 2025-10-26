@@ -94,17 +94,17 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
         viewDidLoadRelay.accept(())
 
         // ⚠️ 테스트용 알림 (개발 중에만 사용, 배포 전 제거 필요)
-        scheduleTestNotificationsIfNeeded()
+//        scheduleTestNotificationsIfNeeded()
     }
 
     /// 테스트용 알림 스케줄링 (개발/테스트 전용)
     /// - 5초, 10초, 15초 후에 각각 D-3, D-1, D-Day 알림 발송
     /// - 배포 전 반드시 제거하거나 주석 처리할 것
-    private func scheduleTestNotificationsIfNeeded() {
-        #if DEBUG
-        NotificationService.shared.scheduleTestNotifications()
-        #endif
-    }
+//    private func scheduleTestNotificationsIfNeeded() {
+//        #if DEBUG
+//        NotificationService.shared.scheduleTestNotifications()
+//        #endif
+//    }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)

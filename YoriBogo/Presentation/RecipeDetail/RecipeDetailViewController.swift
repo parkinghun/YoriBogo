@@ -401,10 +401,17 @@ final class RecipeDetailViewController: BaseViewController {
 
         // 레시피 정보
         output.recipe
-            .drive(with: self) { owner, recipe in
+            .drive(with: self) { (owner: RecipeDetailViewController, recipe: Recipe) in
                 owner.navigationItem.title = recipe.title
                 owner.recipeTitleLabel.text = recipe.title
                 owner.currentRecipe = recipe
+
+                // Analytics 로깅: 레시피 열람
+                AnalyticsService.shared.logRecipeViewed(
+                    recipeId: recipe.id,
+                    recipeName: recipe.title,
+                    category: recipe.category?.displayName
+                )
 
                 // 이미지
                 owner.configureMainImages(images: recipe.images)
@@ -469,8 +476,27 @@ final class RecipeDetailViewController: BaseViewController {
 
         // 북마크 상태
         output.isBookmarked
-            .drive(with: self) { owner, isBookmarked in
+            .distinctUntilChanged()
+            .skip(1) // 초기 로드 시 이벤트는 스킵
+            .drive(with: self) { (owner: RecipeDetailViewController, isBookmarked: Bool) in
                 owner.bookmarkButton.setBookmarked(isBookmarked)
+
+                // Analytics 로깅: 즐겨찾기 등록/해제
+                if let recipe = owner.currentRecipe {
+                    if isBookmarked {
+                        AnalyticsService.shared.logRecipeFavorited(
+                            recipeId: recipe.id,
+                            recipeName: recipe.title,
+                            category: recipe.category?.displayName
+                        )
+                    } else {
+                        AnalyticsService.shared.logRecipeUnfavorited(
+                            recipeId: recipe.id,
+                            recipeName: recipe.title,
+                            category: recipe.category?.displayName
+                        )
+                    }
+                }
             }
             .disposed(by: disposeBag)
     }
