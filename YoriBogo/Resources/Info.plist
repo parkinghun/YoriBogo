@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>레시피 사진을 촬영하기 위해 카메라 접근이 필요합니다.</string>
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
 	<key>SecretKey</key>
 	<string>$(RecipeKey)</string>
 	<key>UIAppFonts</key>
@@ -37,5 +33,9 @@
 			</array>
 		</dict>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
