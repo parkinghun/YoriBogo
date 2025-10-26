@@ -48,6 +48,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         // 앱이 활성화될 때 뱃지 초기화
         NotificationService.shared.clearBadge()
+
+        // FCM 토큰 출력 (디버그용)
+        #if DEBUG
+        NotificationService.shared.printFCMToken()
+        #endif
     }
 
     func sceneWillResignActive(_ scene: UIScene) {

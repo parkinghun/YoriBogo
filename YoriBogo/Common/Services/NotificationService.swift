@@ -7,6 +7,7 @@
 
 import Foundation
 import UserNotifications
+import FirebaseMessaging
 
 /// 소비기한 알림을 관리하는 서비스
 final class NotificationService {
@@ -176,6 +177,54 @@ final class NotificationService {
                 } else {
                     print("✅ NotificationService: 뱃지 초기화 완료")
                 }
+            }
+        }
+    }
+
+    // MARK: - FCM Token 관리
+
+    /// 현재 FCM 토큰 가져오기
+    func getFCMToken(completion: @escaping (String?) -> Void) {
+        Messaging.messaging().token { token, error in
+            if let error = error {
+                print("❌ NotificationService: FCM 토큰 가져오기 실패 - \(error.localizedDescription)")
+                completion(nil)
+            } else if let token = token {
+                print("✅ NotificationService: FCM 토큰 가져오기 성공")
+                completion(token)
+            } else {
+                print("⚠️ NotificationService: FCM 토큰이 없습니다")
+                completion(nil)
+            }
+        }
+    }
+
+    /// FCM 토큰 출력 (디버그용)
+    func printFCMToken() {
+        getFCMToken { token in
+            print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print("🔥 현재 FCM Token")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            if let token = token {
+                print("📲 Token:")
+                print(token)
+            } else {
+                print("⚠️ Token을 가져올 수 없습니다")
+            }
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+        }
+    }
+
+    /// FCM 토큰 삭제 (로그아웃 시 사용)
+    func deleteFCMToken(completion: ((Error?) -> Void)? = nil) {
+        Messaging.messaging().deleteToken { error in
+            if let error = error {
+                print("❌ NotificationService: FCM 토큰 삭제 실패 - \(error.localizedDescription)")
+                completion?(error)
+            } else {
+                print("✅ NotificationService: FCM 토큰 삭제 완료")
+                UserDefaults.standard.removeObject(forKey: "fcmToken")
+                completion?(nil)
             }
         }
     }

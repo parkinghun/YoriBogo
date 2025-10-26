@@ -10,6 +10,7 @@
 		B51753FB2E92890900422EAE /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B51753FA2E92890900422EAE /* FirebaseAnalyticsCore */; };
 		B51753FD2E92890900422EAE /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = B51753FC2E92890900422EAE /* FirebaseCrashlytics */; };
 		B537C2E92EA0039A006D23FB /* Toast in Frameworks */ = {isa = PBXBuildFile; productRef = B537C2E82EA0039A006D23FB /* Toast */; };
+		B537C6682EAE4DB7006D23FB /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = B537C6672EAE4DB7006D23FB /* FirebaseMessaging */; };
 		B574AB132E89CB3A00D8AA58 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = B574AB122E89CB3A00D8AA58 /* .gitignore */; };
 		B574AB2E2E89CF9500D8AA58 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB2D2E89CF9500D8AA58 /* RealmSwift */; };
 		B574AB312E89D05500D8AA58 /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB302E89D05500D8AA58 /* SnapKit */; };
@@ -75,6 +76,7 @@
 				B51753FD2E92890900422EAE /* FirebaseCrashlytics in Frameworks */,
 				B574AB312E89D05500D8AA58 /* SnapKit in Frameworks */,
 				B537C2E92EA0039A006D23FB /* Toast in Frameworks */,
+				B537C6682EAE4DB7006D23FB /* FirebaseMessaging in Frameworks */,
 				B51753FB2E92890900422EAE /* FirebaseAnalyticsCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -131,6 +133,7 @@
 				B51753FA2E92890900422EAE /* FirebaseAnalyticsCore */,
 				B51753FC2E92890900422EAE /* FirebaseCrashlytics */,
 				B537C2E82EA0039A006D23FB /* Toast */,
+				B537C6672EAE4DB7006D23FB /* FirebaseMessaging */,
 			);
 			productName = YoriBogo;
 			productReference = B574A9412E89BBC400D8AA58 /* YoriBogo.app */;
@@ -534,6 +537,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B537C2E72EA0039A006D23FB /* XCRemoteSwiftPackageReference "Toast-Swift" */;
 			productName = Toast;
+		};
+		B537C6672EAE4DB7006D23FB /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B51753F92E92890900422EAE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 		B574AB2D2E89CF9500D8AA58 /* RealmSwift */ = {
 			isa = XCSwiftPackageProductDependency;

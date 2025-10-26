@@ -9,6 +9,7 @@ import UIKit
 import IQKeyboardManagerSwift
 import RealmSwift
 import FirebaseCore
+import FirebaseMessaging
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -20,23 +21,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         configureRealm()
         FirebaseApp.configure()
-        requestAuthorizationNotification()
+        configurePushNotifications(application)
 
         return true
     }
 
-    private func requestAuthorizationNotification() {
+    // MARK: - Push Notifications Configuration
+
+    private func configurePushNotifications(_ application: UIApplication) {
         // UNUserNotificationCenterDelegate 설정
         UNUserNotificationCenter.current().delegate = self
+
+        // FCM Delegate 설정
+        Messaging.messaging().delegate = self
 
         // NotificationService를 통한 권한 요청
         NotificationService.shared.requestAuthorization { granted in
             if granted {
                 print("✅ AppDelegate: 알림 권한 허용됨")
+                // APNs 등록 (권한 허용 시)
+                DispatchQueue.main.async {
+                    application.registerForRemoteNotifications()
+                }
             } else {
                 print("⚠️ AppDelegate: 알림 권한 거부됨 - 설정에서 변경 가능")
             }
         }
+    }
+
+    // MARK: - APNs Registration
+
+    /// APNs 토큰 등록 성공
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+        let token = tokenParts.joined()
+        print("📱 APNs Device Token: \(token)")
+
+        // APNs 토큰을 FCM에 전달
+        Messaging.messaging().apnsToken = deviceToken
+    }
+
+    /// APNs 토큰 등록 실패
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("❌ APNs 등록 실패: \(error.localizedDescription)")
     }
     
     // MARK: - Realm Configuration
@@ -137,5 +164,39 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 
             print("✅ AppDelegate: 냉장고 화면으로 이동 완료")
         }
+    }
+}
+
+// MARK: - MessagingDelegate (FCM)
+
+extension AppDelegate: MessagingDelegate {
+
+    /// FCM 토큰 갱신 시 호출
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("🔥 FCM Registration Token 수신")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        if let token = fcmToken {
+            print("📲 FCM Token:")
+            print(token)
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+            // TODO: 서버에 FCM 토큰 전송
+            // 예: APIService.shared.registerFCMToken(token)
+
+            // UserDefaults에 저장 (선택사항)
+            UserDefaults.standard.set(token, forKey: "fcmToken")
+        } else {
+            print("⚠️ FCM Token이 nil입니다.\n")
+        }
+
+        // 토큰 정보를 딕셔너리 형태로도 출력 (Firebase Console에서 테스트용)
+        let dataDict: [String: String] = ["token": fcmToken ?? ""]
+        NotificationCenter.default.post(
+            name: Notification.Name("FCMToken"),
+            object: nil,
+            userInfo: dataDict
+        )
     }
 }
