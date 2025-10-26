@@ -106,12 +106,17 @@ final class RecipeAddViewModel: ViewModelType {
 
         // Tag 추가
         input.tagText
+            .do(onNext: { newTag in print("🏷️ ViewModel: Received new tag: '\(newTag)'") })
             .withLatestFrom(tagsRelay) { ($0, $1) }
             .map { newTag, currentTags -> [String] in
+                print("🏷️ ViewModel: Current tags: \(currentTags)")
                 guard !newTag.isEmpty, !currentTags.contains(newTag) else {
+                    print("🏷️ ViewModel: Tag rejected (empty or duplicate)")
                     return currentTags
                 }
-                return currentTags + [newTag]
+                let updatedTags = currentTags + [newTag]
+                print("🏷️ ViewModel: Updated tags: \(updatedTags)")
+                return updatedTags
             }
             .bind(to: tagsRelay)
             .disposed(by: disposeBag)

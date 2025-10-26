@@ -188,6 +188,7 @@ final class RecipeAddViewController: BaseViewController {
     }()
 
     private let tagRemovedRelay = PublishRelay<Int>()
+    private let tagAddedRelay = PublishRelay<String>()
 
     // 재료
     private let ingredientLabel: UILabel = {
@@ -516,10 +517,8 @@ final class RecipeAddViewController: BaseViewController {
         }
 
         // Tag 텍스트 입력 (Return 키 눌렀을 때)
-        let tagText = tagTextField.rx.controlEvent(.editingDidEndOnExit)
-            .map { [weak self] _ in self?.tagTextField.text?.trimmingCharacters(in: .whitespaces) ?? "" }
-            .filter { !$0.isEmpty }
-            .do(onNext: { [weak self] _ in self?.tagTextField.text = "" })
+        // delegate 메서드에서 직접 처리하므로 tagAddedRelay 사용
+        let tagText = tagAddedRelay.asObservable()
 
         // Tip 텍스트
         let tipText = tipTextView.rx.text
@@ -706,6 +705,23 @@ final class RecipeAddViewController: BaseViewController {
 // MARK: - UITextFieldDelegate
 extension RecipeAddViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        print("🎯 textFieldShouldReturn called for textField")
+
+        // tagTextField는 직접 처리
+        if textField == tagTextField {
+            print("🏷️ tagTextField return key pressed")
+            if let text = textField.text?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
+                print("🏷️ Adding tag: '\(text)'")
+                tagAddedRelay.accept(text)
+                textField.text = ""
+            } else {
+                print("🏷️ Tag text is empty, not adding")
+            }
+            textField.resignFirstResponder()
+            return true
+        }
+
+        // 다른 TextField들은 바로 키보드 내리기
         textField.resignFirstResponder()
         return true
     }

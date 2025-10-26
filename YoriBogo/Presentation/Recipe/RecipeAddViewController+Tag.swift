@@ -10,9 +10,6 @@ import SnapKit
 
 // MARK: - Tag Management
 extension RecipeAddViewController {
-
-    // Note: 태그 추가는 ViewModel에서 처리하고, updateTagChips는 Output 바인딩에서 호출됨
-
     func updateTagChips() {
         tagChipsContainer.subviews.forEach { $0.removeFromSuperview() }
 
