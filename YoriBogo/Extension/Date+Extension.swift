@@ -76,7 +76,7 @@ extension Date {
         )
     }
 
-    /// 스마트 유통기한 표시 (같은 연도면 월/일만, 다른 연도면 년/월/일)
+    /// 스마트 소비기한 표시 (같은 연도면 월/일만, 다른 연도면 년/월/일)
     func formattedExpirationDateSmart() -> String {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: Date())

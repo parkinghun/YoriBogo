@@ -22,7 +22,7 @@ final class IngredientDetailInputViewController: BaseViewController, ConfigureVi
     
     private let subHeaderLabel = {
         let label = UILabel()
-        label.text = "수량과 유통기한을 정확히 입력하면 더 정확한 관리가 가능해요"
+        label.text = "수량과 소비기한을 정확히 입력하면 더 정확한 관리가 가능해요"
         label.font = AppFont.button
         label.textColor = .black
         label.numberOfLines = 0

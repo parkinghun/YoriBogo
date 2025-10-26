@@ -540,7 +540,7 @@ final class RecipeAddViewController: BaseViewController {
         // Output 바인딩
         output.title
             .drive(onNext: { [weak self] title in
-                print("📥 RecipeAddVC: Received title: '\(title ?? "nil")'")
+                print("📥 RecipeAddVC: Received title: '\(title)'")
                 self?.titleTextField.text = title
             })
             .disposed(by: disposeBag)

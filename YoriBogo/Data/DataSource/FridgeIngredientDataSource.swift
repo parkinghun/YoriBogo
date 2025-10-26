@@ -26,12 +26,31 @@ enum SortOption {
 
 final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
 
+    private let notificationService = NotificationService.shared
+
     func save(_ ingredient: FridgeIngredientDetail) throws {
         let realm = try Realm()
         let object = ingredient.toRealmObject()
 
+        // 수정인지 추가인지 확인 (기존 객체 존재 여부)
+        let isUpdate = realm.object(ofType: FridgeIngredientObject.self, forPrimaryKey: object.id) != nil
+
         try realm.write {
             realm.add(object, update: .modified)
+        }
+
+        // 소비기한 알림 스케줄링
+        if let _ = ingredient.expirationDate {
+            if isUpdate {
+                // 수정: 기존 알림 삭제 후 재등록
+                notificationService.updateExpiryNotifications(for: ingredient)
+            } else {
+                // 추가: 새 알림 등록
+                notificationService.scheduleExpiryNotifications(for: ingredient)
+            }
+        } else {
+            // 소비기한이 없으면 기존 알림 삭제
+            notificationService.removeExpiryNotifications(for: ingredient)
         }
 
         // 냉장고 재료 변경 알림
@@ -57,9 +76,16 @@ final class FridgeIngredientDataSource: FridgeIngredientDataSourceType {
               let object = realm.object(ofType: FridgeIngredientObject.self, forPrimaryKey: objectId) else {
             throw NSError(domain: "FridgeIngredientDataSource", code: 404, userInfo: [NSLocalizedDescriptionKey: "Object not found"])
         }
+
+        // 삭제 전에 재료 정보를 저장 (알림 삭제용)
+        let ingredient = FridgeIngredientDetail(from: object)
+
         try realm.write {
             realm.delete(object)
         }
+
+        // 소비기한 알림 삭제
+        notificationService.removeExpiryNotifications(for: ingredient)
 
         // 냉장고 재료 변경 알림
         NotificationCenter.default.post(name: .fridgeIngredientsDidChange, object: nil)
