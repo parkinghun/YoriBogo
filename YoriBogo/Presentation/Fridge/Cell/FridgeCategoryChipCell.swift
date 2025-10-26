@@ -26,6 +26,11 @@ final class FridgeCategoryChipCell: UICollectionViewCell, ReusableView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        contentView.layer.cornerRadius = contentView.bounds.height / 2
+    }
+
     override func prepareForReuse() {
         super.prepareForReuse()
         titleLabel.text = nil
@@ -38,14 +43,12 @@ final class FridgeCategoryChipCell: UICollectionViewCell, ReusableView {
     }
 
     private func setupUI() {
-        contentView.layer.cornerRadius = 20
         contentView.clipsToBounds = true
 
         contentView.addSubview(titleLabel)
-        
-        contentView.snp.makeConstraints { $0.height.equalTo(40) }
+
         titleLabel.snp.makeConstraints {
-            $0.centerY.equalToSuperview()
+            $0.verticalEdges.equalToSuperview().inset(10)
             $0.horizontalEdges.equalToSuperview().inset(16)
         }
     }
