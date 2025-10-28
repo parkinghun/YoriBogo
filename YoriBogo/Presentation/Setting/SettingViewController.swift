@@ -9,6 +9,8 @@ import UIKit
 import RxSwift
 import RxCocoa
 import SnapKit
+import MessageUI
+import SafariServices
 
 final class SettingViewController: BaseViewController {
 
@@ -119,16 +121,13 @@ final class SettingViewController: BaseViewController {
             print("✅ 이번 달 소비/폐기 현황")
 
         case .appVersion:
-            // 값 표시 전용 (클릭 불가)
             break
 
         case .inquiry:
-            // TODO: 문의하기 (메일 앱 or 외부 링크)
-            print("✅ 문의하기")
+            presentEmailComposer()
 
         case .privacyPolicy:
-            // TODO: 개인정보 처리방침 (웹뷰 or 외부 링크)
-            print("✅ 개인정보 처리방침")
+            presentPrivacyPolicy()
         }
     }
 
@@ -141,6 +140,43 @@ final class SettingViewController: BaseViewController {
         default:
             return nil
         }
+    }
+
+    // MARK: - Navigation
+    private func presentEmailComposer() {
+        guard MFMailComposeViewController.canSendMail() else {
+            showAlert(
+                title: "메일 앱을 사용할 수 없습니다",
+                message: "기기의 메일 설정을 확인해주세요."
+            )
+            return
+        }
+
+        let composer = MFMailComposeViewController()
+        composer.mailComposeDelegate = self
+        composer.setToRecipients([Bundle.getSecrets(for: .developerEmail)])
+        composer.setSubject("[요리보고] 문의하기")
+        composer.setMessageBody("""
+
+
+            ---
+            앱 버전: \(appVersionValue)
+            기기: \(UIDevice.current.model)
+            iOS: \(UIDevice.current.systemVersion)
+            """, isHTML: false)
+
+        present(composer, animated: true)
+    }
+
+    private func presentPrivacyPolicy() {
+        guard let url = URL(string: Bundle.getSecrets(for: .PrivacyPolicyURL)) else {
+            showAlert(title: "오류", message: "잘못된 URL입니다.")
+            return
+        }
+
+        let safariVC = SFSafariViewController(url: url)
+        safariVC.preferredControlTintColor = .brandOrange500
+        present(safariVC, animated: true)
     }
 }
 
@@ -296,5 +332,15 @@ final class SettingCell: UITableViewCell {
             selectionStyle = .default
             titleLabel.textColor = .brandOrange500
         }
+    }
+}
+
+// MARK: - MFMailComposeViewControllerDelegate
+extension SettingViewController: MFMailComposeViewControllerDelegate {
+    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+        if let error = error {
+            showAlert(title: "오류", message: error.localizedDescription)
+        }
+        controller.dismiss(animated: true)
     }
 }

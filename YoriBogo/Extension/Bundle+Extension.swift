@@ -23,6 +23,8 @@ extension Bundle {
     
     enum Secrets: String {
         case key = "SecretKey"
+        case developerEmail = "DeveloperEmail"
+        case PrivacyPolicyURL = "PrivacyPolicyURL"
     }
     
     static func loadJSON<T: Decodable>(_ filename: String, as type: T.Type) -> T {

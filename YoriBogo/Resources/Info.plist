@@ -4,6 +4,10 @@
 <dict>
 	<key>SecretKey</key>
 	<string>$(RecipeKey)</string>
+	<key>DeveloperEmail</key>
+	<string>$(DeveloperEmail)</string>
+	<key>PrivacyPolicyURL</key>
+	<string>$(PrivacyPolicyURL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Pretendard-Black.otf</string>
