@@ -293,7 +293,8 @@ final class RecipeViewController: BaseViewController {
     }
 
     private func navigateToDetail(recipe: Recipe) {
-        let vc = RecipeDetailViewController(recipe: recipe, matchRate: 0, matchedIngredients: [])
+        // 편의 초기화 메서드 사용 (매칭 정보 자동 계산)
+        let vc = RecipeDetailViewController(recipe: recipe)
         navigationController?.pushViewController(vc, animated: true)
     }
 

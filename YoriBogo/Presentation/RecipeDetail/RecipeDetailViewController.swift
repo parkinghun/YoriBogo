@@ -198,6 +198,8 @@ final class RecipeDetailViewController: BaseViewController {
     private var scrollViewBottomConstraint: Constraint?
 
     // MARK: - Initialization
+
+    /// 추천 화면에서 사용 (매칭 정보 포함)
     init(recipe: Recipe, matchRate: Double, matchedIngredients: [String]) {
         self.viewModel = RecipeDetailViewModel(
             recipe: recipe,
@@ -207,6 +209,11 @@ final class RecipeDetailViewController: BaseViewController {
         self.currentRecipe = recipe
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
+    }
+
+    /// 나의 레시피/북마크 화면에서 사용 (매칭 정보 자동 계산)
+    convenience init(recipe: Recipe) {
+        self.init(recipe: recipe, matchRate: 0, matchedIngredients: [])
     }
 
     required init?(coder: NSCoder) {
