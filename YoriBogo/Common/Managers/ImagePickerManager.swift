@@ -2,7 +2,7 @@
 //  ImagePickerManager.swift
 //  YoriBogo
 //
-//  Created by Claude on 2025-10-14.
+//  Created by 박성훈 on 2025-10-14.
 //
 
 import UIKit

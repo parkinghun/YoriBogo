@@ -2,7 +2,7 @@
 //  UIViewController+Navigation.swift
 //  YoriBogo
 //
-//  Created by Claude on 2025-10-09.
+//  Created by 박성훈 on 2025-10-09.
 //
 
 import UIKit

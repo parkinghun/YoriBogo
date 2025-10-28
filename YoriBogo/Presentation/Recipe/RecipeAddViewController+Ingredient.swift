@@ -2,7 +2,7 @@
 //  RecipeAddViewController+Ingredient.swift
 //  YoriBogo
 //
-//  Created by Claude on 2025-10-15.
+//  Created by 박성훈 on 2025-10-15.
 //
 
 import UIKit

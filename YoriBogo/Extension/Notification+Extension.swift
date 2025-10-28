@@ -2,7 +2,7 @@
 //  Notification+Extension.swift
 //  YoriBogo
 //
-//  Created by Claude on 2025-10-16.
+//  Created by 박성훈 on 2025-10-16.
 //
 
 import Foundation

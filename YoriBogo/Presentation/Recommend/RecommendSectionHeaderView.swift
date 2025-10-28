@@ -2,7 +2,7 @@
 //  RecommendSectionHeaderView.swift
 //  YoriBogo
 //
-//  Created by Claude on 10/5/25.
+//  Created by 박성훈 on 10/5/25.
 //
 
 import UIKit

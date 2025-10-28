@@ -25,6 +25,10 @@ Secrets/**
 GoogleService-Info.plist
 **/GoogleService-Info.plist
 
+# API Keys
+Secrets.plist
+**/Secrets.plist
+
 # Thumbnails
 ._*
 
