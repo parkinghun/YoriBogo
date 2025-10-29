@@ -9,68 +9,46 @@ import UIKit
 import SnapKit
 
 final class RecipeSearchEmptyView: BaseView, ConfigureView {
-    
-    private let imageView: UIImageView = {
-        let iv = UIImageView()
-        iv.image = UIImage(systemName: "magnifyingglass")
-        iv.contentMode = .scaleAspectFit
-        iv.tintColor = .gray500
-        return iv
-    }()
-    
-    let titleLabel = {
-        let label = UILabel()
-        label.font = AppFont.pageTitle
-        return label
-    }()
-    
-    let subTitleLabel = {
-        let label = UILabel()
-        label.font = AppFont.body
-        label.textColor = .gray600
-        return label
-    }()
-    
-    
+    private let emptyStateView = EmptyStateView()
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         configureHierachy()
         configureLayout()
     }
-    
+
     func configure(state: State) {
+        let config: EmptyStateView.Configuration
+
         switch state {
         case .initial:
-            titleLabel.text = "레시피를 검색해보세요"
-            subTitleLabel.text = "레시피 이름, 냉장고 속 재료로 검색할 수 있어요"
+            config = EmptyStateView.Configuration(
+                image: UIImage(systemName: "magnifyingglass"),
+                title: "레시피를 검색해보세요",
+                subtitle: "레시피 이름, 냉장고 속 재료로 검색할 수 있어요",
+                buttonTitle: nil
+            )
         case .noResult:
-            titleLabel.text = "검색 결과가 없어요"
-            subTitleLabel.text = "다른 키워드로 다시 시도해보세요"
+            config = EmptyStateView.Configuration(
+                image: UIImage(systemName: "magnifyingglass"),
+                title: "검색 결과가 없어요",
+                subtitle: "다른 키워드로 다시 시도해보세요",
+                buttonTitle: nil
+            )
         }
+
+        emptyStateView.configure(with: config)
     }
-    
+
     func configureHierachy() {
-        addSubview(imageView)
-        addSubview(titleLabel)
-        addSubview(subTitleLabel)
+        addSubview(emptyStateView)
     }
-    
+
     func configureLayout() {
-        imageView.snp.makeConstraints { make in
-            make.bottom.equalTo(titleLabel.snp.top).offset(-4)
-            make.centerX.equalToSuperview()
-            make.size.equalTo(44)
-        }
-        titleLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.centerY.equalToSuperview().offset(-20)
-        }
-        subTitleLabel.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(12)
-            make.centerX.equalToSuperview()
+        emptyStateView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
         }
     }
-    
 }
 
 extension RecipeSearchEmptyView {

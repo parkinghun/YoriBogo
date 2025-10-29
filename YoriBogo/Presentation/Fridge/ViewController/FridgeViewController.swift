@@ -162,9 +162,11 @@ final class FridgeViewController: BaseViewController, ConfigureViewController {
 
     // MARK: - Binding
     func bind() {
+        let emptyButtonTap = emptyView.ctaButton?.rx.tap.asObservable() ?? Observable.never()
+
         let input = FridgeViewModel.Input(
             viewDidLoad: viewDidLoadRelay.asObservable(),
-            addButtonTapped: Observable.merge(emptyView.ctaButton.rx.tap.asObservable(),
+            addButtonTapped: Observable.merge(emptyButtonTap,
                                               addButtonItem.rx.tap.asObservable()),
             categorySelected: categorySelectedRelay.asObservable(),
             sortButtonTapped: sortButton.rx.tap.asObservable()
