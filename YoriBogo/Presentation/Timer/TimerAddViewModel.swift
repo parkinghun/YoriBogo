@@ -58,8 +58,8 @@ final class TimerAddViewModel: ViewModelType {
                 secondsValue
             ))
             .do(onNext: { name, hours, minutes, seconds in
-                // TODO: 타이머 데이터 저장 로직
-                print("✅ 타이머 추가: \(name), \(hours)시간 \(minutes)분 \(seconds)초")
+                let duration = TimeInterval(hours * 3600 + minutes * 60 + seconds)
+                TimerManager.shared.createTimer(title: name, duration: duration)
             })
             .map { _ in () }
 
