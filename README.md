@@ -769,15 +769,6 @@ xcodebuild test -scheme YoriBogoUITests -destination 'platform=iOS Simulator,nam
 
 ---
 
-## 👨‍💻 개발자
-
-**박성훈 (Park Sung-Hoon)**
-- Email: your.email@example.com
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Name](https://linkedin.com/in/yourusername)
-
----
-
 ## 🙏 감사의 말
 
 - [식품안전나라 공공 API](https://www.foodsafetykorea.go.kr/api/newDatasetList.do)에서 레시피 데이터 제공
