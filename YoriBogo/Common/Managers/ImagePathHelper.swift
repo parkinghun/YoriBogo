@@ -238,17 +238,17 @@ final class ImagePathHelper {
 
     // MARK: - Duplicate Detection
 
-    /// 이미지의 MD5 해시값 계산
+    /// 이미지의 SHA-256 해시값 계산
     /// - Parameter image: 해시를 계산할 이미지
-    /// - Returns: MD5 해시 문자열 또는 nil
+    /// - Returns: SHA-256 해시 문자열 또는 nil
     private func calculateImageHash(_ image: UIImage) -> String? {
         guard let data = image.jpegData(compressionQuality: 0.8) else {
             return nil
         }
 
-        var hash = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
+        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
         data.withUnsafeBytes {
-            _ = CC_MD5($0.baseAddress, CC_LONG(data.count), &hash)
+            _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &hash)
         }
 
         return hash.map { String(format: "%02x", $0) }.joined()
@@ -273,7 +273,7 @@ final class ImagePathHelper {
             let fileHash = (uuidPart as NSString).deletingPathExtension
 
             // 해시값이 일치하는지 확인
-            if fileHash.hasPrefix(hash.prefix(8)) {
+            if fileHash.hasPrefix(hash.prefix(16)) {
                 return path
             }
         }
@@ -306,8 +306,8 @@ final class ImagePathHelper {
             return nil
         }
 
-        // 해시의 앞 8자를 파일명에 포함
-        let hashPrefix = String(hash.prefix(8))
+        // 해시의 앞 16자를 파일명에 포함
+        let hashPrefix = String(hash.prefix(16))
         let fileName = "\(prefix)_\(index)_\(hashPrefix)_\(UUID().uuidString).jpg"
         let fileURL = imageDirectoryURL.appendingPathComponent(fileName)
 
