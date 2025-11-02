@@ -2,7 +2,7 @@
 //  RecentSearchChipCell.swift
 //  YoriBogo
 //
-//  Created by Claude on 2025-11-02.
+//  Created by 박성훈 on 11/2/25.
 //
 
 import UIKit

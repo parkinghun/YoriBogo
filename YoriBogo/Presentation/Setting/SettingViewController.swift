@@ -66,7 +66,6 @@ final class SettingViewController: BaseViewController {
 
         let output = viewModel.transform(input: input)
 
-        // 섹션 데이터
         output.sections
             .drive(with: self) { owner, sections in
                 owner.sections = sections
@@ -74,7 +73,6 @@ final class SettingViewController: BaseViewController {
             }
             .disposed(by: disposeBag)
 
-        // 알림 시간
         output.notificationTime
             .drive(with: self) { owner, time in
                 owner.notificationTimeValue = time
@@ -82,7 +80,6 @@ final class SettingViewController: BaseViewController {
             }
             .disposed(by: disposeBag)
 
-        // 앱 버전
         output.appVersion
             .drive(with: self) { owner, version in
                 owner.appVersionValue = version
@@ -90,7 +87,6 @@ final class SettingViewController: BaseViewController {
             }
             .disposed(by: disposeBag)
 
-        // 아이템 선택
         output.itemSelected
             .drive(with: self) { owner, item in
                 owner.handleItemSelection(item)
@@ -223,8 +219,8 @@ final class SettingViewController: BaseViewController {
     }
 
     private func presentExpirationNotificationSettingVC() {
-        
-        print("✅ 소비기한 알림 설정 화면으로 이동")
+        let vc = ExpirationNotificationSettingViewController()
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     private func showNotificationPermissionDeniedAlert() {
