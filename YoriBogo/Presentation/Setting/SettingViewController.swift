@@ -11,6 +11,7 @@ import RxCocoa
 import SnapKit
 import MessageUI
 import SafariServices
+import UserNotifications
 
 final class SettingViewController: BaseViewController {
 
@@ -101,8 +102,7 @@ final class SettingViewController: BaseViewController {
     private func handleItemSelection(_ item: SettingItem) {
         switch item {
         case .notificationTiming:
-            // TODO: 소비기한 알림 시점 선택 화면으로 이동
-            print("✅ 소비기한 알림 시점 선택")
+            checkNotificationPermission()
 
         case .notificationTime:
             // 값 표시 전용 (클릭 불가)
@@ -177,6 +177,75 @@ final class SettingViewController: BaseViewController {
         let safariVC = SFSafariViewController(url: url)
         safariVC.preferredControlTintColor = .brandOrange500
         present(safariVC, animated: true)
+    }
+
+    // MARK: - Notification Permission
+    private func checkNotificationPermission() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .notDetermined:
+                    // 처음 요청 - 시스템 권한 요청
+                    self?.requestNotificationPermission()
+
+                case .authorized:
+                    // 권한 허용됨 - 설정 화면으로 이동
+                    self?.presentExpirationNotificationSettingVC()
+
+                case .denied:
+                    // 권한 거부됨 - 설정 안내 Alert
+                    self?.showNotificationPermissionDeniedAlert()
+
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.showAlert(title: "오류", message: error.localizedDescription)
+                    return
+                }
+
+                if granted {
+                    // 권한 승인됨 - 설정 화면으로 이동
+                    self?.presentExpirationNotificationSettingVC()
+                } else {
+                    // 권한 거부됨
+                    self?.showNotificationPermissionDeniedAlert()
+                }
+            }
+        }
+    }
+
+    private func presentExpirationNotificationSettingVC() {
+        
+        print("✅ 소비기한 알림 설정 화면으로 이동")
+    }
+
+    private func showNotificationPermissionDeniedAlert() {
+        let alert = UIAlertController(
+            title: "알림 권한이 필요합니다",
+            message: "소비기한 알림을 받으려면 알림 권한이 필요합니다.\n설정에서 알림을 허용해주세요.",
+            preferredStyle: .alert
+        )
+
+        let settingsAction = UIAlertAction(title: "설정으로 이동", style: .default) { _ in
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        }
+
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel)
+
+        alert.addAction(settingsAction)
+        alert.addAction(cancelAction)
+
+        present(alert, animated: true)
     }
 }
 
