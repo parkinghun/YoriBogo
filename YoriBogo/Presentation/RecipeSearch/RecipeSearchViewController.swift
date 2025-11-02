@@ -48,11 +48,57 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
     private let emptyView = RecipeSearchEmptyView()
 
+    // MARK: - Recent Search UI
+    private let recentSearchContainerView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        return view
+    }()
+
+    private let recentSearchHeaderView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .white
+        return view
+    }()
+
+    private let recentSearchLabel: UILabel = {
+        let label = UILabel()
+        label.text = "최근 검색어"
+        label.font = AppFont.button
+        label.textColor = .darkGray
+        return label
+    }()
+
+    private let clearAllButton: UIButton = {
+        let button = UIButton()
+        button.setTitle("전체 삭제", for: .normal)
+        button.setTitleColor(.systemGray, for: .normal)
+        button.titleLabel?.font = AppFont.body
+        return button
+    }()
+
+    private lazy var recentSearchCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize
+        layout.minimumInteritemSpacing = 8
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = .white
+        cv.showsHorizontalScrollIndicator = false
+        cv.register(RecentSearchChipCell.self, forCellWithReuseIdentifier: RecentSearchChipCell.id)
+        return cv
+    }()
+
     // MARK: - Properties
     private let viewModel = RecipeSearchViewModel()
     private let disposeBag = DisposeBag()
     private let recipeManager = RecipeRealmManager.shared
     private var searchResults: [(recipe: Recipe, matchRate: Double, matchedIngredients: [String])] = []
+    private let deleteKeywordSubject = PublishSubject<String>()
+    private let clearAllSubject = PublishSubject<Void>()
+    private let manualSearchSubject = PublishSubject<String>()
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -111,8 +157,15 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
     }
 
     func configureHierachy() {
-        [searchBar, resultCountLabel, tableView, emptyView].forEach {
+        [searchBar, recentSearchContainerView, resultCountLabel, tableView, emptyView].forEach {
             view.addSubview($0)
+        }
+
+        recentSearchContainerView.addSubview(recentSearchHeaderView)
+        recentSearchContainerView.addSubview(recentSearchCollectionView)
+
+        [recentSearchLabel, clearAllButton].forEach {
+            recentSearchHeaderView.addSubview($0)
         }
     }
 
@@ -120,6 +173,35 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
         searchBar.snp.makeConstraints {
             $0.top.equalTo(view.safeAreaLayoutGuide).offset(8)
             $0.horizontalEdges.equalToSuperview().inset(16)
+        }
+
+        // 최근 검색어 컨테이너
+        recentSearchContainerView.snp.makeConstraints {
+            $0.top.equalTo(searchBar.snp.bottom).offset(12)
+            $0.horizontalEdges.equalToSuperview()
+            $0.height.equalTo(80)
+        }
+
+        // 최근 검색어 헤더
+        recentSearchHeaderView.snp.makeConstraints {
+            $0.top.horizontalEdges.equalToSuperview()
+            $0.height.equalTo(32)
+        }
+
+        recentSearchLabel.snp.makeConstraints {
+            $0.leading.equalToSuperview().inset(16)
+            $0.centerY.equalToSuperview()
+        }
+
+        clearAllButton.snp.makeConstraints {
+            $0.trailing.equalToSuperview().inset(16)
+            $0.centerY.equalToSuperview()
+        }
+
+        // 최근 검색어 컬렉션뷰
+        recentSearchCollectionView.snp.makeConstraints {
+            $0.top.equalTo(recentSearchHeaderView.snp.bottom).offset(8)
+            $0.horizontalEdges.bottom.equalToSuperview()
         }
 
         resultCountLabel.snp.makeConstraints {
@@ -133,7 +215,7 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
         }
 
         emptyView.snp.makeConstraints {
-            $0.top.equalTo(searchBar.snp.bottom)
+            $0.top.equalTo(recentSearchContainerView.snp.bottom)
             $0.horizontalEdges.bottom.equalTo(view.safeAreaLayoutGuide)
         }
     }
@@ -208,8 +290,17 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
 
     // MARK: - Bind
     func bind() {
+        // searchBar의 text와 수동 검색을 merge
+        let searchText = Observable.merge(
+            searchBar.rx.text.orEmpty.asObservable(),
+            manualSearchSubject.asObservable()
+        )
+
         let input = RecipeSearchViewModel.Input(
-            searchText: searchBar.rx.text.orEmpty.asObservable()
+            searchText: searchText,
+            searchButtonTapped: searchBar.rx.searchButtonClicked.asObservable(),
+            deleteKeyword: deleteKeywordSubject.asObservable(),
+            clearAllKeywords: clearAllSubject.asObservable()
         )
 
         let output = viewModel.transform(input: input)
@@ -233,20 +324,73 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
             }
             .disposed(by: disposeBag)
 
-        // 검색 결과 개수
-        output.resultCount
-            .drive(with: self) { owner, count in
-                if count > 0 {
-                    owner.resultCountLabel.text = "'\(owner.searchBar.text ?? "")' 검색 결과 \(count)개"
-                    owner.resultCountLabel.isHidden = false
-                    owner.tableView.isHidden = false
-                    owner.emptyView.isHidden = true
-                } else if !(owner.searchBar.text ?? "").isEmpty {
-                    owner.resultCountLabel.isHidden = true
-                    owner.tableView.isHidden = true
-                    owner.emptyView.isHidden = false
-                    owner.emptyView.configure(state: .noResult)
+        // 최근 검색어 CollectionView에 바인딩
+        output.recentSearches
+            .drive(recentSearchCollectionView.rx.items(cellIdentifier: RecentSearchChipCell.id, cellType: RecentSearchChipCell.self)) { [weak self] index, keyword, cell in
+                cell.configure(with: keyword)
+
+                // 삭제 버튼 탭 이벤트 처리
+                cell.onDeleteTapped = { keyword in
+                    self?.deleteKeywordSubject.onNext(keyword)
+                }
+            }
+            .disposed(by: disposeBag)
+
+        // 최근 검색어 칩 선택 시 검색
+        recentSearchCollectionView.rx.modelSelected(String.self)
+            .subscribe(onNext: { [weak self] keyword in
+                guard let self = self else { return }
+                self.searchBar.text = keyword
+                self.searchBar.resignFirstResponder()
+                // 최근 검색어에 추가 (가장 최근으로 이동)
+                RecentSearchManager.shared.addSearchKeyword(keyword)
+                // 수동으로 검색 트리거
+                self.manualSearchSubject.onNext(keyword)
+            })
+            .disposed(by: disposeBag)
+
+        // 전체 삭제 버튼
+        clearAllButton.rx.tap
+            .subscribe(onNext: { [weak self] in
+                self?.clearAllSubject.onNext(())
+            })
+            .disposed(by: disposeBag)
+
+        // 최근 검색어 UI 표시/숨김 처리
+        Driver.combineLatest(output.recentSearches, output.isSearching)
+            .drive(onNext: { [weak self] (recentSearches, isSearching) in
+                guard let self = self else { return }
+
+                let hasRecentSearches = !recentSearches.isEmpty
+
+                // 검색 중이 아니고 최근 검색어가 있을 때만 표시
+                let shouldShowRecentSearches = !isSearching && hasRecentSearches
+
+                self.recentSearchContainerView.isHidden = !shouldShowRecentSearches
+                self.clearAllButton.isHidden = !hasRecentSearches
+            })
+            .disposed(by: disposeBag)
+
+        // 검색 결과 개수와 검색 상태를 함께 확인
+        Driver.combineLatest(output.resultCount, output.isSearching)
+            .drive(with: self) { owner, data in
+                let (count, isSearching) = data
+
+                if isSearching {
+                    // 검색 중일 때
+                    if count > 0 {
+                        owner.resultCountLabel.text = "'\(owner.searchBar.text ?? "")' 검색 결과 \(count)개"
+                        owner.resultCountLabel.isHidden = false
+                        owner.tableView.isHidden = false
+                        owner.emptyView.isHidden = true
+                    } else {
+                        owner.resultCountLabel.isHidden = true
+                        owner.tableView.isHidden = true
+                        owner.emptyView.isHidden = false
+                        owner.emptyView.configure(state: .noResult)
+                    }
                 } else {
+                    // 검색 중이 아닐 때 (검색어 비었을 때)
                     owner.resultCountLabel.isHidden = true
                     owner.tableView.isHidden = true
                     owner.emptyView.isHidden = false

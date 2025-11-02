@@ -13,20 +13,54 @@ import RealmSwift
 final class RecipeSearchViewModel: ViewModelType {
     struct Input {
         let searchText: Observable<String>
+        let searchButtonTapped: Observable<Void>
+        let deleteKeyword: Observable<String>
+        let clearAllKeywords: Observable<Void>
     }
 
     struct Output {
         let searchResults: Driver<[(recipe: Recipe, matchRate: Double, matchedIngredients: [String])]>
         let resultCount: Driver<Int>
+        let recentSearches: Driver<[String]>
+        let isSearching: Driver<Bool>
     }
 
     private let disposeBag = DisposeBag()
     private let recipeManager = RecipeRealmManager.shared
     private let repository = FridgeIngredientRepository()
+    private let recentSearchManager = RecentSearchManager.shared
 
     init() { }
 
     func transform(input: Input) -> Output {
+        // 검색 버튼 탭 시 검색어 저장
+        input.searchButtonTapped
+            .withLatestFrom(input.searchText)
+            .filter { !$0.isEmpty }
+            .subscribe(onNext: { [weak self] keyword in
+                self?.recentSearchManager.addSearchKeyword(keyword)
+            })
+            .disposed(by: disposeBag)
+
+        // 검색어 삭제
+        input.deleteKeyword
+            .subscribe(onNext: { [weak self] keyword in
+                self?.recentSearchManager.removeSearchKeyword(keyword)
+            })
+            .disposed(by: disposeBag)
+
+        // 전체 검색어 삭제
+        input.clearAllKeywords
+            .subscribe(onNext: { [weak self] in
+                self?.recentSearchManager.clearAllSearches()
+            })
+            .disposed(by: disposeBag)
+
+        // 검색 중 여부 (검색어가 비어있지 않으면 검색 중)
+        let isSearching = input.searchText
+            .map { !$0.isEmpty }
+            .asDriver(onErrorJustReturn: false)
+
         // 검색어 디바운스 처리 (0.5초)
         let searchResults = input.searchText
             .debounce(.milliseconds(500), scheduler: MainScheduler.instance)
@@ -72,9 +106,15 @@ final class RecipeSearchViewModel: ViewModelType {
         let resultCount = searchResults
             .map { $0.count }
 
+        // 최근 검색어 리스트
+        let recentSearches = recentSearchManager.recentSearches
+            .asDriver(onErrorJustReturn: [])
+
         return Output(
             searchResults: searchResults,
-            resultCount: resultCount
+            resultCount: resultCount,
+            recentSearches: recentSearches,
+            isSearching: isSearching
         )
     }
 
