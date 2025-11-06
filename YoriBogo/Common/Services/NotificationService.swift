@@ -12,14 +12,11 @@ import FirebaseMessaging
 /// 소비기한 알림을 관리하는 서비스
 final class NotificationService {
 
-    // MARK: - Singleton
     static let shared = NotificationService()
 
     private let center = UNUserNotificationCenter.current()
 
     private init() {}
-
-    // MARK: - 권한 요청
 
     /// 알림 권한 요청
     /// - Parameter completion: 권한 허용 여부 콜백
@@ -246,28 +243,6 @@ final class NotificationService {
 
 extension NotificationService {
 
-    /// 알림 타입
-    enum ExpiryNotificationType: Int {
-        case dMinus3 = 0  // D-3
-        case dMinus1 = 1  // D-1
-        case dDay = 2     // D-Day
-
-        var index: Int {
-            return self.rawValue
-        }
-
-        var message: (String) -> String {
-            switch self {
-            case .dMinus3:
-                return { "'\($0)'의 소비기한이 3일 남았어요." }
-            case .dMinus1:
-                return { "'\($0)'의 소비기한이 하루 남았어요!" }
-            case .dDay:
-                return { "오늘 '\($0)'의 소비기한이에요. 냉장고를 확인하세요!" }
-            }
-        }
-    }
-
     /// 재료의 소비기한 알림 스케줄링
     /// - Parameters:
     ///   - ingredient: 알림을 등록할 재료
@@ -289,17 +264,20 @@ extension NotificationService {
         print("\n📅 NotificationService: 알림 스케줄링 시작 [\(ingredient.name)]")
         print("   소비기한: \(formatDate(expirationDate))")
 
-        let notificationDates = calculateNotificationDates(from: expirationDate)
+        // 설정값 로드
+        let settings = ExpirationNotificationSettingsManager.shared
+        let notificationDays = settings.loadNotificationDays()
+        let notificationTime = settings.loadNotificationTime()
+
+        let notificationDates = calculateNotificationDates(from: expirationDate, days: notificationDays)
         var successCount = 0
 
         let group = DispatchGroup()
 
-        for (index, date) in notificationDates.enumerated() {
-            guard let type = ExpiryNotificationType(rawValue: index) else { continue }
-
+        for (daysBeforeExpiration, date) in notificationDates {
             // 이미 지난 날짜는 스킵
             guard date > Date() else {
-                print("   ⏭️  [\(typeLabel(for: type))] 이미 지난 날짜 - \(formatDate(date))")
+                print("   ⏭️  [D-\(daysBeforeExpiration)] 이미 지난 날짜 - \(formatDate(date))")
                 continue
             }
 
@@ -307,8 +285,9 @@ extension NotificationService {
 
             let request = createNotificationRequest(
                 for: ingredient,
-                type: type,
-                triggerDate: date
+                daysBeforeExpiration: daysBeforeExpiration,
+                triggerDate: date,
+                notificationTime: notificationTime
             )
 
             addNotificationRequest(request) { error in
@@ -338,7 +317,8 @@ extension NotificationService {
     /// 재료의 모든 소비기한 알림 삭제
     /// - Parameter ingredient: 알림을 삭제할 재료
     func removeExpiryNotifications(for ingredient: FridgeIngredientDetail) {
-        let identifiers = (0..<3).map { makeNotificationIdentifier(ingredientId: ingredient.id, typeIndex: $0) }
+        // 모든 가능한 알림 날짜에 대해 삭제 (0~7일 전)
+        let identifiers = (0...7).map { makeNotificationIdentifier(ingredientId: ingredient.id, daysBeforeExpiration: $0) }
         removePendingNotifications(withIdentifiers: identifiers)
         print("🗑️ NotificationService: 소비기한 알림 삭제 [\(ingredient.name)]")
     }
@@ -357,50 +337,61 @@ extension NotificationService {
 
     // MARK: - Private Helpers
 
-    /// 소비기한으로부터 D-3, D-1, D-Day 날짜 계산
-    /// - Parameter expirationDate: 소비기한
-    /// - Returns: [D-3, D-1, D-Day] 날짜 배열
-    private func calculateNotificationDates(from expirationDate: Date) -> [Date] {
+    /// 소비기한으로부터 알림 날짜 계산
+    /// - Parameters:
+    ///   - expirationDate: 소비기한
+    ///   - days: 알림을 받을 날짜 배열 (소비기한 X일 전)
+    /// - Returns: [(소비기한 며칠 전, 알림 날짜)] 배열
+    private func calculateNotificationDates(from expirationDate: Date, days: [Int]) -> [(Int, Date)] {
         let calendar = Calendar.current
 
-        let dates = [
-            calendar.date(byAdding: .day, value: -3, to: expirationDate), // D-3
-            calendar.date(byAdding: .day, value: -1, to: expirationDate), // D-1
-            expirationDate                                                // D-Day
-        ].compactMap { $0 }
-
-        return dates
+        return days.compactMap { daysBeforeExpiration in
+            if daysBeforeExpiration == 0 {
+                return (0, expirationDate) // D-Day
+            } else {
+                guard let date = calendar.date(byAdding: .day, value: -daysBeforeExpiration, to: expirationDate) else {
+                    return nil
+                }
+                return (daysBeforeExpiration, date)
+            }
+        }
     }
 
     /// 알림 요청 생성
     /// - Parameters:
     ///   - ingredient: 재료
-    ///   - type: 알림 타입 (D-3, D-1, D-Day)
+    ///   - daysBeforeExpiration: 소비기한 며칠 전
     ///   - triggerDate: 알림 발송 날짜
+    ///   - notificationTime: 알림 시간
     /// - Returns: UNNotificationRequest
     private func createNotificationRequest(
         for ingredient: FridgeIngredientDetail,
-        type: ExpiryNotificationType,
-        triggerDate: Date
+        daysBeforeExpiration: Int,
+        triggerDate: Date,
+        notificationTime: Date
     ) -> UNNotificationRequest {
         // 알림 콘텐츠
         let content = UNMutableNotificationContent()
         content.title = "\(ingredient.name) 소비기한 알림"
-        content.body = type.message(ingredient.name)
+        content.body = makeNotificationMessage(ingredientName: ingredient.name, daysBeforeExpiration: daysBeforeExpiration)
         content.sound = .default
         content.badge = 1
 
-        // 트리거 날짜 설정 (오후 5시)
-        var components = Calendar.current.dateComponents([.year, .month, .day], from: triggerDate)
-        components.hour = 17   // 오후 5시
-        components.minute = 0
+        // 트리거 날짜 및 시간 설정
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: triggerDate)
+
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: notificationTime)
+        components.hour = timeComponents.hour
+        components.minute = timeComponents.minute
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
 
         // 식별자 생성
-        let identifier = makeNotificationIdentifier(ingredientId: ingredient.id, typeIndex: type.index)
+        let identifier = makeNotificationIdentifier(ingredientId: ingredient.id, daysBeforeExpiration: daysBeforeExpiration)
 
-        print("   📌 [\(typeLabel(for: type))] \(formatDate(triggerDate)) 17:00 - \(content.body)")
+        let timeString = String(format: "%02d:%02d", timeComponents.hour ?? 0, timeComponents.minute ?? 0)
+        print("   📌 [D-\(daysBeforeExpiration)] \(formatDate(triggerDate)) \(timeString) - \(content.body)")
 
         return UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
     }
@@ -408,10 +399,26 @@ extension NotificationService {
     /// 알림 식별자 생성
     /// - Parameters:
     ///   - ingredientId: 재료 ID
-    ///   - typeIndex: 알림 타입 인덱스 (0: D-3, 1: D-1, 2: D-Day)
+    ///   - daysBeforeExpiration: 소비기한 며칠 전
     /// - Returns: 알림 식별자
-    private func makeNotificationIdentifier(ingredientId: String, typeIndex: Int) -> String {
-        return "expiry_\(ingredientId)_\(typeIndex)"
+    private func makeNotificationIdentifier(ingredientId: String, daysBeforeExpiration: Int) -> String {
+        return "expiry_\(ingredientId)_d\(daysBeforeExpiration)"
+    }
+
+    /// 알림 메시지 생성
+    /// - Parameters:
+    ///   - ingredientName: 재료 이름
+    ///   - daysBeforeExpiration: 소비기한 며칠 전
+    /// - Returns: 알림 메시지
+    private func makeNotificationMessage(ingredientName: String, daysBeforeExpiration: Int) -> String {
+        switch daysBeforeExpiration {
+        case 0:
+            return "오늘 '\(ingredientName)'의 소비기한이에요. 냉장고를 확인하세요!"
+        case 1:
+            return "'\(ingredientName)'의 소비기한이 하루 남았어요!"
+        default:
+            return "'\(ingredientName)'의 소비기한이 \(daysBeforeExpiration)일 남았어요."
+        }
     }
 
     /// 날짜 포맷팅 (디버그용)
@@ -419,14 +426,5 @@ extension NotificationService {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
-    }
-
-    /// 알림 타입 레이블 (디버그용)
-    private func typeLabel(for type: ExpiryNotificationType) -> String {
-        switch type {
-        case .dMinus3: return "D-3"
-        case .dMinus1: return "D-1"
-        case .dDay: return "D-Day"
-        }
     }
 }
