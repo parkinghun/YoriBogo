@@ -56,4 +56,12 @@ extension DateFormatter {
          formatter.locale = Locale(identifier: "ko_KR")
          return formatter
      }()
+
+     /// 타이머 종료 시간: "오후 6:05"
+     static let timerEndTime: DateFormatter = {
+         let formatter = DateFormatter()
+         formatter.dateFormat = "a h:mm"
+         formatter.locale = Locale(identifier: "ko_KR")
+         return formatter
+     }()
 }
