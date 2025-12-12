@@ -69,12 +69,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneWillEnterForeground(_ scene: UIScene) {
         // Called as the scene transitions from the background to the foreground.
         // Use this method to undo the changes made on entering the background.
+
+        // 타이머 상태 재계산 (백그라운드에서 경과된 시간 반영)
+        TimerManager.shared.recalculateTimers()
+        print("🔄 SceneDelegate: 타이머 상태 재계산 완료")
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         // Called as the scene transitions from the foreground to the background.
         // Use this method to save data, release shared resources, and store enough scene-specific state information
         // to restore the scene back to its current state.
+
+        // 실행 중인 모든 타이머에 대한 알림 스케줄
+        TimerManager.shared.scheduleAllNotifications()
+        print("🔔 SceneDelegate: 백그라운드 진입 - 타이머 알림 스케줄 완료")
     }
 
 

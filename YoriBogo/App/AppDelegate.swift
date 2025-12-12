@@ -160,6 +160,11 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             navigateToFridgeScreen()
             print("   → 소비기한 알림: 냉장고 화면으로 이동")
         }
+        // 타이머 알림인 경우 타이머 화면으로 이동
+        else if identifier.hasPrefix("timer_") {
+            navigateToTimerScreen()
+            print("   → 타이머 알림: 타이머 화면으로 이동")
+        }
 
         completionHandler()
     }
@@ -186,6 +191,31 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             }
 
             print("✅ AppDelegate: 냉장고 화면으로 이동 완료")
+        }
+    }
+
+    /// 타이머 화면으로 이동
+    private func navigateToTimerScreen() {
+        // 메인 스레드에서 실행
+        DispatchQueue.main.async {
+            // 현재 활성화된 윈도우 씬 찾기
+            guard let windowScene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+                  let tabBarController = window.rootViewController as? UITabBarController else {
+                print("⚠️ AppDelegate: TabBarController를 찾을 수 없습니다.")
+                return
+            }
+
+            // 타이머 탭으로 전환 (index 3)
+            tabBarController.selectedIndex = 3
+
+            // 네비게이션 스택 최상단으로 이동 (푸시된 화면이 있다면 팝)
+            if let navigationController = tabBarController.selectedViewController as? UINavigationController {
+                navigationController.popToRootViewController(animated: false)
+            }
+
+            print("✅ AppDelegate: 타이머 화면으로 이동 완료")
         }
     }
 }
