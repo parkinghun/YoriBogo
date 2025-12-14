@@ -8,7 +8,6 @@
 import Foundation
 import UIKit
 import AudioToolbox
-import RealmSwift
 import RxSwift
 import RxCocoa
 import UserNotifications
@@ -18,19 +17,18 @@ final class TimerManager {
     static let shared = TimerManager()
 
     // MARK: - Properties
-    private let realm: Realm
+    private let userDefaultsKey = "cooking_timers"
     private var tickTimer: DispatchSourceTimer?
     private let disposeBag = DisposeBag()
 
     /// 타이머 목록 (RxSwift)
-    private let timersRelay = BehaviorRelay<[CookingTimerObject]>(value: [])
-    var timers: Driver<[CookingTimerObject]> {
+    private let timersRelay = BehaviorRelay<[TimerItem]>(value: [])
+    var timers: Driver<[TimerItem]> {
         return timersRelay.asDriver()
     }
 
     // MARK: - Initialization
     private init() {
-        self.realm = try! Realm()
         loadTimers()
         startTick()
         restoreTimers()
@@ -65,18 +63,21 @@ final class TimerManager {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            let timers = self.timersRelay.value
+            var timers = self.timersRelay.value
             var updated = false
 
-            for timer in timers where timer.state == .running {
-                guard let startDate = timer.startDate else { continue }
+            for i in 0..<timers.count {
+                guard timers[i].isRunning,
+                      let endDate = timers[i].endDate else { continue }
 
-                let elapsed = Date().timeIntervalSince(startDate)
-                let remaining = timer.duration - elapsed
+                let remaining = Int(endDate.timeIntervalSince(Date()))
+
+                // 남은 시간 업데이트
+                timers[i].remainingSeconds = max(0, remaining)
 
                 // 타이머 완료
                 if remaining <= 0 {
-                    self.completeTimer(id: timer.id)
+                    self.completeTimer(id: timers[i].id)
                     updated = true
                 }
             }
@@ -84,7 +85,7 @@ final class TimerManager {
             if updated {
                 self.loadTimers()
             } else {
-                // UI 업데이트를 위해 동일한 배열이라도 갱신 트리거
+                // UI 업데이트를 위해 갱신 트리거
                 self.timersRelay.accept(timers)
             }
         }
@@ -94,81 +95,93 @@ final class TimerManager {
 
     /// 타이머 생성
     func createTimer(title: String, duration: TimeInterval, recipeStepID: String? = nil) {
-        let timer = CookingTimerObject(
-            title: title,
-            duration: duration,
-            recipeStepID: recipeStepID
+        var timers = timersRelay.value
+        let timer = TimerItem(
+            name: title,
+            totalSeconds: Int(duration)
         )
-
-        try? realm.write {
-            realm.add(timer)
-        }
-
-        loadTimers()
-        print("✅ 타이머 생성: \(title), \(duration)초")
+        timers.insert(timer, at: 0)
+        saveTimers(timers)
+        print("✅ 타이머 생성: \(title), \(Int(duration))초")
     }
 
     /// 타이머 시작
-    func startTimer(id: String) {
-        guard let timer = findTimer(id: id) else { return }
+    func startTimer(id: UUID) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
-        try? realm.write {
-            timer.startDate = Date()
-            timer.duration = timer.remainingOnPause
-            timer.state = .running
-        }
+        let now = Date()
+        timers[index].isRunning = true
+        timers[index].startDate = now
+        timers[index].endDate = now.addingTimeInterval(TimeInterval(timers[index].remainingSeconds))
 
-        scheduleNotification(for: timer)
-        loadTimers()
-        print("▶️ 타이머 시작: \(timer.title)")
+        saveTimers(timers)
+        scheduleNotification(for: timers[index])
+        print("▶️ 타이머 시작: \(timers[index].name)")
     }
 
     /// 타이머 일시정지
-    func pauseTimer(id: String) {
-        guard let timer = findTimer(id: id),
-              timer.state == .running,
-              let startDate = timer.startDate else { return }
+    func pauseTimer(id: UUID) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }),
+              timers[index].isRunning,
+              let endDate = timers[index].endDate else { return }
 
-        let elapsed = Date().timeIntervalSince(startDate)
-        let remaining = max(0, timer.duration - elapsed)
+        let remaining = max(0, Int(endDate.timeIntervalSince(Date())))
 
-        try? realm.write {
-            timer.remainingOnPause = remaining
-            timer.state = .paused
-            timer.startDate = nil
-        }
+        timers[index].remainingSeconds = remaining
+        timers[index].isRunning = false
+        timers[index].startDate = nil
+        timers[index].endDate = nil
+        timers[index].pausedDate = Date()
 
+        saveTimers(timers)
         cancelNotification(id: id)
-        loadTimers()
-        print("⏸️ 타이머 일시정지: \(timer.title), 남은 시간: \(remaining)초")
+        print("⏸️ 타이머 일시정지: \(timers[index].name), 남은 시간: \(remaining)초")
     }
 
-    /// 타이머 재개
-    func resumeTimer(id: String) {
+    /// 타이머 재시작 (완료된 타이머를 처음부터 다시 시작)
+    func restartTimer(id: UUID) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
+
+        // 남은 시간을 전체 시간으로 리셋
+        timers[index].remainingSeconds = timers[index].totalSeconds
+        timers[index].isRunning = false
+        timers[index].startDate = nil
+        timers[index].endDate = nil
+
+        saveTimers(timers)
+
+        // 리셋 후 바로 시작
         startTimer(id: id)
+        print("🔄 타이머 재시작: \(timers[index].name)")
     }
 
     /// 타이머 취소
-    func cancelTimer(id: String) {
-        guard let timer = findTimer(id: id) else { return }
+    func cancelTimer(id: UUID) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
-        try? realm.write {
-            realm.delete(timer)
-        }
+        let timerName = timers[index].name
+        timers.remove(at: index)
 
+        saveTimers(timers)
         cancelNotification(id: id)
-        loadTimers()
-        print("❌ 타이머 취소: \(timer.title)")
+        print("❌ 타이머 취소: \(timerName)")
     }
 
     /// 타이머 완료 처리
-    private func completeTimer(id: String) {
-        guard let timer = findTimer(id: id) else { return }
+    private func completeTimer(id: UUID) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
-        try? realm.write {
-            timer.state = .done
-            timer.startDate = nil
-        }
+        timers[index].isRunning = false
+        timers[index].remainingSeconds = 0
+        timers[index].startDate = nil
+        timers[index].endDate = nil
+
+        saveTimers(timers)
 
         // 햅틱 피드백
         let generator = UINotificationFeedbackGenerator()
@@ -177,90 +190,88 @@ final class TimerManager {
         // 사운드 재생
         playTimerSound()
 
-        loadTimers()
-        print("✅ 타이머 완료: \(timer.title)")
-    }
-
-    /// 타이머 연장
-    func extendTimer(id: String, seconds: TimeInterval) {
-        guard let timer = findTimer(id: id) else { return }
-
-        try? realm.write {
-            if timer.state == .running {
-                timer.duration += seconds
-            } else {
-                timer.remainingOnPause += seconds
-            }
-        }
-
-        // 알림 재스케줄
-        if timer.state == .running {
-            cancelNotification(id: id)
-            scheduleNotification(for: timer)
-        }
-
-        loadTimers()
-        print("⏱️ 타이머 연장: \(timer.title), +\(seconds)초")
+        print("✅ 타이머 완료: \(timers[index].name)")
     }
 
     // MARK: - Persistence
 
-    /// Realm에서 타이머 로드
-    private func loadTimers() {
-        let results = realm.objects(CookingTimerObject.self).sorted(byKeyPath: "createdAt", ascending: false)
-        let timers = Array(results)
+    /// UserDefaults에 저장
+    private func saveTimers(_ timers: [TimerItem]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(timers) {
+            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
+        }
         timersRelay.accept(timers)
     }
 
-    /// 타이머 검색
-    private func findTimer(id: String) -> CookingTimerObject? {
-        return realm.object(ofType: CookingTimerObject.self, forPrimaryKey: id)
+    /// UserDefaults에서 로드
+    private func loadTimers() {
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey) else {
+            timersRelay.accept([])
+            return
+        }
+
+        let decoder = JSONDecoder()
+        if let timers = try? decoder.decode([TimerItem].self, from: data) {
+            timersRelay.accept(timers)
+        } else {
+            timersRelay.accept([])
+        }
     }
 
     /// 앱 시작 시 타이머 복원
     func restoreTimers() {
-        let runningTimers = realm.objects(CookingTimerObject.self).filter("state == %@", TimerState.running.rawValue)
+        var timers = timersRelay.value
+        var updated = false
 
-        for timer in runningTimers {
-            guard let startDate = timer.startDate else { continue }
+        for i in 0..<timers.count {
+            guard timers[i].isRunning,
+                  let endDate = timers[i].endDate else { continue }
 
-            let elapsed = Date().timeIntervalSince(startDate)
-            let remaining = timer.duration - elapsed
+            let remaining = Int(endDate.timeIntervalSince(Date()))
 
             if remaining <= 0 {
                 // 이미 완료된 타이머
-                completeTimer(id: timer.id)
+                timers[i].isRunning = false
+                timers[i].remainingSeconds = 0
+                timers[i].startDate = nil
+                timers[i].endDate = nil
+                updated = true
             } else {
-                // 알림 재스케줄
-                scheduleNotification(for: timer)
+                // 남은 시간 업데이트 및 알림 재스케줄
+                timers[i].remainingSeconds = remaining
+                scheduleNotification(for: timers[i])
             }
         }
 
-        loadTimers()
-        print("🔄 타이머 복원 완료: \(runningTimers.count)개")
+        if updated {
+            saveTimers(timers)
+        }
+
+        print("🔄 타이머 복원 완료: \(timers.filter { $0.isRunning }.count)개")
     }
 
     // MARK: - Notifications
 
     /// 알림 스케줄
-    private func scheduleNotification(for timer: CookingTimerObject) {
-        guard let startDate = timer.startDate else { return }
+    private func scheduleNotification(for timer: TimerItem) {
+        guard let endDate = timer.endDate else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "타이머 완료"
-        content.body = "\(timer.title) 타이머가 종료되었습니다"
+        content.title = "\(timer.name) 타이머 완료!"
+        content.body = "타이머가 종료되었습니다"
         content.sound = getNotificationSound()
         content.categoryIdentifier = "TIMER_CATEGORY"
 
-        let fireDate = startDate.addingTimeInterval(timer.duration)
+        // endDate를 사용하여 정확한 종료 시간으로 스케줄
         let components = Calendar.current.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
-            from: fireDate
+            from: endDate
         )
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
         let request = UNNotificationRequest(
-            identifier: timer.id,
+            identifier: "timer_\(timer.id.uuidString)",
             content: content,
             trigger: trigger
         )
@@ -269,20 +280,20 @@ final class TimerManager {
             if let error = error {
                 print("❌ 알림 스케줄 실패: \(error)")
             } else {
-                print("🔔 알림 스케줄 완료: \(timer.title), 발화 시각: \(fireDate)")
+                print("🔔 알림 스케줄 완료: \(timer.name), 발화 시각: \(endDate)")
             }
         }
     }
 
     /// 알림 취소
-    private func cancelNotification(id: String) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+    private func cancelNotification(id: UUID) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timer_\(id.uuidString)"])
         print("🔕 알림 취소: \(id)")
     }
 
     /// 모든 실행 중인 타이머의 알림 스케줄 (백그라운드 진입 시)
     func scheduleAllNotifications() {
-        let runningTimers = realm.objects(CookingTimerObject.self).filter("state == %@", TimerState.running.rawValue)
+        let runningTimers = timersRelay.value.filter { $0.isRunning }
         for timer in runningTimers {
             scheduleNotification(for: timer)
         }
@@ -290,7 +301,6 @@ final class TimerManager {
 
     /// 남은 시간 재계산 (포어그라운드 복귀 시)
     func recalculateTimers() {
-        // 틱에서 자동으로 재계산됨
         tick()
     }
 
