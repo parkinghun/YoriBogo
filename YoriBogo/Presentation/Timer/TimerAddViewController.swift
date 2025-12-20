@@ -97,12 +97,16 @@ final class TimerAddViewController: BaseViewController {
     private let minutesRelay = BehaviorRelay<Int>(value: 0)
     private let secondsRelay = BehaviorRelay<Int>(value: 0)
 
+    // Callback
+    var onTimerCreated: ((String, Int) -> Void)?
+
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         setupPicker()
         bind()
+        setupButtonActions()
         setupKeyboardDismiss()
     }
 
@@ -180,7 +184,7 @@ final class TimerAddViewController: BaseViewController {
             hours: hoursRelay.asObservable(),
             minutes: minutesRelay.asObservable(),
             seconds: secondsRelay.asObservable(),
-            applyButtonTap: applyButton.rx.tap.asObservable(),
+            applyButtonTap: Observable.never(), // setupButtonActions에서 직접 처리
             closeButtonTap: closeButton.rx.tap.asObservable()
         )
 
@@ -197,6 +201,23 @@ final class TimerAddViewController: BaseViewController {
         // 닫기
         output.dismiss
             .drive(with: self) { owner, _ in
+                owner.dismiss(animated: true)
+            }
+            .disposed(by: disposeBag)
+    }
+
+    // MARK: - Actions
+    private func setupButtonActions() {
+        // 적용 버튼 탭 시 타이머 생성
+        applyButton.rx.tap
+            .subscribe(with: self) { owner, _ in
+                let name = owner.nameTextField.text ?? "타이머"
+                let hours = owner.hoursRelay.value
+                let minutes = owner.minutesRelay.value
+                let seconds = owner.secondsRelay.value
+                let totalSeconds = hours * 3600 + minutes * 60 + seconds
+
+                owner.onTimerCreated?(name, totalSeconds)
                 owner.dismiss(animated: true)
             }
             .disposed(by: disposeBag)

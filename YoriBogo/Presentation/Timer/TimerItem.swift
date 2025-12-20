@@ -8,12 +8,15 @@
 import Foundation
 
 /// 타이머 아이템 모델
-struct TimerItem {
+struct TimerItem: Codable {
     let id: UUID
     let name: String
     let totalSeconds: Int // 전체 시간 (초)
     var remainingSeconds: Int // 남은 시간 (초)
     var isRunning: Bool // 실행 중 여부
+    var startDate: Date? // 타이머 시작 시간
+    var endDate: Date? // 타이머 종료 예정 시간
+    var pausedDate: Date? // 일시정지된 시간
 
     init(id: UUID = UUID(), name: String, totalSeconds: Int) {
         self.id = id
@@ -21,6 +24,17 @@ struct TimerItem {
         self.totalSeconds = totalSeconds
         self.remainingSeconds = totalSeconds
         self.isRunning = false
+        self.startDate = nil
+        self.endDate = nil
+        self.pausedDate = nil
+    }
+
+    /// 현재 시간 기준 남은 시간 계산
+    mutating func updateRemainingTime() {
+        guard isRunning, let endDate = endDate else { return }
+
+        let remaining = Int(endDate.timeIntervalSince(Date()))
+        remainingSeconds = max(0, remaining)
     }
 
     /// 남은 시간을 "HH:MM:SS" 형식으로 반환

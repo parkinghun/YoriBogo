@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>SecretKey</key>
-	<string>$(RecipeKey)</string>
 	<key>DeveloperEmail</key>
 	<string>$(DeveloperEmail)</string>
 	<key>PrivacyPolicyURL</key>
 	<string>$(PrivacyPolicyURL)</string>
+	<key>SecretKey</key>
+	<string>$(RecipeKey)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Pretendard-Black.otf</string>

@@ -7,28 +7,13 @@
 
 import UIKit
 import SnapKit
+import RxSwift
+import RxCocoa
 
 /// 타이머 상세 화면
 final class TimerDetailViewController: BaseViewController {
 
     // MARK: - UI Components
-    private let backButton: UIButton = {
-        let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
-        let image = UIImage(systemName: "chevron.left", withConfiguration: config)
-        button.setImage(image, for: .normal)
-        button.tintColor = .brandOrange500
-        return button
-    }()
-
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 16, weight: .medium)
-        label.textColor = .gray800
-        label.text = ""
-        return label
-    }()
-
     private let circularProgressView = CircularProgressView()
 
     private let timeLabel: UILabel = {
@@ -44,7 +29,6 @@ final class TimerDetailViewController: BaseViewController {
         let label = UILabel()
         label.font = .systemFont(ofSize: 14, weight: .regular)
         label.textColor = .gray600
-        label.text = "🔔 오후 6:05"
         label.textAlignment = .center
         return label
     }()
@@ -118,11 +102,15 @@ final class TimerDetailViewController: BaseViewController {
     }()
 
     // MARK: - Properties
-    var timer: TimerItem
+    private let timerManager = TimerManager.shared
+    private let disposeBag = DisposeBag()
+    private var timer: TimerItem
+    private let timerID: UUID
 
     // MARK: - Initialization
     init(timer: TimerItem) {
         self.timer = timer
+        self.timerID = timer.id
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -133,15 +121,36 @@ final class TimerDetailViewController: BaseViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupNavigation()
         setupUI()
         setupActions()
+        bind()
         updateUI()
+    }
+
+    // MARK: - Setup Navigation
+    private func setupNavigation() {
+        // 네비게이션 타이틀은 updateUI에서 설정
+        navigationController?.navigationBar.tintColor = .brandOrange500
+    }
+
+    private func bind() {
+        // TimerManager의 타이머 리스트 구독하여 현재 타이머 업데이트
+        timerManager.timers
+            .drive(with: self) { owner, timers in
+                if let updatedTimer = timers.first(where: { $0.id == owner.timerID }) {
+                    owner.timer = updatedTimer
+                    owner.updateUI()
+                } else {
+                    // 타이머가 삭제된 경우
+                    owner.navigationController?.popViewController(animated: true)
+                }
+            }
+            .disposed(by: disposeBag)
     }
 
     // MARK: - Setup
     private func setupUI() {
-        view.addSubview(backButton)
-        view.addSubview(titleLabel)
         view.addSubview(circularProgressView)
         view.addSubview(timeLabel)
         view.addSubview(endTimeLabel)
@@ -155,20 +164,9 @@ final class TimerDetailViewController: BaseViewController {
         bottomContainerView.addSubview(soundLabel)
         bottomContainerView.addSubview(chevronImageView)
 
-        backButton.snp.makeConstraints {
-            $0.leading.equalToSuperview().offset(20)
-            $0.top.equalTo(view.safeAreaLayoutGuide).offset(8)
-            $0.size.equalTo(44)
-        }
-
-        titleLabel.snp.makeConstraints {
-            $0.centerX.equalToSuperview()
-            $0.centerY.equalTo(backButton)
-        }
-
         circularProgressView.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.top.equalTo(titleLabel.snp.bottom).offset(60)
+            $0.top.equalTo(view.safeAreaLayoutGuide).offset(40)
             $0.width.height.equalTo(300)
         }
 
@@ -197,6 +195,7 @@ final class TimerDetailViewController: BaseViewController {
         bottomContainerView.snp.makeConstraints {
             $0.horizontalEdges.equalToSuperview().inset(32)
             $0.top.equalTo(cancelButton.snp.bottom).offset(40)
+            $0.bottom.lessThanOrEqualTo(view.safeAreaLayoutGuide).inset(20)
             $0.height.equalTo(120)
         }
 
@@ -238,77 +237,75 @@ final class TimerDetailViewController: BaseViewController {
     }
 
     private func setupActions() {
-        backButton.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
         cancelButton.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         playPauseButton.addTarget(self, action: #selector(playPauseButtonTapped), for: .touchUpInside)
     }
 
     // MARK: - Actions
-    @objc private func backButtonTapped() {
-        navigationController?.popViewController(animated: true)
-    }
-
     @objc private func cancelButtonTapped() {
-        // TODO: 타이머 취소 로직
-        print("타이머 취소")
+        let alert = UIAlertController(
+            title: "타이머 취소",
+            message: "'\(timer.name)' 타이머를 취소하시겠습니까?",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+        alert.addAction(UIAlertAction(title: "확인", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            self.timerManager.cancelTimer(id: self.timerID)
+            self.navigationController?.popViewController(animated: true)
+        })
+
+        present(alert, animated: true)
     }
 
     @objc private func playPauseButtonTapped() {
-        // TODO: 재생/일시정지 로직
-        timer.isRunning.toggle()
-        updatePlayPauseButton()
-        print("재생/일시정지")
+        if timer.isFinished {
+            // 완료된 타이머 재시작
+            timerManager.restartTimer(id: timerID)
+        } else if timer.isRunning {
+            timerManager.pauseTimer(id: timerID)
+        } else {
+            timerManager.startTimer(id: timerID)
+        }
     }
 
     // MARK: - Update UI
     private func updateUI() {
         timeLabel.text = timer.remainingTimeString
         timerNameLabel.text = timer.name
-        circularProgressView.setProgress(timer.progress, animated: false)
-        updateTitleLabel()
+        circularProgressView.setProgress(timer.progress, animated: true)
+        updateNavigationTitle()
         updatePlayPauseButton()
         updateEndTime()
     }
 
-    private func updateTitleLabel() {
-        let hours = timer.totalSeconds / 3600
-        let minutes = (timer.totalSeconds % 3600) / 60
-        let seconds = timer.totalSeconds % 60
-
-        if hours > 0 {
-            titleLabel.text = "\(hours)시간 \(minutes)분"
-        } else if minutes > 0 {
-            if seconds > 0 {
-                titleLabel.text = "\(minutes)분 \(seconds)초"
-            } else {
-                titleLabel.text = "\(minutes)분"
-            }
-        } else {
-            titleLabel.text = "\(seconds)초"
-        }
+    private func updateNavigationTitle() {
+        setNavigationTitle(timer.name)
     }
 
     private func updatePlayPauseButton() {
-        if timer.isRunning {
+        if timer.isFinished {
+            playPauseButton.setTitle("다시 시작", for: .normal)
+            playPauseButton.backgroundColor = .systemGreen
+            cancelButton.isEnabled = true
+        } else if timer.isRunning {
             playPauseButton.setTitle("일시 정지", for: .normal)
             playPauseButton.backgroundColor = .brandOrange500
+            cancelButton.isEnabled = true
         } else {
             playPauseButton.setTitle("재개", for: .normal)
             playPauseButton.backgroundColor = .systemGreen
+            cancelButton.isEnabled = true
         }
     }
 
     private func updateEndTime() {
-        let endDate = Date().addingTimeInterval(TimeInterval(timer.remainingSeconds))
-        let formatter = DateFormatter()
-        formatter.dateFormat = "a h:mm"
-        formatter.locale = Locale(identifier: "ko_KR")
-        endTimeLabel.text = "🔔 \(formatter.string(from: endDate))"
-    }
-
-    /// 외부에서 타이머 업데이트 시 호출
-    func updateTimer(_ updatedTimer: TimerItem) {
-        self.timer = updatedTimer
-        updateUI()
+        if timer.isRunning, let startDate = timer.startDate,
+           let endDate = timer.endDate {
+            endTimeLabel.text = "🔔 \(DateFormatter.timerEndTime.string(from: endDate))"
+        } else {
+            endTimeLabel.text = ""
+        }
     }
 }
