@@ -45,7 +45,6 @@ final class FlowLayoutView: UIView {
 
     // MARK: - Private Methods
     private func layoutViews() {
-        let availableWidth = bounds.width - contentInset.left - contentInset.right
         var xOffset = contentInset.left
         var yOffset = contentInset.top
         var maxHeightInRow: CGFloat = 0

@@ -224,8 +224,7 @@ extension RecipeAddViewController {
     }
 
     @objc func deleteImageButtonTapped(_ sender: UIButton) {
-        guard let container = sender.superview,
-              let stackView = container.superview as? UIStackView else { return }
+        guard let container = sender.superview else { return }
 
         let stepNumber = container.tag / 10000
         let imageIndex = sender.tag

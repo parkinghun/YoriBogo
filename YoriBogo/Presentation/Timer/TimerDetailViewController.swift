@@ -86,7 +86,7 @@ final class TimerDetailViewController: BaseViewController {
 
     private let soundLabel: UILabel = {
         let label = UILabel()
-        label.text = "전파 탐지기"
+        label.text = ""
         label.font = .systemFont(ofSize: 16, weight: .medium)
         label.textColor = .gray600
         label.textAlignment = .right
@@ -99,6 +99,12 @@ final class TimerDetailViewController: BaseViewController {
         iv.tintColor = .gray500
         iv.contentMode = .scaleAspectFit
         return iv
+    }()
+
+    private let soundSelectButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.backgroundColor = .clear
+        return button
     }()
 
     // MARK: - Properties
@@ -163,6 +169,7 @@ final class TimerDetailViewController: BaseViewController {
         bottomContainerView.addSubview(endTimeSectionLabel)
         bottomContainerView.addSubview(soundLabel)
         bottomContainerView.addSubview(chevronImageView)
+        bottomContainerView.addSubview(soundSelectButton)
 
         circularProgressView.snp.makeConstraints {
             $0.centerX.equalToSuperview()
@@ -234,11 +241,17 @@ final class TimerDetailViewController: BaseViewController {
             $0.trailing.equalTo(chevronImageView.snp.leading).offset(-8)
             $0.centerY.equalTo(endTimeSectionLabel)
         }
+
+        soundSelectButton.snp.makeConstraints {
+            $0.leading.trailing.bottom.equalToSuperview()
+            $0.top.equalTo(divider.snp.bottom)
+        }
     }
 
     private func setupActions() {
         cancelButton.addTarget(self, action: #selector(cancelButtonTapped), for: .touchUpInside)
         playPauseButton.addTarget(self, action: #selector(playPauseButtonTapped), for: .touchUpInside)
+        soundSelectButton.addTarget(self, action: #selector(soundSelectButtonTapped), for: .touchUpInside)
     }
 
     // MARK: - Actions
@@ -278,6 +291,7 @@ final class TimerDetailViewController: BaseViewController {
         updateNavigationTitle()
         updatePlayPauseButton()
         updateEndTime()
+        updateSoundLabel()
     }
 
     private func updateNavigationTitle() {
@@ -301,11 +315,24 @@ final class TimerDetailViewController: BaseViewController {
     }
 
     private func updateEndTime() {
-        if timer.isRunning, let startDate = timer.startDate,
+        if timer.isRunning,
            let endDate = timer.endDate {
-            endTimeLabel.text = "🔔 \(DateFormatter.timerEndTime.string(from: endDate))"
+            endTimeLabel.text = "\(DateFormatter.timerEndTime.string(from: endDate))"
         } else {
             endTimeLabel.text = ""
         }
+    }
+
+    private func updateSoundLabel() {
+        soundLabel.text = timer.soundTitle
+    }
+
+    @objc private func soundSelectButtonTapped() {
+        let currentOption = TimerSettings.option(for: timer.soundID)
+        let vc = TimerSoundSettingViewController(mode: .perTimer(current: currentOption, onSelect: { [weak self] option in
+            guard let self = self else { return }
+            self.timerManager.updateTimerSound(id: self.timerID, option: option)
+        }))
+        navigationController?.pushViewController(vc, animated: true)
     }
 }

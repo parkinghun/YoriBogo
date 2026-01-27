@@ -105,6 +105,7 @@ final class TimerAddViewController: BaseViewController {
         super.viewDidLoad()
         setupUI()
         setupPicker()
+        applyDefaultDuration()
         bind()
         setupButtonActions()
         setupKeyboardDismiss()
@@ -174,6 +175,18 @@ final class TimerAddViewController: BaseViewController {
     private func setupPicker() {
         timePicker.delegate = self
         timePicker.dataSource = self
+    }
+
+    private func applyDefaultDuration() {
+        let totalSeconds = TimerSettings.defaultDuration()
+        let parts = TimerSettings.split(seconds: totalSeconds)
+        hoursRelay.accept(parts.hours)
+        minutesRelay.accept(parts.minutes)
+        secondsRelay.accept(parts.seconds)
+
+        timePicker.selectRow(parts.hours, inComponent: 0, animated: false)
+        timePicker.selectRow(parts.minutes, inComponent: 1, animated: false)
+        timePicker.selectRow(parts.seconds, inComponent: 2, animated: false)
     }
 
     // MARK: - Bind

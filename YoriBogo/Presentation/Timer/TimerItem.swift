@@ -17,8 +17,11 @@ struct TimerItem: Codable {
     var startDate: Date? // 타이머 시작 시간
     var endDate: Date? // 타이머 종료 예정 시간
     var pausedDate: Date? // 일시정지된 시간
+    var soundID: String // 알림음 ID
+    var soundSystemSoundID: Int // 완료 사운드 ID
 
     init(id: UUID = UUID(), name: String, totalSeconds: Int) {
+        let defaultSound = TimerSettings.selectedSoundOption()
         self.id = id
         self.name = name
         self.totalSeconds = totalSeconds
@@ -27,6 +30,8 @@ struct TimerItem: Codable {
         self.startDate = nil
         self.endDate = nil
         self.pausedDate = nil
+        self.soundID = defaultSound.id
+        self.soundSystemSoundID = defaultSound.systemSoundID
     }
 
     /// 현재 시간 기준 남은 시간 계산
@@ -59,5 +64,52 @@ struct TimerItem: Codable {
     /// 타이머 종료 여부
     var isFinished: Bool {
         return remainingSeconds <= 0
+    }
+
+    var soundTitle: String {
+        return TimerSettings.title(for: soundID)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case totalSeconds
+        case remainingSeconds
+        case isRunning
+        case startDate
+        case endDate
+        case pausedDate
+        case soundID
+        case soundSystemSoundID
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaultSound = TimerSettings.selectedSoundOption()
+
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        totalSeconds = try container.decode(Int.self, forKey: .totalSeconds)
+        remainingSeconds = try container.decode(Int.self, forKey: .remainingSeconds)
+        isRunning = try container.decode(Bool.self, forKey: .isRunning)
+        startDate = try container.decodeIfPresent(Date.self, forKey: .startDate)
+        endDate = try container.decodeIfPresent(Date.self, forKey: .endDate)
+        pausedDate = try container.decodeIfPresent(Date.self, forKey: .pausedDate)
+        soundID = try container.decodeIfPresent(String.self, forKey: .soundID) ?? defaultSound.id
+        soundSystemSoundID = try container.decodeIfPresent(Int.self, forKey: .soundSystemSoundID) ?? defaultSound.systemSoundID
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(totalSeconds, forKey: .totalSeconds)
+        try container.encode(remainingSeconds, forKey: .remainingSeconds)
+        try container.encode(isRunning, forKey: .isRunning)
+        try container.encodeIfPresent(startDate, forKey: .startDate)
+        try container.encodeIfPresent(endDate, forKey: .endDate)
+        try container.encodeIfPresent(pausedDate, forKey: .pausedDate)
+        try container.encode(soundID, forKey: .soundID)
+        try container.encode(soundSystemSoundID, forKey: .soundSystemSoundID)
     }
 }

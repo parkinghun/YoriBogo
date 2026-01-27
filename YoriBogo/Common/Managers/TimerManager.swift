@@ -98,10 +98,13 @@ final class TimerManager {
     /// 타이머 생성
     func createTimer(title: String, duration: TimeInterval, recipeStepID: String? = nil) {
         var timers = timersRelay.value
-        let timer = TimerItem(
+        var timer = TimerItem(
             name: title,
             totalSeconds: Int(duration)
         )
+        let defaultSound = TimerSettings.selectedSoundOption()
+        timer.soundID = defaultSound.id
+        timer.soundSystemSoundID = defaultSound.systemSoundID
         timers.insert(timer, at: 0)
         saveTimers(timers)
         print("✅ 타이머 생성: \(title), \(Int(duration))초")
@@ -177,6 +180,7 @@ final class TimerManager {
     private func completeTimer(id: UUID) {
         var timers = timersRelay.value
         guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
+        let completedTimer = timers[index]
 
         timers[index].isRunning = false
         timers[index].remainingSeconds = 0
@@ -190,7 +194,7 @@ final class TimerManager {
         generator.notificationOccurred(.success)
 
         // 사운드 재생
-        playTimerSound()
+        playTimerSound(for: completedTimer)
 
         print("✅ 타이머 완료: \(timers[index].name)")
     }
@@ -262,7 +266,7 @@ final class TimerManager {
         let content = UNMutableNotificationContent()
         content.title = "\(timer.name) 타이머 완료!"
         content.body = "타이머가 종료되었습니다"
-        content.sound = getNotificationSound()
+        content.sound = getNotificationSound(for: timer)
         content.categoryIdentifier = "TIMER_CATEGORY"
 
         // endDate를 사용하여 정확한 종료 시간으로 스케줄
@@ -301,6 +305,15 @@ final class TimerManager {
         }
     }
 
+    /// 실행 중인 타이머 알림 재스케줄 (사운드 변경 등)
+    func rescheduleRunningTimerNotifications() {
+        let runningTimers = timersRelay.value.filter { $0.isRunning }
+        for timer in runningTimers {
+            cancelNotification(id: timer.id)
+            scheduleNotification(for: timer)
+        }
+    }
+
     /// 남은 시간 재계산 (포어그라운드 복귀 시)
     func recalculateTimers() {
         tick()
@@ -309,15 +322,36 @@ final class TimerManager {
     // MARK: - Sound
 
     /// 알림 사운드 가져오기
-    private func getNotificationSound() -> UNNotificationSound {
-        let soundName = UserDefaults.standard.string(forKey: "timerSound") ?? "default"
-        return soundName == "default" ? .default : UNNotificationSound(named: UNNotificationSoundName(rawValue: "\(soundName).caf"))
+    private func getNotificationSound(for timer: TimerItem) -> UNNotificationSound {
+        let soundName = timer.soundID
+        guard soundName != "default",
+              Bundle.main.path(forResource: soundName, ofType: "caf") != nil else {
+            return .default
+        }
+        return UNNotificationSound(named: UNNotificationSoundName(rawValue: "\(soundName).caf"))
     }
 
     /// 타이머 완료 사운드 재생
-    private func playTimerSound() {
-        let soundID = UserDefaults.standard.integer(forKey: "timerSoundID")
-        let systemSoundID = soundID > 0 ? SystemSoundID(soundID) : SystemSoundID(1005) // 기본: Alarm
+    private func playTimerSound(for timer: TimerItem) {
+        let systemSoundID = timer.soundSystemSoundID > 0
+            ? SystemSoundID(timer.soundSystemSoundID)
+            : SystemSoundID(TimerSettings.selectedSoundOption().systemSoundID)
         AudioServicesPlaySystemSound(systemSoundID)
+    }
+
+    // MARK: - Timer Sound
+
+    func updateTimerSound(id: UUID, option: TimerSoundOption) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
+
+        timers[index].soundID = option.id
+        timers[index].soundSystemSoundID = option.systemSoundID
+        saveTimers(timers)
+
+        if timers[index].isRunning {
+            cancelNotification(id: timers[index].id)
+            scheduleNotification(for: timers[index])
+        }
     }
 }

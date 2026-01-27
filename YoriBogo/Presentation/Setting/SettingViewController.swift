@@ -32,6 +32,8 @@ final class SettingViewController: BaseViewController {
     private var sections: [SettingSection] = []
     private var notificationTimeValue: String = ""
     private var appVersionValue: String = ""
+    private var timerSoundValue: String = ""
+    private var defaultTimerDurationValue: String = ""
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -39,6 +41,13 @@ final class SettingViewController: BaseViewController {
         setupNavigation()
         setupUI()
         bind()
+        refreshTimerSettingsValues()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        refreshTimerSettingsValues()
+        tableView.reloadData()
     }
 
     // MARK: - Setup
@@ -105,12 +114,10 @@ final class SettingViewController: BaseViewController {
             break
 
         case .timerSound:
-            // TODO: 알림음 선택 화면으로 이동
-            print("✅ 알림음 선택")
+            presentTimerSoundSettingVC()
 
         case .defaultTimerDuration:
-            // TODO: 기본 타이머 시간 선택 화면으로 이동
-            print("✅ 기본 타이머 시간 선택")
+            presentDefaultTimerDurationSettingVC()
 
         case .monthlyStats:
             // TODO: 이번 달 소비/폐기 현황 화면으로 이동
@@ -131,6 +138,10 @@ final class SettingViewController: BaseViewController {
         switch item {
         case .notificationTime:
             return notificationTimeValue
+        case .timerSound:
+            return timerSoundValue
+        case .defaultTimerDuration:
+            return defaultTimerDurationValue
         case .appVersion:
             return appVersionValue
         default:
@@ -221,6 +232,21 @@ final class SettingViewController: BaseViewController {
     private func presentExpirationNotificationSettingVC() {
         let vc = ExpirationNotificationSettingViewController()
         navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func presentTimerSoundSettingVC() {
+        let vc = TimerSoundSettingViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func presentDefaultTimerDurationSettingVC() {
+        let vc = DefaultTimerDurationSettingViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func refreshTimerSettingsValues() {
+        timerSoundValue = TimerSettings.selectedSoundTitle()
+        defaultTimerDurationValue = TimerSettings.formatDuration(seconds: TimerSettings.defaultDuration())
     }
 
     private func showNotificationPermissionDeniedAlert() {
