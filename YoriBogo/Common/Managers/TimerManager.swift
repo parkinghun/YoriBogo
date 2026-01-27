@@ -65,10 +65,12 @@ final class TimerManager {
 
             var timers = self.timersRelay.value
             var updated = false
+            var hasRunningTimer = false
 
             for i in 0..<timers.count {
                 guard timers[i].isRunning,
                       let endDate = timers[i].endDate else { continue }
+                hasRunningTimer = true
 
                 let remaining = Int(endDate.timeIntervalSince(Date()))
 
@@ -84,7 +86,7 @@ final class TimerManager {
 
             if updated {
                 self.loadTimers()
-            } else {
+            } else if hasRunningTimer {
                 // UI 업데이트를 위해 갱신 트리거
                 self.timersRelay.accept(timers)
             }

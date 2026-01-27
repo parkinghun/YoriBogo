@@ -31,6 +31,8 @@ final class TimerViewController: BaseViewController {
     private let timerManager = TimerManager.shared
     private let disposeBag = DisposeBag()
     private var isDeletingManually = false // 수동 삭제 중 플래그
+    private var isSwipeEditing = false // 스와이프 삭제 중 플래그
+    private var editingIndexPath: IndexPath?
     private var timers: [TimerItem] = [] {
         didSet {
             updateEmptyState()
@@ -113,11 +115,20 @@ final class TimerViewController: BaseViewController {
                         owner.tableView.reloadData()
                     })
                 } else {
+                    if owner.tableView.isEditing {
+                        return
+                    }
                     // 시간 업데이트만 (애니메이션 없이)
                     if let visibleIndexPaths = owner.tableView.indexPathsForVisibleRows,
                        !visibleIndexPaths.isEmpty {
+                        let indexPathsToReload: [IndexPath]
+                        if owner.isSwipeEditing, let editingIndexPath = owner.editingIndexPath {
+                            indexPathsToReload = visibleIndexPaths.filter { $0 != editingIndexPath }
+                        } else {
+                            indexPathsToReload = visibleIndexPaths
+                        }
                         UIView.performWithoutAnimation {
-                            owner.tableView.reloadRows(at: visibleIndexPaths, with: .none)
+                            owner.tableView.reloadRows(at: indexPathsToReload, with: .none)
                         }
                     }
                 }
@@ -210,6 +221,16 @@ extension TimerViewController: UITableViewDataSource {
 
 // MARK: - UITableViewDelegate
 extension TimerViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, willBeginEditingRowAt indexPath: IndexPath) {
+        isSwipeEditing = true
+        editingIndexPath = indexPath
+    }
+
+    func tableView(_ tableView: UITableView, didEndEditingRowAt indexPath: IndexPath?) {
+        isSwipeEditing = false
+        editingIndexPath = nil
+    }
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let timer = timers[indexPath.row]
         let detailVC = TimerDetailViewController(timer: timer)
@@ -242,5 +263,3 @@ extension TimerViewController: UITableViewDelegate {
         return "삭제"
     }
 }
-
-
