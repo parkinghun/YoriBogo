@@ -151,9 +151,6 @@ final class TimerViewController: BaseViewController {
         let vc = TimerAddViewController()
         vc.modalPresentationStyle = .overFullScreen
         vc.modalTransitionStyle = .crossDissolve
-        vc.onTimerCreated = { [weak self] name, totalSeconds in
-            self?.addTimer(name: name, totalSeconds: TimeInterval(totalSeconds))
-        }
         present(vc, animated: true)
     }
 
@@ -163,10 +160,6 @@ final class TimerViewController: BaseViewController {
     }
 
     // MARK: - Timer Management
-    private func addTimer(name: String, totalSeconds: TimeInterval) {
-        timerManager.createTimer(title: name, duration: totalSeconds)
-    }
-
     private func deleteTimer(at index: Int) {
         let timer = timers[index]
         timerManager.cancelTimer(id: timer.id)

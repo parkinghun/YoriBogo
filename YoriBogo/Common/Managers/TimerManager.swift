@@ -11,13 +11,13 @@ import AudioToolbox
 import RxSwift
 import RxCocoa
 import UserNotifications
+import RealmSwift
 
 /// 타이머 관리 싱글톤
 final class TimerManager {
     static let shared = TimerManager()
 
     // MARK: - Properties
-    private let userDefaultsKey = "cooking_timers"
     private var tickTimer: DispatchSourceTimer?
     private let disposeBag = DisposeBag()
 
@@ -98,13 +98,11 @@ final class TimerManager {
     /// 타이머 생성
     func createTimer(title: String, duration: TimeInterval, recipeStepID: String? = nil) {
         var timers = timersRelay.value
-        var timer = TimerItem(
+        let timer = TimerItem(
             name: title,
-            totalSeconds: Int(duration)
+            totalSeconds: Int(duration),
+            recipeStepID: recipeStepID
         )
-        let defaultSound = TimerSettings.selectedSoundOption()
-        timer.soundID = defaultSound.id
-        timer.soundSystemSoundID = defaultSound.systemSoundID
         timers.insert(timer, at: 0)
         saveTimers(timers)
         print("✅ 타이머 생성: \(title), \(Int(duration))초")
@@ -201,29 +199,71 @@ final class TimerManager {
 
     // MARK: - Persistence
 
-    /// UserDefaults에 저장
+    /// Realm에 저장
     private func saveTimers(_ timers: [TimerItem]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(timers) {
-            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
+        do {
+            try RealmManager.performWrite { realm in
+                let ids = timers.map { $0.id.uuidString }
+                let toDelete = realm.objects(CookingTimerObject.self).filter("NOT id IN %@", ids)
+                realm.delete(toDelete)
+
+                for timer in timers {
+                    let object = realm.object(ofType: CookingTimerObject.self, forPrimaryKey: timer.id.uuidString) ?? CookingTimerObject()
+                    if object.realm == nil {
+                        object.id = timer.id.uuidString
+                    }
+                    object.title = timer.name
+                    object.totalSeconds = timer.totalSeconds
+                    object.remainingSeconds = timer.remainingSeconds
+                    object.isRunning = timer.isRunning
+                    object.startDate = timer.startDate
+                    object.endDate = timer.endDate
+                    object.pausedDate = timer.pausedDate
+                    object.soundID = timer.soundID
+                    object.soundSystemSoundID = timer.soundSystemSoundID
+                    object.recipeStepID = timer.recipeStepID
+                    object.createdAt = timer.createdAt
+
+                    realm.add(object, update: .modified)
+                }
+            }
+        } catch {
+            print("❌ 타이머 저장 실패: \(error)")
         }
+
         timersRelay.accept(timers)
     }
 
-    /// UserDefaults에서 로드
+    /// Realm에서 로드
     private func loadTimers() {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey) else {
-            timersRelay.accept([])
-            return
-        }
+        let timers: [TimerItem] = RealmManager.performRead { realm in
+            let objects = realm.objects(CookingTimerObject.self)
+                .sorted(byKeyPath: "createdAt", ascending: false)
+            return objects.map { self.timerItem(from: $0) }
+        } ?? []
 
-        let decoder = JSONDecoder()
-        if let timers = try? decoder.decode([TimerItem].self, from: data) {
-            timersRelay.accept(timers)
-        } else {
-            timersRelay.accept([])
-        }
+        timersRelay.accept(timers)
     }
+
+    private func timerItem(from object: CookingTimerObject) -> TimerItem {
+        let id = UUID(uuidString: object.id) ?? UUID()
+        var item = TimerItem(
+            id: id,
+            name: object.title,
+            totalSeconds: object.totalSeconds,
+            recipeStepID: object.recipeStepID,
+            createdAt: object.createdAt,
+            soundID: object.soundID,
+            soundSystemSoundID: object.soundSystemSoundID
+        )
+        item.remainingSeconds = object.remainingSeconds
+        item.isRunning = object.isRunning
+        item.startDate = object.startDate
+        item.endDate = object.endDate
+        item.pausedDate = object.pausedDate
+        return item
+    }
+
 
     /// 앱 시작 시 타이머 복원
     func restoreTimers() {

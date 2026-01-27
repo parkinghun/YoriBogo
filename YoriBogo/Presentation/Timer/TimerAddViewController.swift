@@ -10,7 +10,7 @@ import RxSwift
 import RxCocoa
 import SnapKit
 
-final class TimerAddViewController: BaseViewController {
+final class TimerAddViewController: BaseViewController, UIGestureRecognizerDelegate {
  
     // MARK: - UI Components
     private let containerView: UIView = {
@@ -97,9 +97,6 @@ final class TimerAddViewController: BaseViewController {
     private let minutesRelay = BehaviorRelay<Int>(value: 0)
     private let secondsRelay = BehaviorRelay<Int>(value: 0)
 
-    // Callback
-    var onTimerCreated: ((String, Int) -> Void)?
-
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -107,8 +104,8 @@ final class TimerAddViewController: BaseViewController {
         setupPicker()
         applyDefaultDuration()
         bind()
-        setupButtonActions()
         setupKeyboardDismiss()
+        setupBackgroundDismiss()
     }
 
     override func setBackgroundColor() {
@@ -197,7 +194,7 @@ final class TimerAddViewController: BaseViewController {
             hours: hoursRelay.asObservable(),
             minutes: minutesRelay.asObservable(),
             seconds: secondsRelay.asObservable(),
-            applyButtonTap: Observable.never(), // setupButtonActions에서 직접 처리
+            applyButtonTap: applyButton.rx.tap.asObservable(),
             closeButtonTap: closeButton.rx.tap.asObservable()
         )
 
@@ -219,23 +216,6 @@ final class TimerAddViewController: BaseViewController {
             .disposed(by: disposeBag)
     }
 
-    // MARK: - Actions
-    private func setupButtonActions() {
-        // 적용 버튼 탭 시 타이머 생성
-        applyButton.rx.tap
-            .subscribe(with: self) { owner, _ in
-                let name = owner.nameTextField.text ?? "타이머"
-                let hours = owner.hoursRelay.value
-                let minutes = owner.minutesRelay.value
-                let seconds = owner.secondsRelay.value
-                let totalSeconds = hours * 3600 + minutes * 60 + seconds
-
-                owner.onTimerCreated?(name, totalSeconds)
-                owner.dismiss(animated: true)
-            }
-            .disposed(by: disposeBag)
-    }
-
     // MARK: - Keyboard
     private func setupKeyboardDismiss() {
         let tapGesture = UITapGestureRecognizer()
@@ -247,6 +227,22 @@ final class TimerAddViewController: BaseViewController {
                 owner.view.endEditing(true)
             }
             .disposed(by: disposeBag)
+    }
+
+    private func setupBackgroundDismiss() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(backgroundTapped))
+        tapGesture.cancelsTouchesInView = false
+        tapGesture.delegate = self
+        view.addGestureRecognizer(tapGesture)
+    }
+
+    @objc private func backgroundTapped() {
+        dismiss(animated: true)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        let location = touch.location(in: view)
+        return !containerView.frame.contains(location)
     }
 }
 

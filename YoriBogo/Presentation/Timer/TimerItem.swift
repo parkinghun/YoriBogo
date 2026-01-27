@@ -19,8 +19,18 @@ struct TimerItem: Codable {
     var pausedDate: Date? // 일시정지된 시간
     var soundID: String // 알림음 ID
     var soundSystemSoundID: Int // 완료 사운드 ID
+    var recipeStepID: String? // 레시피 단계 ID
+    var createdAt: Date // 생성 시각
 
-    init(id: UUID = UUID(), name: String, totalSeconds: Int) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        totalSeconds: Int,
+        recipeStepID: String? = nil,
+        createdAt: Date = Date(),
+        soundID: String? = nil,
+        soundSystemSoundID: Int? = nil
+    ) {
         let defaultSound = TimerSettings.selectedSoundOption()
         self.id = id
         self.name = name
@@ -30,8 +40,10 @@ struct TimerItem: Codable {
         self.startDate = nil
         self.endDate = nil
         self.pausedDate = nil
-        self.soundID = defaultSound.id
-        self.soundSystemSoundID = defaultSound.systemSoundID
+        self.soundID = soundID ?? defaultSound.id
+        self.soundSystemSoundID = soundSystemSoundID ?? defaultSound.systemSoundID
+        self.recipeStepID = recipeStepID
+        self.createdAt = createdAt
     }
 
     /// 현재 시간 기준 남은 시간 계산
@@ -81,6 +93,8 @@ struct TimerItem: Codable {
         case pausedDate
         case soundID
         case soundSystemSoundID
+        case recipeStepID
+        case createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -97,6 +111,8 @@ struct TimerItem: Codable {
         pausedDate = try container.decodeIfPresent(Date.self, forKey: .pausedDate)
         soundID = try container.decodeIfPresent(String.self, forKey: .soundID) ?? defaultSound.id
         soundSystemSoundID = try container.decodeIfPresent(Int.self, forKey: .soundSystemSoundID) ?? defaultSound.systemSoundID
+        recipeStepID = try container.decodeIfPresent(String.self, forKey: .recipeStepID)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
 
     func encode(to encoder: Encoder) throws {
@@ -111,5 +127,7 @@ struct TimerItem: Codable {
         try container.encodeIfPresent(pausedDate, forKey: .pausedDate)
         try container.encode(soundID, forKey: .soundID)
         try container.encode(soundSystemSoundID, forKey: .soundSystemSoundID)
+        try container.encodeIfPresent(recipeStepID, forKey: .recipeStepID)
+        try container.encode(createdAt, forKey: .createdAt)
     }
 }

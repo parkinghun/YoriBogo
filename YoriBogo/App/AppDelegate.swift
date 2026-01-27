@@ -76,10 +76,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // MARK: - Realm Configuration
     private func configureRealm() {
         let config = Realm.Configuration(
-            schemaVersion: 1,
+            schemaVersion: 2,
             migrationBlock: { migration, oldSchemaVersion in
-                if oldSchemaVersion < 1 {
-                    // 필요 시 마이그레이션 로직 추가
+                if oldSchemaVersion < 2 {
+                    migration.enumerateObjects(ofType: CookingTimerObject.className()) { oldObject, newObject in
+                        guard let oldObject, let newObject else { return }
+
+                        let duration = oldObject["duration"] as? Double ?? 0
+                        let remaining = oldObject["remainingOnPause"] as? Double ?? duration
+                        let state = oldObject["state"] as? String
+                        let startDate = oldObject["startDate"] as? Date
+
+                        newObject["title"] = oldObject["title"] as? String ?? "타이머"
+                        newObject["totalSeconds"] = Int(duration)
+                        newObject["remainingSeconds"] = Int(remaining)
+                        newObject["isRunning"] = (state == "running")
+                        newObject["startDate"] = startDate
+                        if let startDate {
+                            newObject["endDate"] = startDate.addingTimeInterval(TimeInterval(Int(remaining)))
+                        }
+                        newObject["pausedDate"] = nil
+                        newObject["soundID"] = TimerSettings.selectedSoundOption().id
+                        newObject["soundSystemSoundID"] = TimerSettings.selectedSoundOption().systemSoundID
+                        newObject["recipeStepID"] = oldObject["recipeStepID"]
+                        newObject["createdAt"] = oldObject["createdAt"] as? Date ?? Date()
+                    }
                 }
             }
         )
