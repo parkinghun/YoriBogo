@@ -33,10 +33,19 @@ final class TimerViewController: BaseViewController {
     private var isDeletingManually = false // 수동 삭제 중 플래그
     private var isSwipeEditing = false // 스와이프 삭제 중 플래그
     private var editingIndexPath: IndexPath?
-    private var timers: [TimerItem] = [] {
+    private var currentSortOption: TimerSortOption = .createdDesc
+    private let showRecipeTimersInTab = false
+    private var manualTimers: [TimerItem] = [] {
         didSet {
             updateEmptyState()
         }
+    }
+    private var recipeTimers: [TimerItem] = []
+
+    private enum TimerSortOption: String, CaseIterable {
+        case createdDesc = "최신순"
+        case remainingAsc = "남은시간"
+        case nameAsc = "이름순"
     }
 
     // MARK: - Lifecycle
@@ -72,6 +81,15 @@ final class TimerViewController: BaseViewController {
         )
         editButton.tintColor = .brandOrange500
         navigationItem.leftBarButtonItem = editButton
+
+        let sortButton = UIBarButtonItem(
+            title: "정렬",
+            style: .plain,
+            target: self,
+            action: #selector(sortButtonTapped)
+        )
+        sortButton.tintColor = .brandOrange500
+        navigationItem.rightBarButtonItems = [addButton, sortButton]
     }
 
     private func configureHierachy() {
@@ -97,17 +115,22 @@ final class TimerViewController: BaseViewController {
         // TimerManager의 타이머 리스트 구독
         timerManager.timers
             .drive(with: self) { owner, newTimers in
-                let filteredTimers = newTimers.filter { $0.recipeStepID == nil }
+                let filteredManualTimers = newTimers.filter { $0.recipeStepID == nil }
+                let sortedManualTimers = owner.sortTimers(filteredManualTimers, by: owner.currentSortOption)
+                let sortedRecipeTimers = newTimers
+                    .filter { $0.recipeStepID != nil }
+                    .sorted { $0.createdAt > $1.createdAt }
                 // 수동 삭제 중에는 RxSwift 업데이트 무시
                 if owner.isDeletingManually {
                     return
                 }
 
-                let oldTimers = owner.timers
-                owner.timers = filteredTimers
+                let oldTimers = owner.manualTimers
+                owner.manualTimers = sortedManualTimers
+                owner.recipeTimers = sortedRecipeTimers
 
                 // 타이머 개수 변경 (추가/삭제)
-                if oldTimers.count != filteredTimers.count {
+                if oldTimers.count != sortedManualTimers.count {
                     // 개수 변경 시 fade 애니메이션으로 부드럽게
                     UIView.transition(with: owner.tableView,
                                     duration: 0.25,
@@ -160,14 +183,37 @@ final class TimerViewController: BaseViewController {
         navigationItem.leftBarButtonItem?.title = tableView.isEditing ? "완료" : "편집"
     }
 
-    // MARK: - Timer Management
-    private func deleteTimer(at index: Int) {
-        let timer = timers[index]
-        timerManager.cancelTimer(id: timer.id)
+    @objc private func sortButtonTapped() {
+        let alert = UIAlertController(title: "정렬", message: nil, preferredStyle: .actionSheet)
+
+        TimerSortOption.allCases.forEach { option in
+            let action = UIAlertAction(title: option.rawValue, style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.currentSortOption = option
+                self.manualTimers = self.sortTimers(self.manualTimers, by: option)
+                self.tableView.reloadData()
+            }
+            alert.addAction(action)
+        }
+
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+        present(alert, animated: true)
     }
 
-    private func togglePlayPause(at index: Int) {
-        let timer = timers[index]
+    private func sortTimers(_ timers: [TimerItem], by option: TimerSortOption) -> [TimerItem] {
+        switch option {
+        case .createdDesc:
+            return timers.sorted { $0.createdAt > $1.createdAt }
+        case .remainingAsc:
+            return timers.sorted { $0.remainingSeconds < $1.remainingSeconds }
+        case .nameAsc:
+            return timers.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+    }
+
+    // MARK: - Timer Management
+    private func togglePlayPause(at indexPath: IndexPath) {
+        let timer = timerForIndexPath(indexPath)
 
         if timer.isFinished {
             // 완료된 타이머는 재시작
@@ -182,7 +228,7 @@ final class TimerViewController: BaseViewController {
     }
 
     private func updateEmptyState() {
-        let isEmpty = timers.isEmpty
+        let isEmpty = manualTimers.isEmpty
         emptyView.isHidden = !isEmpty
         tableView.isHidden = isEmpty
         navigationItem.leftBarButtonItem?.isEnabled = !isEmpty
@@ -191,8 +237,15 @@ final class TimerViewController: BaseViewController {
 
 // MARK: - UITableViewDataSource
 extension TimerViewController: UITableViewDataSource {
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return showRecipeTimersInTab ? 2 : 1
+    }
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return timers.count
+        if showRecipeTimersInTab {
+            return section == 0 ? manualTimers.count : recipeTimers.count
+        }
+        return manualTimers.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -203,13 +256,18 @@ extension TimerViewController: UITableViewDataSource {
             return UITableViewCell()
         }
 
-        let timer = timers[indexPath.row]
+        let timer = timerForIndexPath(indexPath)
         cell.configure(with: timer)
         cell.onPlayPauseTapped = { [weak self] in
-            self?.togglePlayPause(at: indexPath.row)
+            self?.togglePlayPause(at: indexPath)
         }
 
         return cell
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        guard showRecipeTimersInTab else { return nil }
+        return section == 0 ? "일반 타이머" : "레시피 타이머"
     }
 }
 
@@ -226,7 +284,7 @@ extension TimerViewController: UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let timer = timers[indexPath.row]
+        let timer = timerForIndexPath(indexPath)
         let detailVC = TimerDetailViewController(timer: timer)
         navigationController?.pushViewController(detailVC, animated: true)
     }
@@ -234,13 +292,17 @@ extension TimerViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             // 삭제할 타이머 가져오기
-            let timer = timers[indexPath.row]
+            let timer = timerForIndexPath(indexPath)
 
             // RxSwift 업데이트 일시 중단
             isDeletingManually = true
 
             // 로컬 배열에서 먼저 제거
-            timers.remove(at: indexPath.row)
+            if showRecipeTimersInTab, indexPath.section == 1 {
+                recipeTimers.remove(at: indexPath.row)
+            } else {
+                manualTimers.remove(at: indexPath.row)
+            }
 
             // TableView 애니메이션으로 행 삭제
             tableView.deleteRows(at: [indexPath], with: .automatic)
@@ -255,5 +317,14 @@ extension TimerViewController: UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, titleForDeleteConfirmationButtonForRowAt indexPath: IndexPath) -> String? {
         return "삭제"
+    }
+}
+
+private extension TimerViewController {
+    func timerForIndexPath(_ indexPath: IndexPath) -> TimerItem {
+        if showRecipeTimersInTab, indexPath.section == 1 {
+            return recipeTimers[indexPath.row]
+        }
+        return manualTimers[indexPath.row]
     }
 }

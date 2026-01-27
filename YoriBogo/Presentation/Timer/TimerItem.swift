@@ -10,8 +10,8 @@ import Foundation
 /// 타이머 아이템 모델
 struct TimerItem: Codable {
     let id: UUID
-    let name: String
-    let totalSeconds: Int // 전체 시간 (초)
+    var name: String
+    var totalSeconds: Int // 전체 시간 (초)
     var remainingSeconds: Int // 남은 시간 (초)
     var isRunning: Bool // 실행 중 여부
     var startDate: Date? // 타이머 시작 시간

@@ -970,7 +970,7 @@ final class RecipeDetailViewController: BaseViewController {
         }
 
         let stepID = recipeStepID(recipeID: recipe.id, stepIndex: stepIndex)
-        if let timer = currentTimers.first(where: { $0.recipeStepID == stepID }) {
+        if let timer = timerManager.timer(byRecipeStepID: stepID) {
             if timer.isFinished {
                 timerManager.restartTimer(id: timer.id)
             } else if timer.isRunning {
@@ -980,8 +980,8 @@ final class RecipeDetailViewController: BaseViewController {
             }
         } else {
             let name = "\(stepIndex)단계 타이머"
-            let newID = timerManager.createTimer(title: name, duration: TimeInterval(timerSeconds), recipeStepID: stepID)
-            timerManager.startTimer(id: newID)
+            let timer = timerManager.upsertRecipeStepTimer(recipeStepID: stepID, title: name, duration: TimeInterval(timerSeconds))
+            timerManager.startTimer(id: timer.id)
         }
     }
 

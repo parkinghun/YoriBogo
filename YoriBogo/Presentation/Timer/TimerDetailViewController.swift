@@ -138,6 +138,10 @@ final class TimerDetailViewController: BaseViewController {
     private func setupNavigation() {
         // 네비게이션 타이틀은 updateUI에서 설정
         navigationController?.navigationBar.tintColor = .brandOrange500
+
+        let editButton = UIBarButtonItem(title: "편집", style: .plain, target: self, action: #selector(editButtonTapped))
+        editButton.tintColor = .brandOrange500
+        navigationItem.rightBarButtonItem = editButton
     }
 
     private func bind() {
@@ -281,6 +285,19 @@ final class TimerDetailViewController: BaseViewController {
         } else {
             timerManager.startTimer(id: timerID)
         }
+    }
+
+    @objc private func editButtonTapped() {
+        let editVC = TimerEditViewController()
+        editVC.modalPresentationStyle = .overFullScreen
+        editVC.modalTransitionStyle = .crossDissolve
+        editVC.initialName = timer.name
+        editVC.initialSeconds = timer.totalSeconds
+        editVC.onSave = { [weak self] name, totalSeconds in
+            guard let self = self else { return }
+            self.timerManager.updateTimer(id: self.timerID, name: name, duration: TimeInterval(totalSeconds))
+        }
+        present(editVC, animated: true)
     }
 
     // MARK: - Update UI

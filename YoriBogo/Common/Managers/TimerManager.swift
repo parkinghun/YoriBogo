@@ -95,6 +95,36 @@ final class TimerManager {
 
     // MARK: - CRUD Operations
 
+    func timer(byRecipeStepID recipeStepID: String) -> TimerItem? {
+        return timersRelay.value.first(where: { $0.recipeStepID == recipeStepID })
+    }
+
+    @discardableResult
+    func upsertRecipeStepTimer(recipeStepID: String, title: String, duration: TimeInterval) -> TimerItem {
+        var timers = timersRelay.value
+        let totalSeconds = Int(duration)
+
+        if let index = timers.firstIndex(where: { $0.recipeStepID == recipeStepID }) {
+            timers[index].totalSeconds = totalSeconds
+            if !timers[index].isRunning {
+                timers[index].remainingSeconds = totalSeconds
+                timers[index].startDate = nil
+                timers[index].endDate = nil
+            }
+            saveTimers(timers)
+            return timers[index]
+        }
+
+        let timer = TimerItem(
+            name: title,
+            totalSeconds: totalSeconds,
+            recipeStepID: recipeStepID
+        )
+        timers.insert(timer, at: 0)
+        saveTimers(timers)
+        return timer
+    }
+
     /// 타이머 생성
     @discardableResult
     func createTimer(title: String, duration: TimeInterval, recipeStepID: String? = nil) -> UUID {
@@ -398,5 +428,29 @@ final class TimerManager {
             cancelNotification(id: timers[index].id)
             scheduleNotification(for: timers[index])
         }
+    }
+
+    func updateTimer(id: UUID, name: String, duration: TimeInterval) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
+
+        let totalSeconds = Int(duration)
+        timers[index].name = name
+        timers[index].totalSeconds = totalSeconds
+
+        if timers[index].isRunning {
+            let now = Date()
+            timers[index].remainingSeconds = totalSeconds
+            timers[index].startDate = now
+            timers[index].endDate = now.addingTimeInterval(TimeInterval(totalSeconds))
+            scheduleNotification(for: timers[index])
+        } else {
+            timers[index].remainingSeconds = totalSeconds
+            timers[index].startDate = nil
+            timers[index].endDate = nil
+            cancelNotification(id: timers[index].id)
+        }
+
+        saveTimers(timers)
     }
 }
