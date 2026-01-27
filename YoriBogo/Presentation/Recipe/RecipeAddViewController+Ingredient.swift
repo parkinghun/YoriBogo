@@ -86,8 +86,7 @@ extension RecipeAddViewController {
     }
 
     @objc func ingredientTextFieldDidChange() {
-        // 텍스트 변경 시 NotificationCenter 알림 제거
-        // 저장 버튼 탭 시에만 collectIngredients 호출
+        NotificationCenter.default.post(name: Notification.Name("IngredientChanged"), object: nil)
     }
 
     func collectIngredients() -> [RecipeIngredient] {

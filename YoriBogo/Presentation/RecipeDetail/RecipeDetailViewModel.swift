@@ -49,13 +49,28 @@ final class RecipeDetailViewModel: ViewModelType {
         let recipeRelay = BehaviorRelay<Recipe>(value: recipe)
         let isBookmarkedRelay = BehaviorRelay<Bool>(value: recipe.isBookmarked)
 
+        input.viewDidLoad
+            .subscribe(onNext: { [weak self] _ in
+                guard let self = self else { return }
+                if let latest = self.recipeManager.fetchRecipe(by: self.recipe.id) {
+                    recipeRelay.accept(latest)
+                    isBookmarkedRelay.accept(latest.isBookmarked)
+                }
+            })
+            .disposed(by: disposeBag)
+
         // 북마크 토글
         input.bookmarkButtonTap
             .subscribe(onNext: { [weak self] _ in
                 guard let self = self else { return }
                 do {
                     try self.recipeManager.toggleBookmark(recipeId: self.recipe.id)
-                    isBookmarkedRelay.accept(!isBookmarkedRelay.value)
+                    if let latest = self.recipeManager.fetchRecipe(by: self.recipe.id) {
+                        recipeRelay.accept(latest)
+                        isBookmarkedRelay.accept(latest.isBookmarked)
+                    } else {
+                        isBookmarkedRelay.accept(!isBookmarkedRelay.value)
+                    }
                 } catch {
                     print("❌ 북마크 토글 에러: \(error)")
                 }

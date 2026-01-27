@@ -143,7 +143,7 @@ enum RecipeStepParser {
             let stepImages = step.image.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? []
                 : [RecipeImage(source: .remoteURL, value: step.image, isThumbnail: false)]
-            return RecipeStep(index: index + 1, text: step.text, images: stepImages)
+            return RecipeStep(index: index + 1, text: step.text, images: stepImages, timerSeconds: nil)
         }
     }
 }

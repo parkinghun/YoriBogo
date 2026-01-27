@@ -73,6 +73,19 @@ struct TimerItem: Codable {
         return Double(totalSeconds - remainingSeconds) / Double(totalSeconds)
     }
 
+    /// 전체 시간을 "HH:MM:SS" 형식으로 반환
+    var totalTimeString: String {
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+
     /// 타이머 종료 여부
     var isFinished: Bool {
         return remainingSeconds <= 0

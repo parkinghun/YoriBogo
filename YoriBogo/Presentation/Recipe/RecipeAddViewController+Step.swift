@@ -49,6 +49,33 @@ extension RecipeAddViewController {
         placeholderLabel.textColor = .placeholderText
         placeholderLabel.tag = 5000 + stepNumber
 
+        let timerStackView = UIStackView()
+        timerStackView.axis = .horizontal
+        timerStackView.spacing = 8
+        timerStackView.alignment = .center
+        timerStackView.tag = 6000 + stepNumber
+
+        let timerButton = UIButton(type: .system)
+        timerButton.tag = 6100 + stepNumber
+        timerButton.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        timerButton.setTitleColor(.gray600, for: .normal)
+        timerButton.backgroundColor = .gray200
+        timerButton.layer.cornerRadius = 14
+        timerButton.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+        timerButton.setImage(UIImage(systemName: "timer"), for: .normal)
+        timerButton.tintColor = .gray600
+        timerButton.addTarget(self, action: #selector(timerChipTapped(_:)), for: .touchUpInside)
+
+        let clearButton = UIButton(type: .system)
+        clearButton.tag = 6200 + stepNumber
+        clearButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        clearButton.tintColor = .gray400
+        clearButton.addTarget(self, action: #selector(timerClearTapped(_:)), for: .touchUpInside)
+        clearButton.isHidden = true
+
+        timerStackView.addArrangedSubview(timerButton)
+        timerStackView.addArrangedSubview(clearButton)
+
         let imageScrollView = UIScrollView()
         imageScrollView.showsHorizontalScrollIndicator = false
         imageScrollView.tag = 2000 + stepNumber
@@ -109,6 +136,7 @@ extension RecipeAddViewController {
         containerView.addSubview(numberLabel)
         containerView.addSubview(stepTextView)
         containerView.addSubview(placeholderLabel)
+        containerView.addSubview(timerStackView)
         containerView.addSubview(imageScrollView)
 
         numberLabel.snp.makeConstraints {
@@ -129,13 +157,22 @@ extension RecipeAddViewController {
             $0.trailing.equalTo(stepTextView)
         }
 
+        timerStackView.snp.makeConstraints {
+            $0.top.equalTo(stepTextView.snp.bottom).offset(12)
+            $0.leading.equalTo(stepTextView)
+            $0.trailing.lessThanOrEqualToSuperview().inset(16)
+            $0.height.equalTo(32)
+        }
+
         imageScrollView.snp.makeConstraints {
-            $0.top.equalTo(stepTextView.snp.bottom).offset(16)
+            $0.top.equalTo(timerStackView.snp.bottom).offset(12)
             $0.leading.equalTo(stepTextView)
             $0.trailing.equalToSuperview().inset(16)
             $0.bottom.equalToSuperview().inset(16)
             $0.height.equalTo(100)
         }
+
+        updateTimerChipUI(stepNumber: stepNumber, in: containerView)
 
         return containerView
     }
@@ -250,6 +287,7 @@ extension RecipeAddViewController {
             guard let stepTextView = view.viewWithTag(1000 + stepNumber) as? UITextView,
                   let text = stepTextView.text?.trimmingCharacters(in: .whitespaces),
                   !text.isEmpty else {
+                print("🧪 collectSteps: step \(stepNumber) text empty")
                 continue
             }
 
@@ -257,16 +295,66 @@ extension RecipeAddViewController {
             let step = RecipeStep(
                 index: stepNumber,
                 text: text,
-                images: [] // 빈 배열로 전달, ViewModel에서 이미지를 추가함
+                images: [], // 빈 배열로 전달, ViewModel에서 이미지를 추가함
+                timerSeconds: stepTimerSeconds[stepNumber]
             )
             steps.append(step)
         }
 
+        print("🧪 collectSteps: total=\(steps.count)")
         return steps
+    }
+
+    @objc private func timerChipTapped(_ sender: UIButton) {
+        let stepNumber = sender.tag - 6100
+        let pickerVC = TimerDurationPickerViewController()
+        pickerVC.initialSeconds = stepTimerSeconds[stepNumber] ?? TimerSettings.defaultDuration()
+        pickerVC.onApply = { [weak self] seconds in
+            guard let self = self else { return }
+            self.stepTimerSeconds[stepNumber] = seconds
+            self.updateTimerChipUI(stepNumber: stepNumber)
+            NotificationCenter.default.post(name: Notification.Name("StepChanged"), object: nil)
+        }
+        pickerVC.modalPresentationStyle = .pageSheet
+        if let sheet = pickerVC.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(pickerVC, animated: true)
+    }
+
+    @objc private func timerClearTapped(_ sender: UIButton) {
+        let stepNumber = sender.tag - 6200
+        stepTimerSeconds.removeValue(forKey: stepNumber)
+        updateTimerChipUI(stepNumber: stepNumber)
+        NotificationCenter.default.post(name: Notification.Name("StepChanged"), object: nil)
+    }
+
+    private func updateTimerChipUI(stepNumber: Int, in container: UIView? = nil) {
+        guard let rootView = container ?? view,
+              let timerButton = rootView.viewWithTag(6100 + stepNumber) as? UIButton,
+              let clearButton = rootView.viewWithTag(6200 + stepNumber) as? UIButton else {
+            return
+        }
+
+        if let seconds = stepTimerSeconds[stepNumber], seconds > 0 {
+            timerButton.setTitle(" \(TimerSettings.formatDuration(seconds: seconds))", for: .normal)
+            timerButton.setTitleColor(.white, for: .normal)
+            timerButton.tintColor = .white
+            timerButton.backgroundColor = .brandOrange500
+            clearButton.isHidden = false
+        } else {
+            timerButton.setTitle(" 타이머 추가", for: .normal)
+            timerButton.setTitleColor(.gray600, for: .normal)
+            timerButton.tintColor = .gray600
+            timerButton.backgroundColor = .gray200
+            clearButton.isHidden = true
+        }
     }
 
     func loadSteps(_ steps: [RecipeStep]) {
         stepsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        stepTimerSeconds.removeAll()
 
         guard !steps.isEmpty else {
             addInitialStep()
@@ -285,6 +373,13 @@ extension RecipeAddViewController {
                     placeholderLabel.isHidden = !step.text.isEmpty
                 }
             }
+
+            if let timerSeconds = step.timerSeconds, timerSeconds > 0 {
+                stepTimerSeconds[stepNumber] = timerSeconds
+            } else {
+                stepTimerSeconds.removeValue(forKey: stepNumber)
+            }
+            updateTimerChipUI(stepNumber: stepNumber, in: stepView)
         }
 
         // Note: 이미지 로딩은 ViewModel에서 처리하고,

@@ -269,6 +269,7 @@ final class RecipeAddViewController: BaseViewController {
     // 이미지 경로 저장 (메모리 최적화)
     var mainImagePaths: [String] = []
     var stepImagePaths: [Int: [String]] = [:]
+    var stepTimerSeconds: [Int: Int] = [:]
 
     // Relays for ViewModel input (internal for extension access)
     let mainImagesAddedRelay = PublishRelay<[UIImage]>()
@@ -319,12 +320,14 @@ final class RecipeAddViewController: BaseViewController {
         super.viewWillAppear(animated)
         // IQKeyboardManager 설정: 외부 터치로 키보드가 내려가지 않도록 설정
         IQKeyboardManager.shared.resignOnTouchOutside = false
+        IQKeyboardManager.shared.enableAutoToolbar = false
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         // 다른 화면을 위해 원래 설정으로 복원
         IQKeyboardManager.shared.resignOnTouchOutside = true
+        IQKeyboardManager.shared.enableAutoToolbar = true
     }
 
     // MARK: - Setup
@@ -339,6 +342,7 @@ final class RecipeAddViewController: BaseViewController {
 
         navigationItem.leftBarButtonItem = cancelButton
         navigationItem.rightBarButtonItem = saveButton
+        saveButton.tintColor = .black
     }
 
     private func setupUI() {
@@ -595,7 +599,7 @@ final class RecipeAddViewController: BaseViewController {
                 guard let self = self else { return }
                 print("📥 RecipeAddVC: Received ingredients count: \(ingredients.count)")
                 // 초기 로드 시에만 UI 로드 (편집 모드에서만)
-                if self.isInitialLoad && !ingredients.isEmpty {
+                if self.isEditMode && self.isInitialLoad && !ingredients.isEmpty {
                     print("✅ RecipeAddVC: Loading ingredients to UI (initial load)")
                     self.loadIngredients(ingredients)
                 } else {
@@ -609,7 +613,7 @@ final class RecipeAddViewController: BaseViewController {
                 guard let self = self else { return }
                 print("📥 RecipeAddVC: Received steps count: \(steps.count)")
                 // 초기 로드 시에만 UI 로드 (편집 모드에서만)
-                if self.isInitialLoad && !steps.isEmpty {
+                if self.isEditMode && self.isInitialLoad && !steps.isEmpty {
                     print("✅ RecipeAddVC: Loading steps to UI (initial load)")
                     self.loadSteps(steps)
                     // 초기 로드 완료 플래그 설정
@@ -766,8 +770,7 @@ extension RecipeAddViewController: UITextViewDelegate {
                 self.view.layoutIfNeeded()
             }
 
-            // 텍스트 변경 시 NotificationCenter 알림 제거
-            // 저장 버튼 탭 시에만 collectSteps 호출
+            NotificationCenter.default.post(name: Notification.Name("StepChanged"), object: nil)
         }
     }
 }

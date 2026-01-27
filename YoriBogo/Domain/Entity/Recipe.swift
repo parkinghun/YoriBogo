@@ -138,6 +138,7 @@ struct RecipeStep: Hashable {
     let index: Int
     let text: String
     let images: [RecipeImage]
+    let timerSeconds: Int?
 }
 
 enum RecipeCategory: Equatable, Hashable {

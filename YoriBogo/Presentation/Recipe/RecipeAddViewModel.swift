@@ -237,10 +237,12 @@ final class RecipeAddViewModel: ViewModelType {
 
             // 편집 모드일 때는 변경사항이 있어야 저장 가능
             if self.isEditMode && !self.isCreateFromApi {
+                print("🧪 SaveEnabled(edit): titleValid=\(titleValid), ingredientsValid=\(ingredientsValid), stepsValid=\(stepsValid), hasChanges=\(hasChanges)")
                 return titleValid && ingredientsValid && stepsValid && hasChanges
             }
 
             // 신규 추가 모드
+            print("🧪 SaveEnabled(new): titleValid=\(titleValid), ingredientsValid=\(ingredientsValid), stepsValid=\(stepsValid)")
             return titleValid && ingredientsValid && stepsValid
         }
         .asDriver(onErrorJustReturn: false)
@@ -441,6 +443,7 @@ final class RecipeAddViewModel: ViewModelType {
             let stepsChanged = !self.areStepsEqual(steps, original.steps)
             let tipChanged = tip != original.tip
 
+            print("🧪 hasChanges: title=\(titleChanged), category=\(categoryChanged), tags=\(tagsChanged), mainImages=\(mainImagesChanged), ingredients=\(ingredientsChanged), steps=\(stepsChanged), tip=\(tipChanged)")
             return titleChanged || categoryChanged || tagsChanged || mainImagesChanged ||
                    ingredientsChanged || stepsChanged || tipChanged
         }
@@ -469,7 +472,8 @@ final class RecipeAddViewModel: ViewModelType {
             let step2 = steps2[index]
 
             if step1.text != step2.text ||
-               step1.images.count != step2.images.count {
+               step1.images.count != step2.images.count ||
+               step1.timerSeconds != step2.timerSeconds {
                 return false
             }
         }
@@ -689,7 +693,8 @@ final class RecipeAddViewModel: ViewModelType {
             return RecipeStep(
                 index: stepNumber,
                 text: step.text,
-                images: recipeImages
+                images: recipeImages,
+                timerSeconds: step.timerSeconds
             )
         }
     }

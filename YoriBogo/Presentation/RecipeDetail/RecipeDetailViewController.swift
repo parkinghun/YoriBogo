@@ -193,6 +193,8 @@ final class RecipeDetailViewController: BaseViewController {
     // MARK: - Properties
     private let viewModel: RecipeDetailViewModel
     private let disposeBag = DisposeBag()
+    private let timerManager = TimerManager.shared
+    private var currentTimers: [TimerItem] = []
     private var matchedIngredientNames: [String] = []
     private var currentRecipe: Recipe?
     private var scrollViewBottomConstraint: Constraint?
@@ -467,6 +469,13 @@ final class RecipeDetailViewController: BaseViewController {
         output.steps
             .drive(with: self) { owner, steps in
                 owner.configureSteps(steps: steps)
+            }
+            .disposed(by: disposeBag)
+
+        timerManager.timers
+            .drive(with: self) { owner, timers in
+                owner.currentTimers = timers
+                owner.updateStepTimerButtons()
             }
             .disposed(by: disposeBag)
 
@@ -765,6 +774,8 @@ final class RecipeDetailViewController: BaseViewController {
             let stepView = createStepView(step: step)
             stepsStackView.addArrangedSubview(stepView)
         }
+
+        updateStepTimerButtons()
     }
 
     private func createStepView(step: RecipeStep) -> UIView {
@@ -807,6 +818,26 @@ final class RecipeDetailViewController: BaseViewController {
             $0.top.equalTo(stepNumberBadge)
         }
 
+        var timerButton: UIButton?
+        if let timerSeconds = step.timerSeconds, timerSeconds > 0 {
+            let button = UIButton(type: .system)
+            button.tag = 8000 + step.index
+            button.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+            button.layer.cornerRadius = 14
+            button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 16, bottom: 6, right: 16)
+            button.addTarget(self, action: #selector(stepTimerButtonTapped(_:)), for: .touchUpInside)
+            containerView.addSubview(button)
+            timerButton = button
+
+            button.snp.makeConstraints {
+                $0.top.equalTo(stepTextLabel.snp.bottom).offset(8)
+                $0.leading.equalTo(stepTextLabel)
+                $0.height.equalTo(32)
+            }
+
+            updateTimerButton(button, step: step, timerSeconds: timerSeconds)
+        }
+
         if !step.images.isEmpty {
             let imageScrollView = UIScrollView()
             imageScrollView.showsHorizontalScrollIndicator = false
@@ -842,7 +873,11 @@ final class RecipeDetailViewController: BaseViewController {
             containerView.addSubview(imageScrollView)
 
             imageScrollView.snp.makeConstraints {
-                $0.top.equalTo(stepTextLabel.snp.bottom).offset(12)
+                if let timerButton = timerButton {
+                    $0.top.equalTo(timerButton.snp.bottom).offset(12)
+                } else {
+                    $0.top.equalTo(stepTextLabel.snp.bottom).offset(12)
+                }
                 $0.leading.equalTo(stepTextLabel)
                 $0.trailing.equalToSuperview()
                 $0.height.equalTo(120)
@@ -854,8 +889,14 @@ final class RecipeDetailViewController: BaseViewController {
                 $0.height.equalToSuperview()
             }
         } else {
-            stepTextLabel.snp.makeConstraints {
-                $0.bottom.lessThanOrEqualToSuperview()
+            if let timerButton = timerButton {
+                timerButton.snp.makeConstraints {
+                    $0.bottom.lessThanOrEqualToSuperview()
+                }
+            } else {
+                stepTextLabel.snp.makeConstraints {
+                    $0.bottom.lessThanOrEqualToSuperview()
+                }
             }
 
             containerView.snp.makeConstraints {
@@ -864,6 +905,88 @@ final class RecipeDetailViewController: BaseViewController {
         }
 
         return containerView
+    }
+
+    private func updateStepTimerButtons() {
+        guard let recipe = currentRecipe else { return }
+
+        for step in recipe.steps {
+            guard let timerSeconds = step.timerSeconds, timerSeconds > 0,
+                  let button = stepsStackView.viewWithTag(8000 + step.index) as? UIButton else {
+                continue
+            }
+            updateTimerButton(button, step: step, timerSeconds: timerSeconds)
+        }
+    }
+
+    private func updateTimerButton(_ button: UIButton, step: RecipeStep, timerSeconds: Int) {
+        guard let recipe = currentRecipe else { return }
+        let stepID = recipeStepID(recipeID: recipe.id, stepIndex: step.index)
+        let timer = currentTimers.first(where: { $0.recipeStepID == stepID })
+
+        let displayTime: String
+        if let timer = timer {
+            displayTime = timer.isFinished ? timer.totalTimeString : timer.remainingTimeString
+        } else {
+            displayTime = TimerSettings.formatDuration(seconds: timerSeconds)
+        }
+
+        let iconName: String
+        if let timer = timer {
+            if timer.isFinished {
+                iconName = "arrow.clockwise"
+            } else if timer.isRunning {
+                iconName = "pause.fill"
+            } else {
+                iconName = "play.fill"
+            }
+        } else {
+            iconName = "play.fill"
+        }
+
+        UIView.performWithoutAnimation {
+            button.setImage(UIImage(systemName: iconName), for: .normal)
+            button.setTitle(" \(displayTime)", for: .normal)
+            button.layoutIfNeeded()
+        }
+
+        if let timer = timer, timer.isRunning {
+            button.backgroundColor = .brandOrange500
+            button.setTitleColor(.white, for: .normal)
+            button.tintColor = .white
+        } else {
+            button.backgroundColor = .brandOrange100
+            button.setTitleColor(.brandOrange600, for: .normal)
+            button.tintColor = .brandOrange600
+        }
+    }
+
+    @objc private func stepTimerButtonTapped(_ sender: UIButton) {
+        guard let recipe = currentRecipe else { return }
+        let stepIndex = sender.tag - 8000
+        guard let step = recipe.steps.first(where: { $0.index == stepIndex }),
+              let timerSeconds = step.timerSeconds, timerSeconds > 0 else {
+            return
+        }
+
+        let stepID = recipeStepID(recipeID: recipe.id, stepIndex: stepIndex)
+        if let timer = currentTimers.first(where: { $0.recipeStepID == stepID }) {
+            if timer.isFinished {
+                timerManager.restartTimer(id: timer.id)
+            } else if timer.isRunning {
+                timerManager.pauseTimer(id: timer.id)
+            } else {
+                timerManager.startTimer(id: timer.id)
+            }
+        } else {
+            let name = "\(stepIndex)단계 타이머"
+            let newID = timerManager.createTimer(title: name, duration: TimeInterval(timerSeconds), recipeStepID: stepID)
+            timerManager.startTimer(id: newID)
+        }
+    }
+
+    private func recipeStepID(recipeID: String, stepIndex: Int) -> String {
+        return "\(recipeID)_step_\(stepIndex)"
     }
 
     // MARK: - Update ScrollView Constraint

@@ -220,20 +220,22 @@ final class RecipeStepObject: EmbeddedObject {
     @Persisted var index: Int
     @Persisted var text: String
     @Persisted var images: List<RecipeImageObject>
+    @Persisted var timerSeconds: Int?
     
     convenience init(from entity: RecipeStep) {
          self.init()
          self.index = entity.index
          self.text = entity.text
          self.images.append(objectsIn: entity.images.map { RecipeImageObject(from: $0) })
+         self.timerSeconds = entity.timerSeconds
      }
      
      func toEntity() -> RecipeStep {
          return RecipeStep(
              index: self.index,
              text: self.text,
-             images: self.images.map { $0.toEntity() }
+             images: self.images.map { $0.toEntity() },
+             timerSeconds: self.timerSeconds
          )
      }
 }
-

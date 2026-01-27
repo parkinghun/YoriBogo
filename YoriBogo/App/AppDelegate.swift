@@ -76,7 +76,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // MARK: - Realm Configuration
     private func configureRealm() {
         let config = Realm.Configuration(
-            schemaVersion: 2,
+            schemaVersion: 3,
             migrationBlock: { migration, oldSchemaVersion in
                 if oldSchemaVersion < 2 {
                     migration.enumerateObjects(ofType: CookingTimerObject.className()) { oldObject, newObject in
@@ -101,6 +101,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                         newObject["recipeStepID"] = oldObject["recipeStepID"]
                         newObject["createdAt"] = oldObject["createdAt"] as? Date ?? Date()
                     }
+                }
+
+                if oldSchemaVersion < 3 {
+                    // RecipeStepObject에 timerSeconds 필드 추가 (옵셔널 기본값 nil)
                 }
             }
         )

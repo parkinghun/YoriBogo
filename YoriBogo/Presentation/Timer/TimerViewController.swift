@@ -97,16 +97,17 @@ final class TimerViewController: BaseViewController {
         // TimerManager의 타이머 리스트 구독
         timerManager.timers
             .drive(with: self) { owner, newTimers in
+                let filteredTimers = newTimers.filter { $0.recipeStepID == nil }
                 // 수동 삭제 중에는 RxSwift 업데이트 무시
                 if owner.isDeletingManually {
                     return
                 }
 
                 let oldTimers = owner.timers
-                owner.timers = newTimers
+                owner.timers = filteredTimers
 
                 // 타이머 개수 변경 (추가/삭제)
-                if oldTimers.count != newTimers.count {
+                if oldTimers.count != filteredTimers.count {
                     // 개수 변경 시 fade 애니메이션으로 부드럽게
                     UIView.transition(with: owner.tableView,
                                     duration: 0.25,

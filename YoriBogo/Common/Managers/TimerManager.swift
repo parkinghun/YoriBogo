@@ -96,7 +96,8 @@ final class TimerManager {
     // MARK: - CRUD Operations
 
     /// 타이머 생성
-    func createTimer(title: String, duration: TimeInterval, recipeStepID: String? = nil) {
+    @discardableResult
+    func createTimer(title: String, duration: TimeInterval, recipeStepID: String? = nil) -> UUID {
         var timers = timersRelay.value
         let timer = TimerItem(
             name: title,
@@ -106,6 +107,7 @@ final class TimerManager {
         timers.insert(timer, at: 0)
         saveTimers(timers)
         print("✅ 타이머 생성: \(title), \(Int(duration))초")
+        return timer.id
     }
 
     /// 타이머 시작
@@ -186,6 +188,9 @@ final class TimerManager {
         timers[index].endDate = nil
 
         saveTimers(timers)
+
+        // 포그라운드 완료 시 예약 알림 취소
+        cancelNotification(id: id)
 
         // 햅틱 피드백
         let generator = UINotificationFeedbackGenerator()

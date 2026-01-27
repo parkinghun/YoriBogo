@@ -115,9 +115,11 @@ final class TimerListCell: UITableViewCell {
 
     // MARK: - Configuration
     func configure(with timer: TimerItem) {
+        let displayTime = timer.isFinished ? timer.totalTimeString : timer.remainingTimeString
+
         // 시간 레이블 업데이트 (깜빡임 없이)
-        if timeLabel.text != timer.remainingTimeString {
-            timeLabel.text = timer.remainingTimeString
+        if timeLabel.text != displayTime {
+            timeLabel.text = displayTime
         }
 
         // 이름은 변경되지 않으므로 조건부 업데이트
