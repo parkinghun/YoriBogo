@@ -493,7 +493,6 @@ final class RecipeDetailViewController: BaseViewController {
         // 북마크 상태
         output.isBookmarked
             .distinctUntilChanged()
-            .skip(1) // 초기 로드 시 이벤트는 스킵
             .drive(with: self) { (owner: RecipeDetailViewController, isBookmarked: Bool) in
                 owner.bookmarkButton.setBookmarked(isBookmarked)
 

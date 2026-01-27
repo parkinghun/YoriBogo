@@ -137,7 +137,7 @@ final class SettingViewModel: ViewModelType {
     func transform(input: Input) -> Output {
         // 섹션 데이터
         let sections = input.viewDidLoad
-            .map { SettingSection.allCases }
+            .map { SettingSection.allCases.filter { $0 != .statistics } }
             .asDriver(onErrorJustReturn: [])
 
         // 알림 시간 (UserDefaults에서 가져오거나 기본값)
