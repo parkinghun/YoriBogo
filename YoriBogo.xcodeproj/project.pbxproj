@@ -20,7 +20,20 @@
 		B574AB3C2E89D08100D8AA58 /* RxSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AB3B2E89D08100D8AA58 /* RxSwift */; };
 		B574AE5A2E8E23AC00D8AA58 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B574AB2D2E89CF9500D8AA58 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		B574AEE92E901F6F00D8AA58 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */; };
+		B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42ED2F29129F00A9550B /* WidgetKit.framework */; };
+		B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42EF2F29129F00A9550B /* SwiftUI.framework */; };
+		B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B58F431E2F2984D500A9550B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B574A9392E89BBC400D8AA58 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B58F43102F2984D300A9550B;
+			remoteInfo = YoriBogoWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		B574AE5B2E8E23AC00D8AA58 /* Embed Frameworks */ = {
@@ -34,11 +47,25 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B58F43022F2912A100A9550B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		B574A9412E89BBC400D8AA58 /* YoriBogo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YoriBogo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B574AB122E89CB3A00D8AA58 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		B58F42ED2F29129F00A9550B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		B58F42EF2F29129F00A9550B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = YoriBogoWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -47,8 +74,24 @@
 			membershipExceptions = (
 				Resources/Info.plist,
 				Secrets/Secrets.xcconfig,
+				Widgets/TimerLiveActivityWidget.swift,
 			);
 			target = B574A9402E89BBC400D8AA58 /* YoriBogo */;
+		};
+		B58F43242F2984D500A9550B /* Exceptions for "YoriBogoWidgets" folder in "YoriBogoWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B58F43102F2984D300A9550B /* YoriBogoWidgetsExtension */;
+		};
+		B58F44612F2986B100A9550B /* Exceptions for "YoriBogo" folder in "YoriBogoWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LiveActivity/TimerLiveActivityAttributes.swift,
+				Widgets/TimerLiveActivityWidget.swift,
+			);
+			target = B58F43102F2984D300A9550B /* YoriBogoWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -57,8 +100,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				B574A9532E89BBC600D8AA58 /* Exceptions for "YoriBogo" folder in "YoriBogo" target */,
+				B58F44612F2986B100A9550B /* Exceptions for "YoriBogo" folder in "YoriBogoWidgetsExtension" target */,
 			);
 			path = YoriBogo;
+			sourceTree = "<group>";
+		};
+		B58F43142F2984D300A9550B /* YoriBogoWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B58F43242F2984D500A9550B /* Exceptions for "YoriBogoWidgets" folder in "YoriBogoWidgetsExtension" target */,
+			);
+			path = YoriBogoWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,6 +134,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B58F430E2F2984D300A9550B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */,
+				B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -90,6 +151,8 @@
 			children = (
 				B574AB122E89CB3A00D8AA58 /* .gitignore */,
 				B574A9432E89BBC400D8AA58 /* YoriBogo */,
+				B58F43142F2984D300A9550B /* YoriBogoWidgets */,
+				B58F42EC2F29129F00A9550B /* Frameworks */,
 				B574A9422E89BBC400D8AA58 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -98,8 +161,18 @@
 			isa = PBXGroup;
 			children = (
 				B574A9412E89BBC400D8AA58 /* YoriBogo.app */,
+				B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B58F42EC2F29129F00A9550B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B58F42ED2F29129F00A9550B /* WidgetKit.framework */,
+				B58F42EF2F29129F00A9550B /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -114,10 +187,12 @@
 				B574A93F2E89BBC400D8AA58 /* Resources */,
 				B574AE5B2E8E23AC00D8AA58 /* Embed Frameworks */,
 				B51753FE2E92AAB000422EAE /* ShellScript */,
+				B58F43022F2912A100A9550B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B58F431F2F2984D500A9550B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B574A9432E89BBC400D8AA58 /* YoriBogo */,
@@ -140,6 +215,28 @@
 			productReference = B574A9412E89BBC400D8AA58 /* YoriBogo.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B58F43102F2984D300A9550B /* YoriBogoWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B58F43212F2984D500A9550B /* Build configuration list for PBXNativeTarget "YoriBogoWidgetsExtension" */;
+			buildPhases = (
+				B58F430D2F2984D300A9550B /* Sources */,
+				B58F430E2F2984D300A9550B /* Frameworks */,
+				B58F430F2F2984D300A9550B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B58F43142F2984D300A9550B /* YoriBogoWidgets */,
+			);
+			name = YoriBogoWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = YoriBogoWidgetsExtension;
+			productReference = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -147,11 +244,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					B574A9402E89BBC400D8AA58 = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					B58F43102F2984D300A9550B = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
@@ -180,6 +280,7 @@
 			projectRoot = "";
 			targets = (
 				B574A9402E89BBC400D8AA58 /* YoriBogo */,
+				B58F43102F2984D300A9550B /* YoriBogoWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -190,6 +291,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				B574AB132E89CB3A00D8AA58 /* .gitignore in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B58F430F2F2984D300A9550B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -228,7 +336,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B58F430D2F2984D300A9550B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B58F431F2F2984D500A9550B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B58F43102F2984D300A9550B /* YoriBogoWidgetsExtension */;
+			targetProxy = B58F431E2F2984D500A9550B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B574A9552E89BBC600D8AA58 /* Debug */ = {
@@ -254,7 +377,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -295,7 +418,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -367,7 +490,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.1;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -426,7 +549,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.1;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -434,6 +557,76 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B58F43222F2984D500A9550B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VDAQLM4XLQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = YoriBogoWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = YoriBogoWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Leo.YoriBogo.dev.YoriBogoWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B58F43232F2984D500A9550B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VDAQLM4XLQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = YoriBogoWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = YoriBogoWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Leo.YoriBogo.YoriBogoWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -454,6 +647,15 @@
 			buildConfigurations = (
 				B574A9552E89BBC600D8AA58 /* Debug */,
 				B574A9562E89BBC600D8AA58 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B58F43212F2984D500A9550B /* Build configuration list for PBXNativeTarget "YoriBogoWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B58F43222F2984D500A9550B /* Debug */,
+				B58F43232F2984D500A9550B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -152,6 +152,9 @@ final class TimerManager {
 
         saveTimers(timers)
         scheduleNotification(for: timers[index])
+        if #available(iOS 17.1, *) {
+            LiveActivityManager.shared.start(for: timers[index])
+        }
         print("▶️ 타이머 시작: \(timers[index].name)")
     }
 
@@ -172,6 +175,9 @@ final class TimerManager {
 
         saveTimers(timers)
         cancelNotification(id: id)
+        if #available(iOS 17.1, *) {
+            LiveActivityManager.shared.update(for: timers[index])
+        }
         print("⏸️ 타이머 일시정지: \(timers[index].name), 남은 시간: \(remaining)초")
     }
 
@@ -199,10 +205,14 @@ final class TimerManager {
         guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
         let timerName = timers[index].name
+        let timerToEnd = timers[index]
         timers.remove(at: index)
 
         saveTimers(timers)
         cancelNotification(id: id)
+        if #available(iOS 17.1, *) {
+            LiveActivityManager.shared.end(for: timerToEnd)
+        }
         print("❌ 타이머 취소: \(timerName)")
     }
 
@@ -221,6 +231,9 @@ final class TimerManager {
 
         // 포그라운드 완료 시 예약 알림 취소
         cancelNotification(id: id)
+        if #available(iOS 17.1, *) {
+            LiveActivityManager.shared.end(for: completedTimer)
+        }
 
         // 햅틱 피드백
         let generator = UINotificationFeedbackGenerator()
@@ -322,6 +335,9 @@ final class TimerManager {
                 // 남은 시간 업데이트 및 알림 재스케줄
                 timers[i].remainingSeconds = remaining
                 scheduleNotification(for: timers[i])
+                if #available(iOS 17.1, *) {
+                    LiveActivityManager.shared.start(for: timers[i])
+                }
             }
         }
 
@@ -444,11 +460,17 @@ final class TimerManager {
             timers[index].startDate = now
             timers[index].endDate = now.addingTimeInterval(TimeInterval(totalSeconds))
             scheduleNotification(for: timers[index])
+            if #available(iOS 17.1, *) {
+                LiveActivityManager.shared.update(for: timers[index])
+            }
         } else {
             timers[index].remainingSeconds = totalSeconds
             timers[index].startDate = nil
             timers[index].endDate = nil
             cancelNotification(id: timers[index].id)
+            if #available(iOS 17.1, *) {
+                LiveActivityManager.shared.update(for: timers[index])
+            }
         }
 
         saveTimers(timers)
