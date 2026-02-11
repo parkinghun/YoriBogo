@@ -23,6 +23,8 @@
 		B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42ED2F29129F00A9550B /* WidgetKit.framework */; };
 		B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42EF2F29129F00A9550B /* SwiftUI.framework */; };
 		B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B58F44712F2998FA00A9550B /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B58F44702F2998FA00A9550B /* RealmSwift */; };
+		B58F44732F2998FA00A9550B /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B58F44702F2998FA00A9550B /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +60,17 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B58F44722F2998FA00A9550B /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				B58F44732F2998FA00A9550B /* RealmSwift in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +79,7 @@
 		B58F42ED2F29129F00A9550B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		B58F42EF2F29129F00A9550B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = YoriBogoWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B58F44762F299A1800A9550B /* YoriBogoWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YoriBogoWidgetsExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -74,6 +88,7 @@
 			membershipExceptions = (
 				Resources/Info.plist,
 				Secrets/Secrets.xcconfig,
+				Widgets/TimerLiveActivityIntents.swift,
 				Widgets/TimerLiveActivityWidget.swift,
 			);
 			target = B574A9402E89BBC400D8AA58 /* YoriBogo */;
@@ -88,7 +103,12 @@
 		B58F44612F2986B100A9550B /* Exceptions for "YoriBogo" folder in "YoriBogoWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Common/Managers/TimerSettings.swift,
+				Data/Persistence/Realm/CookingTimerObject.swift,
+				"Extension/UIColor+Extension.swift",
 				LiveActivity/TimerLiveActivityAttributes.swift,
+				LiveActivity/TimerRealmStore.swift,
+				Widgets/TimerLiveActivityIntents.swift,
 				Widgets/TimerLiveActivityWidget.swift,
 			);
 			target = B58F43102F2984D300A9550B /* YoriBogoWidgetsExtension */;
@@ -138,6 +158,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B58F44712F2998FA00A9550B /* RealmSwift in Frameworks */,
 				B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */,
 				B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */,
 			);
@@ -149,6 +170,7 @@
 		B574A9382E89BBC400D8AA58 = {
 			isa = PBXGroup;
 			children = (
+				B58F44762F299A1800A9550B /* YoriBogoWidgetsExtension.entitlements */,
 				B574AB122E89CB3A00D8AA58 /* .gitignore */,
 				B574A9432E89BBC400D8AA58 /* YoriBogo */,
 				B58F43142F2984D300A9550B /* YoriBogoWidgets */,
@@ -186,7 +208,7 @@
 				B574A93E2E89BBC400D8AA58 /* Frameworks */,
 				B574A93F2E89BBC400D8AA58 /* Resources */,
 				B574AE5B2E8E23AC00D8AA58 /* Embed Frameworks */,
-				B51753FE2E92AAB000422EAE /* ShellScript */,
+				B51753FE2E92AAB000422EAE /* Run Script */,
 				B58F43022F2912A100A9550B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -222,6 +244,7 @@
 				B58F430D2F2984D300A9550B /* Sources */,
 				B58F430E2F2984D300A9550B /* Frameworks */,
 				B58F430F2F2984D300A9550B /* Resources */,
+				B58F44722F2998FA00A9550B /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -232,6 +255,7 @@
 			);
 			name = YoriBogoWidgetsExtension;
 			packageProductDependencies = (
+				B58F44702F2998FA00A9550B /* RealmSwift */,
 			);
 			productName = YoriBogoWidgetsExtension;
 			productReference = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */;
@@ -304,7 +328,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		B51753FE2E92AAB000422EAE /* ShellScript */ = {
+		B51753FE2E92AAB000422EAE /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -318,6 +342,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
 				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
 			);
+			name = "Run Script";
 			outputFileListPaths = (
 			);
 			outputPaths = (
@@ -565,6 +590,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = YoriBogoWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VDAQLM4XLQ;
@@ -600,6 +626,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = YoriBogoWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VDAQLM4XLQ;
@@ -784,6 +811,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */;
 			productName = IQKeyboardManagerSwift;
+		};
+		B58F44702F2998FA00A9550B /* RealmSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B574AB2C2E89CF9500D8AA58 /* XCRemoteSwiftPackageReference "realm-swift" */;
+			productName = RealmSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

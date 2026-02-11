@@ -5,7 +5,6 @@
 //  Created by 박성훈 on 10/29/25.
 //
 
-import Foundation
 import UIKit
 import AudioToolbox
 import RxSwift
@@ -18,8 +17,14 @@ final class TimerManager {
     static let shared = TimerManager()
 
     // MARK: - Properties
+    private let legacyUserDefaultsKey = "cooking_timers"
     private var tickTimer: DispatchSourceTimer?
     private let disposeBag = DisposeBag()
+
+    /// Realm 변경 감지 토큰 (Widget Intent 등 외부 프로세스 변경 구독)
+    private var realmNotificationToken: NotificationToken?
+    /// 메인 앱에서 직접 Realm write 중일 때 Notification 중복 처리 방지 플래그
+    private var isWritingLocally = false
 
     /// 타이머 목록 (RxSwift)
     private let timersRelay = BehaviorRelay<[TimerItem]>(value: [])
@@ -29,13 +34,15 @@ final class TimerManager {
 
     // MARK: - Initialization
     private init() {
-        loadTimers()
+        setupRealmObservation()   // Realm 변경 구독 시작 (.initial 콜백으로 초기 데이터 로드)
         startTick()
         restoreTimers()
     }
 
     deinit {
         stopTick()
+        realmNotificationToken?.invalidate()
+        realmNotificationToken = nil
     }
 
     // MARK: - Tick Mechanism (1Hz)
@@ -85,7 +92,7 @@ final class TimerManager {
             }
 
             if updated {
-                self.loadTimers()
+                // completeTimer() → saveTimers() 흐름에서 relay가 직접 업데이트되므로 별도 처리 불필요
             } else if hasRunningTimer {
                 // UI 업데이트를 위해 갱신 트리거
                 self.timersRelay.accept(timers)
@@ -247,10 +254,65 @@ final class TimerManager {
 
     // MARK: - Persistence
 
+    /// Realm 변경사항을 지속적으로 관찰하여 timersRelay 자동 업데이트
+    /// - .initial: 앱 최초 로드 시 Legacy 마이그레이션 처리 후 Relay 업데이트
+    /// - .update: Widget Intent 등 외부 프로세스가 Realm을 변경했을 때 자동 수신
+    private func setupRealmObservation() {
+        TimerRealmStore.migrateFromDefaultRealmIfNeeded()
+
+        guard let realm = try? TimerRealmStore.realm() else {
+            print("❌ Realm 관찰 설정 실패: realm 인스턴스 생성 불가")
+            return
+        }
+
+        let results = realm.objects(CookingTimerObject.self)
+            .sorted(byKeyPath: "createdAt", ascending: false)
+
+        realmNotificationToken = results.observe { [weak self] changes in
+            guard let self else { return }
+
+            switch changes {
+            case .initial(let collection):
+                let timers = collection.map { self.timerItem(from: $0) }
+                if timers.isEmpty, let legacyTimers = self.loadLegacyTimers() {
+                    // Legacy UserDefaults 데이터를 Realm으로 마이그레이션
+                    self.saveTimers(legacyTimers)
+                    UserDefaults.standard.removeObject(forKey: self.legacyUserDefaultsKey)
+                } else {
+                    self.timersRelay.accept(Array(timers))
+                }
+
+            case .update(let collection, _, _, _):
+                // 메인 앱의 자체 write로 인한 Notification은 무시 (saveTimers에서 직접 relay 업데이트)
+                guard !self.isWritingLocally else { return }
+
+                // Widget Intent 등 외부 프로세스 변경 감지 - endDate 기반으로 remainingSeconds 재계산
+                let timers = collection.map { obj -> TimerItem in
+                    var item = self.timerItem(from: obj)
+                    if item.isRunning, let endDate = item.endDate {
+                        item.remainingSeconds = max(0, Int(endDate.timeIntervalSince(Date())))
+                    }
+                    return item
+                }
+                self.timersRelay.accept(Array(timers))
+                print("🔄 외부 변경 감지 (Widget/Intent): \(timers.count)개 타이머 동기화")
+
+            case .error(let error):
+                print("❌ Realm 관찰 오류: \(error)")
+            }
+        }
+    }
+
     /// Realm에 저장
+    /// isWritingLocally = true 구간 동안 Realm Notification의 .update 콜백을 무시하여
+    /// 자체 write로 인한 중복 relay 업데이트를 방지한다.
     private func saveTimers(_ timers: [TimerItem]) {
+        isWritingLocally = true
+        defer { isWritingLocally = false }
+
         do {
-            try RealmManager.performWrite { realm in
+            let realm = try TimerRealmStore.realm()
+            try realm.write {
                 let ids = timers.map { $0.id.uuidString }
                 let toDelete = realm.objects(CookingTimerObject.self).filter("NOT id IN %@", ids)
                 realm.delete(toDelete)
@@ -279,17 +341,7 @@ final class TimerManager {
             print("❌ 타이머 저장 실패: \(error)")
         }
 
-        timersRelay.accept(timers)
-    }
-
-    /// Realm에서 로드
-    private func loadTimers() {
-        let timers: [TimerItem] = RealmManager.performRead { realm in
-            let objects = realm.objects(CookingTimerObject.self)
-                .sorted(byKeyPath: "createdAt", ascending: false)
-            return objects.map { self.timerItem(from: $0) }
-        } ?? []
-
+        // 로컬 write는 Notification을 기다리지 않고 relay를 직접 업데이트
         timersRelay.accept(timers)
     }
 
@@ -310,6 +362,14 @@ final class TimerManager {
         item.endDate = object.endDate
         item.pausedDate = object.pausedDate
         return item
+    }
+
+    private func loadLegacyTimers() -> [TimerItem]? {
+        guard let data = UserDefaults.standard.data(forKey: legacyUserDefaultsKey) else {
+            return nil
+        }
+        let decoder = JSONDecoder()
+        return try? decoder.decode([TimerItem].self, from: data)
     }
 
 

@@ -30,7 +30,8 @@ final class LiveActivityManager {
 
         let state = TimerLiveActivityAttributes.ContentState(
             endDate: timer.endDate,
-            isRunning: timer.isRunning
+            isRunning: timer.isRunning,
+            remainingSeconds: timer.remainingSeconds
         )
 
         do {
@@ -49,7 +50,8 @@ final class LiveActivityManager {
         guard let activity = activities[timer.id] else { return }
         let state = TimerLiveActivityAttributes.ContentState(
             endDate: timer.endDate,
-            isRunning: timer.isRunning
+            isRunning: timer.isRunning,
+            remainingSeconds: timer.remainingSeconds
         )
         Task {
             await activity.update(using: state)

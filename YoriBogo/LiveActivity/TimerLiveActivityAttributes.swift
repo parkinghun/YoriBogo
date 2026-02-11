@@ -13,6 +13,7 @@ struct TimerLiveActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var endDate: Date?
         var isRunning: Bool
+        var remainingSeconds: Int
     }
 
     var timerID: String

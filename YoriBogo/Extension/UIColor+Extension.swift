@@ -7,8 +7,6 @@
 
 import UIKit
 
-import UIKit
-
 extension UIColor {
     // MARK: - Custom Colors
     /// 밝은 베이지톤 배경
