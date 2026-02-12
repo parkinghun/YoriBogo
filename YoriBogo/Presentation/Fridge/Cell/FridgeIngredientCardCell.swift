@@ -24,7 +24,7 @@ final class FridgeIngredientCardCell: UICollectionViewCell, ReusableView {
     private let imageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFit
-        iv.backgroundColor = .gray100
+        iv.backgroundColor = .white
         iv.layer.cornerRadius = 8
         iv.clipsToBounds = true
         return iv
