@@ -23,8 +23,8 @@ final class TimerManager {
 
     /// Realm 변경 감지 토큰 (Widget Intent 등 외부 프로세스 변경 구독)
     private var realmNotificationToken: NotificationToken?
-    /// 메인 앱에서 직접 Realm write 중일 때 Notification 중복 처리 방지 플래그
-    private var isWritingLocally = false
+    /// Realm 초기 로드 완료 후 복원 로직을 1회만 수행하기 위한 플래그
+    private var didRestoreOnInitialLoad = false
 
     /// 타이머 목록 (RxSwift)
     private let timersRelay = BehaviorRelay<[TimerItem]>(value: [])
@@ -36,7 +36,6 @@ final class TimerManager {
     private init() {
         setupRealmObservation()   // Realm 변경 구독 시작 (.initial 콜백으로 초기 데이터 로드)
         startTick()
-        restoreTimers()
     }
 
     deinit {
@@ -65,37 +64,56 @@ final class TimerManager {
         tickTimer = nil
     }
 
+    private func remainingSeconds(until endDate: Date, now: Date = Date()) -> Int {
+        max(0, Int(ceil(endDate.timeIntervalSince(now))))
+    }
+
     /// 매 초마다 호출 - wall-clock 기준으로 남은 시간 재계산
     private func tick() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            var timers = self.timersRelay.value
+            let snapshot = self.timersRelay.value
             var updated = false
-            var hasRunningTimer = false
+            var pendingRemainingByID: [UUID: Int] = [:]
 
-            for i in 0..<timers.count {
-                guard timers[i].isRunning,
-                      let endDate = timers[i].endDate else { continue }
-                hasRunningTimer = true
+            for timer in snapshot {
+                guard timer.isRunning,
+                      let endDate = timer.endDate else { continue }
 
-                let remaining = Int(endDate.timeIntervalSince(Date()))
+                let remaining = self.remainingSeconds(until: endDate)
+                pendingRemainingByID[timer.id] = remaining
 
-                // 남은 시간 업데이트
-                timers[i].remainingSeconds = max(0, remaining)
-
-                // 타이머 완료
                 if remaining <= 0 {
-                    self.completeTimer(id: timers[i].id)
+                    // 외부(Widget/Intent)에서 방금 상태가 바뀐 경우, 최신 상태를 기준으로 완료 처리 여부를 재검증
+                    let latest = self.timersRelay.value.first(where: { $0.id == timer.id })
+                    guard latest?.isRunning == true else { continue }
+                    self.completeTimer(id: timer.id)
                     updated = true
                 }
             }
 
             if updated {
                 // completeTimer() → saveTimers() 흐름에서 relay가 직접 업데이트되므로 별도 처리 불필요
-            } else if hasRunningTimer {
-                // UI 업데이트를 위해 갱신 트리거
-                self.timersRelay.accept(timers)
+            } else if !pendingRemainingByID.isEmpty {
+                // 최신 relay 상태에 남은 시간만 병합 적용해, 외부 변경(isRunning/endDate)을 덮어쓰지 않음
+                var latestTimers = self.timersRelay.value
+                var didChange = false
+
+                for i in 0..<latestTimers.count {
+                    guard latestTimers[i].isRunning,
+                          latestTimers[i].endDate != nil,
+                          let pendingRemaining = pendingRemainingByID[latestTimers[i].id] else { continue }
+
+                    if latestTimers[i].remainingSeconds != pendingRemaining {
+                        latestTimers[i].remainingSeconds = pendingRemaining
+                        didChange = true
+                    }
+                }
+
+                if didChange {
+                    self.timersRelay.accept(latestTimers)
+                }
             }
         }
     }
@@ -172,7 +190,7 @@ final class TimerManager {
               timers[index].isRunning,
               let endDate = timers[index].endDate else { return }
 
-        let remaining = max(0, Int(endDate.timeIntervalSince(Date())))
+        let remaining = remainingSeconds(until: endDate)
 
         timers[index].remainingSeconds = remaining
         timers[index].isRunning = false
@@ -206,8 +224,30 @@ final class TimerManager {
         print("🔄 타이머 재시작: \(timers[index].name)")
     }
 
-    /// 타이머 취소
+    /// 타이머 취소 (실행 중단 + 초기 상태 리셋, 삭제하지 않음)
     func cancelTimer(id: UUID) {
+        var timers = timersRelay.value
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
+
+        let timerName = timers[index].name
+        let timerToEnd = timers[index]
+
+        timers[index].remainingSeconds = timers[index].totalSeconds
+        timers[index].isRunning = false
+        timers[index].startDate = nil
+        timers[index].endDate = nil
+        timers[index].pausedDate = nil
+
+        saveTimers(timers)
+        cancelNotification(id: id)
+        if #available(iOS 17.1, *) {
+            LiveActivityManager.shared.end(for: timerToEnd)
+        }
+        print("🛑 타이머 실행 취소: \(timerName)")
+    }
+
+    /// 타이머 완전 삭제
+    func deleteTimer(id: UUID) {
         var timers = timersRelay.value
         guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
@@ -220,7 +260,7 @@ final class TimerManager {
         if #available(iOS 17.1, *) {
             LiveActivityManager.shared.end(for: timerToEnd)
         }
-        print("❌ 타이머 취소: \(timerName)")
+        print("🗑️ 타이머 삭제: \(timerName)")
     }
 
     /// 타이머 완료 처리
@@ -280,22 +320,30 @@ final class TimerManager {
                     UserDefaults.standard.removeObject(forKey: self.legacyUserDefaultsKey)
                 } else {
                     self.timersRelay.accept(Array(timers))
+                    if #available(iOS 17.1, *) {
+                        LiveActivityManager.shared.sync(with: Array(timers))
+                    }
                 }
+                self.restoreTimersIfNeededOnInitialLoad()
 
             case .update(let collection, _, _, _):
-                // 메인 앱의 자체 write로 인한 Notification은 무시 (saveTimers에서 직접 relay 업데이트)
-                guard !self.isWritingLocally else { return }
-
                 // Widget Intent 등 외부 프로세스 변경 감지 - endDate 기반으로 remainingSeconds 재계산
                 let timers = collection.map { obj -> TimerItem in
                     var item = self.timerItem(from: obj)
                     if item.isRunning, let endDate = item.endDate {
-                        item.remainingSeconds = max(0, Int(endDate.timeIntervalSince(Date())))
+                        item.remainingSeconds = self.remainingSeconds(until: endDate)
                     }
                     return item
                 }
                 self.timersRelay.accept(Array(timers))
+                if #available(iOS 17.1, *) {
+                    LiveActivityManager.shared.sync(with: Array(timers))
+                }
                 print("🔄 외부 변경 감지 (Widget/Intent): \(timers.count)개 타이머 동기화")
+                if let defaults = UserDefaults(suiteName: TimerRealmStore.appGroupID),
+                   let intentLog = defaults.dictionary(forKey: "LiveActivityLastIntent") {
+                    print("🟨 AppGroup LiveActivityLastIntent: \(intentLog)")
+                }
 
             case .error(let error):
                 print("❌ Realm 관찰 오류: \(error)")
@@ -303,13 +351,14 @@ final class TimerManager {
         }
     }
 
-    /// Realm에 저장
-    /// isWritingLocally = true 구간 동안 Realm Notification의 .update 콜백을 무시하여
-    /// 자체 write로 인한 중복 relay 업데이트를 방지한다.
-    private func saveTimers(_ timers: [TimerItem]) {
-        isWritingLocally = true
-        defer { isWritingLocally = false }
+    private func restoreTimersIfNeededOnInitialLoad() {
+        guard !didRestoreOnInitialLoad else { return }
+        didRestoreOnInitialLoad = true
+        restoreTimers()
+    }
 
+    /// Realm에 저장
+    private func saveTimers(_ timers: [TimerItem]) {
         do {
             let realm = try TimerRealmStore.realm()
             try realm.write {
@@ -382,7 +431,7 @@ final class TimerManager {
             guard timers[i].isRunning,
                   let endDate = timers[i].endDate else { continue }
 
-            let remaining = Int(endDate.timeIntervalSince(Date()))
+            let remaining = remainingSeconds(until: endDate)
 
             if remaining <= 0 {
                 // 이미 완료된 타이머

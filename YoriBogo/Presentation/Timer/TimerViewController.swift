@@ -309,7 +309,7 @@ extension TimerViewController: UITableViewDelegate {
 
             // 애니메이션 완료 후 실제 데이터 삭제 및 RxSwift 재개
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.timerManager.cancelTimer(id: timer.id)
+                self?.timerManager.deleteTimer(id: timer.id)
                 self?.isDeletingManually = false
             }
         }

@@ -50,7 +50,7 @@ struct TimerItem: Codable {
     mutating func updateRemainingTime() {
         guard isRunning, let endDate = endDate else { return }
 
-        let remaining = Int(endDate.timeIntervalSince(Date()))
+        let remaining = Int(ceil(endDate.timeIntervalSince(Date())))
         remainingSeconds = max(0, remaining)
     }
 

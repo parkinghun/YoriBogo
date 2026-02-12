@@ -35,7 +35,7 @@ struct TimerLiveActivityWidget: Widget {
                             .monospacedDigit()
                             .foregroundStyle(Color(uiColor: .brandOrange500))
                     } else {
-                        Text("일시 정지")
+                        Text(formatRemainingTime(context.state.remainingSeconds))
                             .font(.system(size: 46, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(Color(uiColor: .brandOrange500))
@@ -47,7 +47,8 @@ struct TimerLiveActivityWidget: Widget {
                         timerID: context.attributes.timerID,
                         isRunning: context.state.isRunning,
                         endDateTimestamp: context.state.endDate?.timeIntervalSince1970 ?? 0,
-                        remainingSeconds: context.state.remainingSeconds
+                        remainingSeconds: context.state.remainingSeconds,
+                        requestedAction: context.state.isRunning ? "pause" : "resume"
                     )) {
                         Image(systemName: context.state.isRunning ? "pause.fill" : "play.fill")
                             .font(.system(size: 20, weight: .bold))
@@ -98,7 +99,7 @@ struct TimerLiveActivityWidget: Widget {
                                 .monospacedDigit()
                                 .foregroundStyle(Color(uiColor: .brandOrange500))
                         } else {
-                            Text("일시 정지")
+                            Text(formatRemainingTime(context.state.remainingSeconds))
                                 .font(.system(size: 46, weight: .semibold, design: .rounded))
                                 .monospacedDigit()
                                 .foregroundStyle(Color(uiColor: .brandOrange500))
@@ -108,7 +109,8 @@ struct TimerLiveActivityWidget: Widget {
                             timerID: context.attributes.timerID,
                             isRunning: context.state.isRunning,
                             endDateTimestamp: context.state.endDate?.timeIntervalSince1970 ?? 0,
-                            remainingSeconds: context.state.remainingSeconds
+                            remainingSeconds: context.state.remainingSeconds,
+                            requestedAction: context.state.isRunning ? "pause" : "resume"
                         )) {
                             Image(systemName: context.state.isRunning ? "pause.fill" : "play.fill")
                                 .font(.system(size: 20, weight: .bold))
@@ -141,9 +143,12 @@ struct TimerLiveActivityWidget: Widget {
                         .minimumScaleFactor(0.6)
                         .frame(maxWidth: 44, alignment: .trailing)
                 } else {
-                    Image(systemName: "pause.fill")
+                    Text(formatRemainingTime(context.state.remainingSeconds))
+                        .monospacedDigit()
                         .font(.caption2)
-                        .frame(maxWidth: 24, alignment: .trailing)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: 44, alignment: .trailing)
                 }
             } minimal: {
                 if let endDate = context.state.endDate, context.state.isRunning {
@@ -156,4 +161,15 @@ struct TimerLiveActivityWidget: Widget {
             }
         }
     }
+}
+
+private func formatRemainingTime(_ seconds: Int) -> String {
+    let safe = max(0, seconds)
+    let hours = safe / 3600
+    let minutes = (safe % 3600) / 60
+    let secs = safe % 60
+    if hours > 0 {
+        return String(format: "%d:%02d:%02d", hours, minutes, secs)
+    }
+    return String(format: "%d:%02d", minutes, secs)
 }

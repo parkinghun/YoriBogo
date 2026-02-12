@@ -270,7 +270,6 @@ final class TimerDetailViewController: BaseViewController {
         alert.addAction(UIAlertAction(title: "확인", style: .destructive) { [weak self] _ in
             guard let self = self else { return }
             self.timerManager.cancelTimer(id: self.timerID)
-            self.navigationController?.popViewController(animated: true)
         })
 
         present(alert, animated: true)

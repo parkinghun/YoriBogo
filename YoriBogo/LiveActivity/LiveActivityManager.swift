@@ -12,12 +12,10 @@ import ActivityKit
 final class LiveActivityManager {
     static let shared = LiveActivityManager()
 
-    private var activities: [UUID: Activity<TimerLiveActivityAttributes>] = [:]
-
     private init() {}
 
     func start(for timer: TimerItem) {
-        guard activities[timer.id] == nil else {
+        if hasActivity(for: timer.id.uuidString) {
             update(for: timer)
             return
         }
@@ -35,41 +33,80 @@ final class LiveActivityManager {
         )
 
         do {
-            let activity = try Activity.request(
+            _ = try Activity.request(
                 attributes: attributes,
                 contentState: state,
                 pushType: nil
             )
-            activities[timer.id] = activity
         } catch {
             print("❌ LiveActivity start failed: \(error)")
         }
     }
 
     func update(for timer: TimerItem) {
-        guard let activity = activities[timer.id] else { return }
         let state = TimerLiveActivityAttributes.ContentState(
             endDate: timer.endDate,
             isRunning: timer.isRunning,
             remainingSeconds: timer.remainingSeconds
         )
         Task {
-            await activity.update(using: state)
+            for activity in activities(for: timer.id.uuidString) {
+                await activity.update(using: state)
+            }
         }
     }
 
     func end(for timer: TimerItem) {
-        guard let activity = activities[timer.id] else { return }
         Task {
-            await activity.end(dismissalPolicy: .immediate)
+            for activity in activities(for: timer.id.uuidString) {
+                await activity.end(dismissalPolicy: .immediate)
+            }
         }
-        activities.removeValue(forKey: timer.id)
     }
 
     func endAll() {
-        for (_, activity) in activities {
+        for activity in Activity<TimerLiveActivityAttributes>.activities {
             Task { await activity.end(dismissalPolicy: .immediate) }
         }
-        activities.removeAll()
+    }
+
+    func sync(with timers: [TimerItem]) {
+        let timerByID = Dictionary(uniqueKeysWithValues: timers.map { ($0.id.uuidString, $0) })
+        let liveActivities = Activity<TimerLiveActivityAttributes>.activities
+
+        for activity in liveActivities {
+            let timerID = activity.attributes.timerID
+            guard let timer = timerByID[timerID] else {
+                Task { await activity.end(dismissalPolicy: .immediate) }
+                continue
+            }
+            // cancel/complete/idle 상태(일시정지가 아님)는 Live Activity를 종료
+            if !timer.isRunning, timer.pausedDate == nil {
+                Task { await activity.end(dismissalPolicy: .immediate) }
+                continue
+            }
+
+            let state = TimerLiveActivityAttributes.ContentState(
+                endDate: timer.endDate,
+                isRunning: timer.isRunning,
+                remainingSeconds: timer.remainingSeconds
+            )
+            Task { await activity.update(using: state) }
+        }
+
+        // 실행 중 타이머는 Live Activity가 없으면 생성
+        for timer in timers where timer.isRunning {
+            if !hasActivity(for: timer.id.uuidString) {
+                start(for: timer)
+            }
+        }
+    }
+
+    private func hasActivity(for timerID: String) -> Bool {
+        return Activity<TimerLiveActivityAttributes>.activities.contains { $0.attributes.timerID == timerID }
+    }
+
+    private func activities(for timerID: String) -> [Activity<TimerLiveActivityAttributes>] {
+        return Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
     }
 }
