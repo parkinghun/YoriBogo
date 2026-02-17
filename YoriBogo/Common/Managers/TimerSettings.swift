@@ -2,7 +2,7 @@
 //  TimerSettings.swift
 //  YoriBogo
 //
-//  Created by Codex on 1/27/26.
+//  Created by 박성훈 on 1/27/26.
 //
 
 import Foundation

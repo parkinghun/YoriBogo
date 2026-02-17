@@ -2,7 +2,7 @@
 //  TimerLiveActivityWidget.swift
 //  YoriBogoWidgets
 //
-//  Created by Codex on 1/27/26.
+//  Created by 박성훈 on 1/27/26.
 //
 
 import WidgetKit
@@ -11,8 +11,6 @@ import ActivityKit
 import AppIntents
 import UIKit
 
-
-// brandOrange500
 @available(iOSApplicationExtension 17.1, *)
 struct TimerLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
