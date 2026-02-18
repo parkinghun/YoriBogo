@@ -45,13 +45,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // NotificationService를 통한 권한 요청
         NotificationService.shared.requestAuthorization { granted in
             if granted {
-                print("✅ AppDelegate: 알림 권한 허용됨")
-                // APNs 등록 (권한 허용 시)
                 DispatchQueue.main.async {
                     application.registerForRemoteNotifications()
                 }
             } else {
-                print("⚠️ AppDelegate: 알림 권한 거부됨 - 설정에서 변경 가능")
+                print("AppDelegate: 알림 권한 거부됨 - 설정에서 변경 가능")
             }
         }
     }
@@ -62,9 +60,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
         let token = tokenParts.joined()
-        print("📱 APNs Device Token: \(token)")
 
-        // APNs 토큰을 FCM에 전달
         Messaging.messaging().apnsToken = deviceToken
     }
 

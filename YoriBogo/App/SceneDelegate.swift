@@ -25,14 +25,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // MARK: - Recipe Loading
     private func loadRecipesIfNeeded() {
-        Task {
-            do {
-                let recipes = try await NetworkManager.shared.fetchAllRecipes()
-                print("✅ 레시피 로드 완료: \(recipes.count)개")
-            } catch {
-                print("❌ 레시피 로드 실패: \(error)")
-            }
-        }
+        RecipeBootstrapService.shared.preloadRecipesOnAppLaunch()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -87,4 +80,3 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 
 }
-
