@@ -65,7 +65,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         // 타이머 상태 재계산 (백그라운드에서 경과된 시간 반영)
         TimerManager.shared.recalculateTimers()
-        print("🔄 SceneDelegate: 타이머 상태 재계산 완료")
+        print("SceneDelegate: 타이머 상태 재계산 완료")
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
@@ -75,7 +75,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         // 실행 중인 모든 타이머에 대한 알림 스케줄
         TimerManager.shared.scheduleAllNotifications()
-        print("🔔 SceneDelegate: 백그라운드 진입 - 타이머 알림 스케줄 완료")
+        print("SceneDelegate: 백그라운드 진입 - 타이머 알림 스케줄 완료")
     }
 
 

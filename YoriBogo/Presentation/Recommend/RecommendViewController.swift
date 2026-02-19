@@ -163,6 +163,20 @@ final class RecommendViewController: BaseViewController {
             name: .recipeDidCreate,
             object: nil
         )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeBootstrapDidSucceed),
+            name: .recipeBootstrapDidSucceed,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recipeBootstrapDidFail(_:)),
+            name: .recipeBootstrapDidFail,
+            object: nil
+        )
     }
 
     @objc private func fridgeIngredientsDidChange() {
@@ -183,6 +197,17 @@ final class RecommendViewController: BaseViewController {
     @objc private func recipeDidCreate() {
         // 새 레시피가 생성되면 추천 목록 재계산
         viewWillAppearTrigger.accept(())
+    }
+
+    @objc private func recipeBootstrapDidSucceed() {
+        // 앱 시작 부트스트랩 완료 시 추천 목록 재조회
+        viewWillAppearTrigger.accept(())
+    }
+
+    @objc private func recipeBootstrapDidFail(_ notification: Notification) {
+        if let error = notification.userInfo?[Notification.RecipeBootstrapKey.error] as? Error {
+            print("⚠️ RecommendViewController - 레시피 부트스트랩 실패: \(error.localizedDescription)")
+        }
     }
 
     private func updateBookmarkStates() {
