@@ -161,13 +161,7 @@ final class TimerViewController: BaseViewController {
     }
 
     private func requestNotificationPermission() {
-        NotificationService.shared.requestAuthorization { granted in
-            if granted {
-                print("✅ 타이머 알림 권한 허용")
-            } else {
-                print("⚠️ 타이머 알림 권한 거부")
-            }
-        }
+        NotificationService.shared.requestAuthorization { _ in }
     }
 
     // MARK: - Actions

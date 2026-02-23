@@ -9,7 +9,6 @@ import UIKit
 import RxSwift
 import RxCocoa
 import SnapKit
-import Kingfisher
 
 final class RecipeSearchViewController: BaseViewController, ConfigureViewController {
 
@@ -405,10 +404,7 @@ final class RecipeSearchViewController: BaseViewController, ConfigureViewControl
                 guard let self = self else { return }
 
                 // Realm에서 최신 레시피 가져오기
-                guard let updatedRecipe = self.recipeManager.fetchRecipe(by: data.recipe.id) else {
-                    print("⚠️ 레시피를 찾을 수 없습니다: \(data.recipe.id)")
-                    return
-                }
+                guard let updatedRecipe = self.recipeManager.fetchRecipe(by: data.recipe.id) else { return }
 
                 let detailVC = RecipeDetailViewController(
                     recipe: updatedRecipe,

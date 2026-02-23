@@ -9,7 +9,6 @@ import UIKit
 import RxSwift
 import RxCocoa
 import SnapKit
-import Kingfisher
 
 final class RecommendViewController: BaseViewController {
 
@@ -115,12 +114,6 @@ final class RecommendViewController: BaseViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-
-        // collectionView가 보이는지 확인
-        if recommendedData.isEmpty {
-            print("⚠️ RecommendViewController - 데이터가 비어있습니다")
-        }
-
         startAutoScroll()
     }
 
@@ -138,76 +131,42 @@ final class RecommendViewController: BaseViewController {
     private func setupNotifications() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(fridgeIngredientsDidChange),
+            selector: #selector(handleRecommendDataRefresh),
             name: .fridgeIngredientsDidChange,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeDidUpdate),
+            selector: #selector(handleRecommendDataRefresh),
             name: .recipeDidUpdate,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeDidDelete),
+            selector: #selector(handleRecommendDataRefresh),
             name: .recipeDidDelete,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeDidCreate),
+            selector: #selector(handleRecommendDataRefresh),
             name: .recipeDidCreate,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeBootstrapDidSucceed),
+            selector: #selector(handleRecommendDataRefresh),
             name: .recipeBootstrapDidSucceed,
             object: nil
         )
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(recipeBootstrapDidFail(_:)),
-            name: .recipeBootstrapDidFail,
-            object: nil
-        )
     }
 
-    @objc private func fridgeIngredientsDidChange() {
-        // 냉장고 재료가 변경되면 추천 레시피 갱신
+    @objc private func handleRecommendDataRefresh() {
         viewWillAppearTrigger.accept(())
-    }
-
-    @objc private func recipeDidUpdate() {
-        // 레시피가 수정되면 추천 목록 재계산
-        viewWillAppearTrigger.accept(())
-    }
-
-    @objc private func recipeDidDelete() {
-        // 레시피가 삭제되면 추천 목록 재계산
-        viewWillAppearTrigger.accept(())
-    }
-
-    @objc private func recipeDidCreate() {
-        // 새 레시피가 생성되면 추천 목록 재계산
-        viewWillAppearTrigger.accept(())
-    }
-
-    @objc private func recipeBootstrapDidSucceed() {
-        // 앱 시작 부트스트랩 완료 시 추천 목록 재조회
-        viewWillAppearTrigger.accept(())
-    }
-
-    @objc private func recipeBootstrapDidFail(_ notification: Notification) {
-        if let error = notification.userInfo?[Notification.RecipeBootstrapKey.error] as? Error {
-            print("⚠️ RecommendViewController - 레시피 부트스트랩 실패: \(error.localizedDescription)")
-        }
     }
 
     private func updateBookmarkStates() {
@@ -442,10 +401,7 @@ extension RecommendViewController: UICollectionViewDelegate {
         let data = recommendedData[actualIndex]
 
         // Realm에서 최신 레시피 가져오기
-        guard let updatedRecipe = recipeManager.fetchRecipe(by: data.recipe.id) else {
-            print("⚠️ 레시피를 찾을 수 없습니다: \(data.recipe.id)")
-            return
-        }
+        guard let updatedRecipe = recipeManager.fetchRecipe(by: data.recipe.id) else { return }
 
         let detailVC = RecipeDetailViewController(
             recipe: updatedRecipe,

@@ -39,7 +39,7 @@ final class LiveActivityManager {
                 pushType: nil
             )
         } catch {
-            print("❌ LiveActivity start failed: \(error)")
+            print("iveActivity start failed: \(error)")
         }
     }
 

@@ -91,7 +91,7 @@ struct TimerRealmStore {
                 }
             }
         } catch {
-            print("❌ 타이머 Realm 마이그레이션 실패: \(error)")
+            print("타이머 Realm 마이그레이션 실패: \(error)")
         }
     }
 }

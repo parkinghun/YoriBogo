@@ -31,7 +31,6 @@ class RealmManager {
         do {
             return try Realm()
         } catch {
-            print("❌ Realm 초기화 에러: \(error)")
             return nil
         }
     }

@@ -224,38 +224,27 @@ final class RecipeViewController: BaseViewController {
     private func setupNotifications() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeDidUpdate),
+            selector: #selector(handleRecipeChanged),
             name: .recipeDidUpdate,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeDidDelete),
+            selector: #selector(handleRecipeChanged),
             name: .recipeDidDelete,
             object: nil
         )
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recipeDidCreate),
+            selector: #selector(handleRecipeChanged),
             name: .recipeDidCreate,
             object: nil
         )
     }
 
-    @objc private func recipeDidUpdate() {
-        // 레시피가 수정되면 목록 새로고침
-        refreshTrigger.accept(())
-    }
-
-    @objc private func recipeDidDelete() {
-        // 레시피가 삭제되면 목록 새로고침
-        refreshTrigger.accept(())
-    }
-
-    @objc private func recipeDidCreate() {
-        // 새 레시피가 생성되면 목록 새로고침
+    @objc private func handleRecipeChanged() {
         refreshTrigger.accept(())
     }
 

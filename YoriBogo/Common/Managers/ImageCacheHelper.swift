@@ -58,7 +58,6 @@ final class ImageCacheHelper {
     /// 모든 임시 이미지 삭제
     func clearAllTempImages() {
         tempImageCache.removeAll()
-        print("✅ 모든 임시 이미지 캐시 삭제")
     }
 
     /// 특정 prefix를 가진 임시 이미지들 삭제
@@ -71,7 +70,6 @@ final class ImageCacheHelper {
         }
 
         keysToRemove.forEach { tempImageCache.removeValue(forKey: $0) }
-        print("✅ \(prefix) 임시 이미지 \(keysToRemove.count)개 삭제")
     }
 
     // MARK: - Image Loading (Unified)
@@ -82,24 +80,10 @@ final class ImageCacheHelper {
     ///   - fallback: 로드 실패 시 반환할 이미지
     /// - Returns: UIImage 또는 fallback
     func loadImage(at path: String, fallback: UIImage? = nil) -> UIImage? {
-        // 1. 임시 경로인 경우
         if isTempPath(path) {
             return loadTempImage(at: path) ?? fallback
         }
 
-        // 2. 로컬 파일 경로인 경우
         return ImagePathHelper.shared.loadImage(at: path, fallback: fallback)
-    }
-
-    // MARK: - Statistics
-
-    /// 현재 캐시된 임시 이미지 개수
-    var tempImageCount: Int {
-        return tempImageCache.count
-    }
-
-    /// 현재 캐시 상태 출력
-    func printCacheStatus() {
-        print("📊 ImageCache 상태: \(tempImageCount)개 이미지")
     }
 }

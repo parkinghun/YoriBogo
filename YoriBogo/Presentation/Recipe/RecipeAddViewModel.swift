@@ -106,17 +106,12 @@ final class RecipeAddViewModel: ViewModelType {
 
         // Tag 추가
         input.tagText
-            .do(onNext: { newTag in print("🏷️ ViewModel: Received new tag: '\(newTag)'") })
             .withLatestFrom(tagsRelay) { ($0, $1) }
             .map { newTag, currentTags -> [String] in
-                print("🏷️ ViewModel: Current tags: \(currentTags)")
                 guard !newTag.isEmpty, !currentTags.contains(newTag) else {
-                    print("🏷️ ViewModel: Tag rejected (empty or duplicate)")
                     return currentTags
                 }
-                let updatedTags = currentTags + [newTag]
-                print("🏷️ ViewModel: Updated tags: \(updatedTags)")
-                return updatedTags
+                return currentTags + [newTag]
             }
             .bind(to: tagsRelay)
             .disposed(by: disposeBag)
@@ -136,8 +131,7 @@ final class RecipeAddViewModel: ViewModelType {
         // 메인 이미지 추가
         input.mainImagesAdded
             .withLatestFrom(mainImagePathsRelay) { ($0, $1) }
-            .map { [weak self] images, currentPaths -> [String] in
-                guard let self = self else { return currentPaths }
+            .map { images, currentPaths -> [String] in
                 let tempPaths = images.map { ImageCacheHelper.shared.cacheTempImage($0) }
                 return currentPaths + tempPaths
             }
@@ -147,8 +141,7 @@ final class RecipeAddViewModel: ViewModelType {
         // 메인 이미지 삭제
         input.mainImageRemoved
             .withLatestFrom(mainImagePathsRelay) { ($0, $1) }
-            .map { [weak self] index, currentPaths -> [String] in
-                guard let self = self else { return currentPaths }
+            .map { index, currentPaths -> [String] in
                 var paths = currentPaths
                 guard index < paths.count else { return paths }
 
@@ -177,8 +170,7 @@ final class RecipeAddViewModel: ViewModelType {
         // 단계 이미지 추가
         input.stepImagesAdded
             .withLatestFrom(stepImagePathsRelay) { ($0, $1) }
-            .map { [weak self] stepImages, currentPaths -> [Int: [String]] in
-                guard let self = self else { return currentPaths }
+            .map { stepImages, currentPaths -> [Int: [String]] in
                 let (stepNumber, images) = stepImages
                 let tempPaths = images.map { ImageCacheHelper.shared.cacheTempImage($0) }
 
@@ -195,8 +187,7 @@ final class RecipeAddViewModel: ViewModelType {
         // 단계 이미지 삭제
         input.stepImageRemoved
             .withLatestFrom(stepImagePathsRelay) { ($0, $1) }
-            .map { [weak self] stepImage, currentPaths -> [Int: [String]] in
-                guard let self = self else { return currentPaths }
+            .map { stepImage, currentPaths -> [Int: [String]] in
                 let (stepNumber, imageIndex) = stepImage
 
                 var updatedPaths = currentPaths
@@ -237,12 +228,10 @@ final class RecipeAddViewModel: ViewModelType {
 
             // 편집 모드일 때는 변경사항이 있어야 저장 가능
             if self.isEditMode && !self.isCreateFromApi {
-                print("🧪 SaveEnabled(edit): titleValid=\(titleValid), ingredientsValid=\(ingredientsValid), stepsValid=\(stepsValid), hasChanges=\(hasChanges)")
                 return titleValid && ingredientsValid && stepsValid && hasChanges
             }
 
             // 신규 추가 모드
-            print("🧪 SaveEnabled(new): titleValid=\(titleValid), ingredientsValid=\(ingredientsValid), stepsValid=\(stepsValid)")
             return titleValid && ingredientsValid && stepsValid
         }
         .asDriver(onErrorJustReturn: false)
@@ -274,18 +263,7 @@ final class RecipeAddViewModel: ViewModelType {
     // MARK: - Private Methods
 
     private func loadRecipeDataIfNeeded() {
-        guard let recipe = editingRecipe else {
-            print("⚠️ RecipeAddViewModel: editingRecipe is nil")
-            return
-        }
-
-        print("✅ RecipeAddViewModel: Loading recipe data")
-        print("   - Title: \(recipe.title)")
-        print("   - Category: \(recipe.category?.displayName ?? "없음")")
-        print("   - Tags: \(recipe.tags)")
-        print("   - Ingredients count: \(recipe.ingredients.count)")
-        print("   - Steps count: \(recipe.steps.count)")
-        print("   - Tip: \(recipe.tip ?? "없음")")
+        guard let recipe = editingRecipe else { return }
 
         titleRelay.accept(recipe.title)
         categoryRelay.accept(recipe.category ?? .sideDish)
@@ -293,8 +271,6 @@ final class RecipeAddViewModel: ViewModelType {
         tipRelay.accept(recipe.tip)
         ingredientsRelay.accept(recipe.ingredients)
         stepsRelay.accept(recipe.steps)
-
-        print("✅ RecipeAddViewModel: Relay values updated")
 
         // 메인 이미지 로드
         loadMainImages(from: recipe.images)
@@ -443,7 +419,6 @@ final class RecipeAddViewModel: ViewModelType {
             let stepsChanged = !self.areStepsEqual(steps, original.steps)
             let tipChanged = tip != original.tip
 
-            print("🧪 hasChanges: title=\(titleChanged), category=\(categoryChanged), tags=\(tagsChanged), mainImages=\(mainImagesChanged), ingredients=\(ingredientsChanged), steps=\(stepsChanged), tip=\(tipChanged)")
             return titleChanged || categoryChanged || tagsChanged || mainImagesChanged ||
                    ingredientsChanged || stepsChanged || tipChanged
         }
@@ -715,6 +690,5 @@ final class RecipeAddViewModel: ViewModelType {
     deinit {
         // 화면 종료 시 임시 이미지 캐시 정리
         ImageCacheHelper.shared.clearAllTempImages()
-        print("✅ RecipeAddViewModel deinit - 임시 이미지 정리 완료")
     }
 }

@@ -557,21 +557,18 @@ final class RecipeAddViewController: BaseViewController {
         // Output 바인딩
         output.title
             .drive(onNext: { [weak self] title in
-                print("📥 RecipeAddVC: Received title: '\(title)'")
                 self?.titleTextField.text = title
             })
             .disposed(by: disposeBag)
 
         output.category
             .drive(onNext: { [weak self] (category: RecipeCategory) in
-                print("📥 RecipeAddVC: Received category: \(category.displayName)")
                 self?.categoryButton.setTitle(category.displayName, for: .normal)
             })
             .disposed(by: disposeBag)
 
         output.tags
             .drive(onNext: { [weak self] (tags: [String]) in
-                print("📥 RecipeAddVC: Received tags: \(tags)")
                 self?.tags = tags
                 self?.updateTagChips()
             })
@@ -597,13 +594,9 @@ final class RecipeAddViewController: BaseViewController {
         output.ingredients
             .drive(onNext: { [weak self] ingredients in
                 guard let self = self else { return }
-                print("📥 RecipeAddVC: Received ingredients count: \(ingredients.count)")
                 // 초기 로드 시에만 UI 로드 (편집 모드에서만)
                 if self.isEditMode && self.isInitialLoad && !ingredients.isEmpty {
-                    print("✅ RecipeAddVC: Loading ingredients to UI (initial load)")
                     self.loadIngredients(ingredients)
-                } else {
-                    print("⏭️ RecipeAddVC: Skipping loadIngredients (not initial load or empty)")
                 }
             })
             .disposed(by: disposeBag)
@@ -611,15 +604,11 @@ final class RecipeAddViewController: BaseViewController {
         output.steps
             .drive(onNext: { [weak self] steps in
                 guard let self = self else { return }
-                print("📥 RecipeAddVC: Received steps count: \(steps.count)")
                 // 초기 로드 시에만 UI 로드 (편집 모드에서만)
                 if self.isEditMode && self.isInitialLoad && !steps.isEmpty {
-                    print("✅ RecipeAddVC: Loading steps to UI (initial load)")
                     self.loadSteps(steps)
                     // 초기 로드 완료 플래그 설정
                     self.isInitialLoad = false
-                } else {
-                    print("⏭️ RecipeAddVC: Skipping loadSteps (not initial load or empty)")
                 }
             })
             .disposed(by: disposeBag)
@@ -709,17 +698,11 @@ final class RecipeAddViewController: BaseViewController {
 // MARK: - UITextFieldDelegate
 extension RecipeAddViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        print("🎯 textFieldShouldReturn called for textField")
-
         // tagTextField는 직접 처리
         if textField == tagTextField {
-            print("🏷️ tagTextField return key pressed")
             if let text = textField.text?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
-                print("🏷️ Adding tag: '\(text)'")
                 tagAddedRelay.accept(text)
                 textField.text = ""
-            } else {
-                print("🏷️ Tag text is empty, not adding")
             }
             textField.resignFirstResponder()
             return true

@@ -8,23 +8,6 @@
 import UIKit
 import CommonCrypto
 
-enum ImagePathError: LocalizedError {
-    case invalidPath
-    case fileNotFound
-    case saveFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidPath:
-            return "유효하지 않은 이미지 경로입니다"
-        case .fileNotFound:
-            return "이미지 파일을 찾을 수 없습니다"
-        case .saveFailed:
-            return "이미지 저장에 실패했습니다"
-        }
-    }
-}
-
 /// 이미지 경로 관리 및 파일 무결성을 보장하는 헬퍼 클래스
 /// - 상대 경로와 절대 경로 변환
 /// - 파일 존재 확인 및 fallback 처리
@@ -55,31 +38,10 @@ final class ImagePathHelper {
 
         if !fileManager.fileExists(atPath: directoryURL.path) {
             try? fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-            print("✅ RecipeImages 디렉토리 생성: \(directoryURL.path)")
         }
     }
 
     // MARK: - Path Conversion
-
-    /// 절대 경로를 상대 경로로 변환
-    /// - Parameter absolutePath: 절대 경로 (예: /var/.../Documents/RecipeImages/main_0_UUID.jpg)
-    /// - Returns: 상대 경로 (예: RecipeImages/main_0_UUID.jpg) 또는 nil
-    func toRelativePath(_ absolutePath: String) -> String? {
-        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-
-        let documentsPath = documentsURL.path
-
-        // Documents 경로를 포함하고 있는지 확인
-        if absolutePath.hasPrefix(documentsPath) {
-            let relativePath = String(absolutePath.dropFirst(documentsPath.count))
-            // 앞의 슬래시 제거
-            return relativePath.hasPrefix("/") ? String(relativePath.dropFirst()) : relativePath
-        }
-
-        return nil
-    }
 
     /// 상대 경로를 절대 경로로 변환
     /// - Parameter relativePath: 상대 경로 (예: RecipeImages/main_0_UUID.jpg)
@@ -91,23 +53,6 @@ final class ImagePathHelper {
 
         return documentsURL.appendingPathComponent(relativePath).path
     }
-
-    // MARK: - File Validation
-
-    /// 파일이 존재하는지 확인 (상대 경로 또는 절대 경로 모두 지원)
-    /// - Parameter path: 파일 경로
-    /// - Returns: 파일 존재 여부
-    func fileExists(at path: String) -> Bool {
-        // 절대 경로인 경우 그대로 확인
-        if fileManager.fileExists(atPath: path) {
-            return true
-        }
-
-        // 상대 경로인 경우 절대 경로로 변환 후 확인
-        let absolutePath = toAbsolutePath(path)
-        return fileManager.fileExists(atPath: absolutePath)
-    }
-
     /// 이미지 파일을 로드하고, 없으면 fallback 처리
     /// - Parameters:
     ///   - path: 이미지 경로 (상대 또는 절대)
@@ -119,13 +64,11 @@ final class ImagePathHelper {
 
         // 파일 존재 확인
         guard fileManager.fileExists(atPath: absolutePath) else {
-            print("⚠️ 이미지 파일 없음: \(path)")
             return fallbackImage
         }
 
         // 이미지 로드
         guard let image = UIImage(contentsOfFile: absolutePath) else {
-            print("⚠️ 이미지 로드 실패: \(path)")
             return fallbackImage
         }
 
@@ -142,7 +85,6 @@ final class ImagePathHelper {
     /// - Returns: 상대 경로 또는 nil
     func saveImage(_ image: UIImage, prefix: String, index: Int) -> String? {
         guard let data = image.jpegData(compressionQuality: 0.8) else {
-            print("❌ 이미지 압축 실패")
             return nil
         }
 
@@ -154,10 +96,8 @@ final class ImagePathHelper {
 
             // 상대 경로 반환
             let relativePath = "\(imageDirectoryName)/\(fileName)"
-            print("✅ 이미지 저장 성공: \(relativePath)")
             return relativePath
         } catch {
-            print("❌ 이미지 저장 실패: \(error)")
             return nil
         }
     }
@@ -172,16 +112,13 @@ final class ImagePathHelper {
         let absolutePath = path.hasPrefix("/") ? path : toAbsolutePath(path)
 
         guard fileManager.fileExists(atPath: absolutePath) else {
-            print("⚠️ 삭제할 파일 없음: \(path)")
             return false
         }
 
         do {
             try fileManager.removeItem(atPath: absolutePath)
-            print("✅ 이미지 삭제 성공: \(path)")
             return true
         } catch {
-            print("❌ 이미지 삭제 실패: \(error)")
             return false
         }
     }
@@ -231,7 +168,6 @@ final class ImagePathHelper {
 
         // 수집된 모든 이미지 삭제
         if !imagePaths.isEmpty {
-            print("🗑️ 레시피 '\(recipe.title)' 이미지 삭제: \(imagePaths.count)개")
             deleteImages(at: imagePaths)
         }
     }
@@ -290,19 +226,16 @@ final class ImagePathHelper {
     func saveImageWithDuplicateCheck(_ image: UIImage, prefix: String, index: Int) -> String? {
         // 이미지 해시 계산
         guard let hash = calculateImageHash(image) else {
-            print("⚠️ 이미지 해시 계산 실패, 일반 저장 진행")
             return saveImage(image, prefix: prefix, index: index)
         }
 
         // 중복 확인
         if let existingPath = findImageByHash(hash) {
-            print("♻️ 중복 이미지 발견, 기존 경로 재사용: \(existingPath)")
             return existingPath
         }
 
         // 중복이 없으면 새로 저장 (해시를 파일명에 포함)
         guard let data = image.jpegData(compressionQuality: 0.8) else {
-            print("❌ 이미지 압축 실패")
             return nil
         }
 
@@ -315,52 +248,9 @@ final class ImagePathHelper {
             try data.write(to: fileURL)
 
             let relativePath = "\(imageDirectoryName)/\(fileName)"
-            print("✅ 새 이미지 저장: \(relativePath)")
             return relativePath
         } catch {
-            print("❌ 이미지 저장 실패: \(error)")
             return nil
         }
-    }
-
-    // MARK: - Orphan File Cleanup
-
-    /// 고아 파일 정리: Realm에 없는 이미지 파일 삭제
-    /// - Parameter usedPaths: 현재 사용 중인 이미지 경로 배열
-    /// - Returns: 삭제된 파일 개수
-    @discardableResult
-    func cleanupOrphanFiles(usedPaths: Set<String>) -> Int {
-        let allPaths = Set(allImagePaths())
-        let orphanPaths = allPaths.subtracting(usedPaths)
-
-        if !orphanPaths.isEmpty {
-            print("🗑️ 고아 파일 \(orphanPaths.count)개 발견, 삭제 진행...")
-            deleteImages(at: Array(orphanPaths))
-        }
-
-        return orphanPaths.count
-    }
-
-    /// 모든 레시피에서 사용 중인 이미지 경로 수집
-    /// - Parameter recipes: 전체 레시피 배열
-    /// - Returns: 사용 중인 이미지 경로 Set
-    func collectUsedImagePaths(from recipes: [Recipe]) -> Set<String> {
-        var usedPaths = Set<String>()
-
-        for recipe in recipes {
-            // 메인 이미지
-            for recipeImage in recipe.images where recipeImage.source == .localPath {
-                usedPaths.insert(recipeImage.value)
-            }
-
-            // 단계별 이미지
-            for step in recipe.steps {
-                for recipeImage in step.images where recipeImage.source == .localPath {
-                    usedPaths.insert(recipeImage.value)
-                }
-            }
-        }
-
-        return usedPaths
     }
 }

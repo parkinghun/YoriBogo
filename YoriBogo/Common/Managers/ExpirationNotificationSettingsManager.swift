@@ -39,17 +39,13 @@ final class ExpirationNotificationSettingsManager {
         }
 
         userDefaults.set(false, forKey: Keys.isFirstLaunch)
-
-        print("✅ ExpirationNotificationSettings 저장 완료")
-        print("   알림 날짜: \(days)")
-        print("   알림 시간: \(components.hour ?? 0):\(components.minute ?? 0)")
     }
 
     /// 저장된 알림 날짜 로드
     /// - Returns: 활성화된 알림 날짜 배열 (기본값: [3, 1, 0])
     func loadNotificationDays() -> [Int] {
         if isFirstLaunch() {
-            return [3, 1, 0] // 기본값: D-3, D-1, D-Day
+            return [3, 1, 0]
         }
 
         guard let days = userDefaults.array(forKey: Keys.notificationDays) as? [Int] else {
@@ -84,7 +80,6 @@ final class ExpirationNotificationSettingsManager {
         userDefaults.removeObject(forKey: Keys.notificationDays)
         userDefaults.removeObject(forKey: Keys.notificationTime)
         userDefaults.set(true, forKey: Keys.isFirstLaunch)
-        print("🗑️ ExpirationNotificationSettings 초기화 완료")
     }
 
     // MARK: - Private Methods

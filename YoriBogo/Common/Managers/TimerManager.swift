@@ -7,7 +7,6 @@
 
 import UIKit
 import AudioToolbox
-import RxSwift
 import RxCocoa
 import UserNotifications
 import RealmSwift
@@ -19,7 +18,6 @@ final class TimerManager {
     // MARK: - Properties
     private let legacyUserDefaultsKey = "cooking_timers"
     private var tickTimer: DispatchSourceTimer?
-    private let disposeBag = DisposeBag()
 
     /// Realm 변경 감지 토큰 (Widget Intent 등 외부 프로세스 변경 구독)
     private var realmNotificationToken: NotificationToken?
@@ -161,7 +159,6 @@ final class TimerManager {
         )
         timers.insert(timer, at: 0)
         saveTimers(timers)
-        print("✅ 타이머 생성: \(title), \(Int(duration))초")
         return timer.id
     }
 
@@ -180,7 +177,6 @@ final class TimerManager {
         if #available(iOS 17.1, *) {
             LiveActivityManager.shared.start(for: timers[index])
         }
-        print("▶️ 타이머 시작: \(timers[index].name)")
     }
 
     /// 타이머 일시정지
@@ -203,7 +199,6 @@ final class TimerManager {
         if #available(iOS 17.1, *) {
             LiveActivityManager.shared.update(for: timers[index])
         }
-        print("⏸️ 타이머 일시정지: \(timers[index].name), 남은 시간: \(remaining)초")
     }
 
     /// 타이머 재시작 (완료된 타이머를 처음부터 다시 시작)
@@ -211,17 +206,13 @@ final class TimerManager {
         var timers = timersRelay.value
         guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
-        // 남은 시간을 전체 시간으로 리셋
         timers[index].remainingSeconds = timers[index].totalSeconds
         timers[index].isRunning = false
         timers[index].startDate = nil
         timers[index].endDate = nil
 
         saveTimers(timers)
-
-        // 리셋 후 바로 시작
         startTimer(id: id)
-        print("🔄 타이머 재시작: \(timers[index].name)")
     }
 
     /// 타이머 취소 (실행 중단 + 초기 상태 리셋, 삭제하지 않음)
@@ -229,7 +220,6 @@ final class TimerManager {
         var timers = timersRelay.value
         guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
-        let timerName = timers[index].name
         let timerToEnd = timers[index]
 
         timers[index].remainingSeconds = timers[index].totalSeconds
@@ -243,7 +233,6 @@ final class TimerManager {
         if #available(iOS 17.1, *) {
             LiveActivityManager.shared.end(for: timerToEnd)
         }
-        print("🛑 타이머 실행 취소: \(timerName)")
     }
 
     /// 타이머 완전 삭제
@@ -251,7 +240,6 @@ final class TimerManager {
         var timers = timersRelay.value
         guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
 
-        let timerName = timers[index].name
         let timerToEnd = timers[index]
         timers.remove(at: index)
 
@@ -260,7 +248,6 @@ final class TimerManager {
         if #available(iOS 17.1, *) {
             LiveActivityManager.shared.end(for: timerToEnd)
         }
-        print("🗑️ 타이머 삭제: \(timerName)")
     }
 
     /// 타이머 완료 처리
@@ -288,8 +275,6 @@ final class TimerManager {
 
         // 사운드 재생
         playTimerSound(for: completedTimer)
-
-        print("✅ 타이머 완료: \(timers[index].name)")
     }
 
     // MARK: - Persistence
@@ -300,10 +285,7 @@ final class TimerManager {
     private func setupRealmObservation() {
         TimerRealmStore.migrateFromDefaultRealmIfNeeded()
 
-        guard let realm = try? TimerRealmStore.realm() else {
-            print("❌ Realm 관찰 설정 실패: realm 인스턴스 생성 불가")
-            return
-        }
+        guard let realm = try? TimerRealmStore.realm() else { return }
 
         let results = realm.objects(CookingTimerObject.self)
             .sorted(byKeyPath: "createdAt", ascending: false)
@@ -339,14 +321,9 @@ final class TimerManager {
                 if #available(iOS 17.1, *) {
                     LiveActivityManager.shared.sync(with: Array(timers))
                 }
-                print("🔄 외부 변경 감지 (Widget/Intent): \(timers.count)개 타이머 동기화")
-                if let defaults = UserDefaults(suiteName: TimerRealmStore.appGroupID),
-                   let intentLog = defaults.dictionary(forKey: "LiveActivityLastIntent") {
-                    print("🟨 AppGroup LiveActivityLastIntent: \(intentLog)")
-                }
 
-            case .error(let error):
-                print("❌ Realm 관찰 오류: \(error)")
+            case .error:
+                break
             }
         }
     }
@@ -386,9 +363,7 @@ final class TimerManager {
                     realm.add(object, update: .modified)
                 }
             }
-        } catch {
-            print("❌ 타이머 저장 실패: \(error)")
-        }
+        } catch { }
 
         // 로컬 write는 Notification을 기다리지 않고 relay를 직접 업데이트
         timersRelay.accept(timers)
@@ -454,7 +429,6 @@ final class TimerManager {
             saveTimers(timers)
         }
 
-        print("🔄 타이머 복원 완료: \(timers.filter { $0.isRunning }.count)개")
     }
 
     // MARK: - Notifications
@@ -482,19 +456,12 @@ final class TimerManager {
             trigger: trigger
         )
 
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("❌ 알림 스케줄 실패: \(error)")
-            } else {
-                print("🔔 알림 스케줄 완료: \(timer.name), 발화 시각: \(endDate)")
-            }
-        }
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
     }
 
     /// 알림 취소
     private func cancelNotification(id: UUID) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timer_\(id.uuidString)"])
-        print("🔕 알림 취소: \(id)")
     }
 
     /// 모든 실행 중인 타이머의 알림 스케줄 (백그라운드 진입 시)

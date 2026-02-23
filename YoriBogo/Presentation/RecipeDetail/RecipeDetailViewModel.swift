@@ -72,7 +72,7 @@ final class RecipeDetailViewModel: ViewModelType {
                         isBookmarkedRelay.accept(!isBookmarkedRelay.value)
                     }
                 } catch {
-                    print("❌ 북마크 토글 에러: \(error)")
+                    print("북마크 토글 에러: \(error)")
                 }
             })
             .disposed(by: disposeBag)

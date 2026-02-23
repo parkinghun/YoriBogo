@@ -44,7 +44,6 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
         var endDate: Date?
         var currentRemaining = 0
 
-        let activityCount = Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }.count
         var updatedRemaining = 0
         var updatedEndDate: Date?
         var updatedIsRunning = false
@@ -61,18 +60,6 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
             running = object.isRunning
             endDate = object.endDate
             currentRemaining = object.remainingSeconds
-
-            logIntent(
-                name: "PauseResume",
-                timerID: timerID,
-                payload: [
-                    "requestedAction": requestedAction,
-                    "isRunning": "\(running)",
-                    "endDate": endDate?.description ?? "nil",
-                    "remainingSeconds": "\(currentRemaining)",
-                    "activityCount": "\(activityCount)"
-                ]
-            )
 
             try realm.write {
                 if requestedAction == "pause" {
@@ -121,7 +108,6 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
                 }
             }
         } catch {
-            print("❌ PauseResumeTimerIntent Realm 처리 실패: \(error)")
             return .result()
         }
 
@@ -136,16 +122,6 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
             endDate: updatedEndDate,
             isRunning: updatedIsRunning,
             remainingSeconds: updatedRemaining
-        )
-        logIntent(
-            name: "PauseResumeUpdated",
-            timerID: timerID,
-            payload: [
-                "requestedAction": requestedAction,
-                "updatedIsRunning": "\(updatedIsRunning)",
-                "updatedEndDate": updatedEndDate?.description ?? "nil",
-                "updatedRemaining": "\(updatedRemaining)"
-            ]
         )
 
         return .result()
@@ -168,17 +144,8 @@ struct CancelTimerIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         guard let uuid = UUID(uuidString: timerID) else { return .result() }
-        let activityCount = Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }.count
-        logIntent(
-            name: "Cancel",
-            timerID: timerID,
-            payload: [
-                "activityCount": "\(activityCount)"
-            ]
-        )
         cancelNotification(id: uuid)
         await endActivity(timerID: timerID)
-        logIntent(name: "CancelEnding", timerID: timerID, payload: [:])
         do {
             let realm = try TimerRealmStore.realm()
             if let object = realm.object(ofType: CookingTimerObject.self, forPrimaryKey: uuid.uuidString) {
@@ -191,10 +158,7 @@ struct CancelTimerIntent: LiveActivityIntent {
                 }
             }
         } catch {
-            print("❌ CancelTimerIntent Realm 처리 실패: \(error)")
         }
-        await endActivity(timerID: timerID)
-        logIntent(name: "CancelEnded", timerID: timerID, payload: [:])
         return .result()
     }
 }
@@ -202,7 +166,6 @@ struct CancelTimerIntent: LiveActivityIntent {
 @available(iOS 17.1, *)
 private func updateActivity(timerID: String, endDate: Date?, isRunning: Bool, remainingSeconds: Int) async {
     let targets = Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
-    print("🟦 updateActivity targetCount=\(targets.count) timerID=\(timerID) running=\(isRunning) remaining=\(remainingSeconds)")
     for activity in targets {
         let state = TimerLiveActivityAttributes.ContentState(
             endDate: endDate,
@@ -216,7 +179,6 @@ private func updateActivity(timerID: String, endDate: Date?, isRunning: Bool, re
 @available(iOS 17.1, *)
 private func endActivity(timerID: String) async {
     let targets = Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
-    print("🟥 endActivity targetCount=\(targets.count) timerID=\(timerID)")
     for activity in targets {
         await activity.end(dismissalPolicy: .immediate)
     }
@@ -245,17 +207,6 @@ private func scheduleNotification(timerID: String, title: String, endDate: Date)
     )
 
     UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
-}
-
-private func logIntent(name: String, timerID: String, payload: [String: String]) {
-    guard let defaults = UserDefaults(suiteName: TimerRealmStore.appGroupID) else { return }
-    let timestamp = Date().timeIntervalSince1970
-    var data = payload
-    data["timestamp"] = "\(timestamp)"
-    data["name"] = name
-    data["timerID"] = timerID
-    defaults.set(data, forKey: "LiveActivityLastIntent")
-    print("🟨 LiveActivityIntent:", data)
 }
 
 private func remainingSecondsFromEndDate(_ endDate: Date, now: Date = Date()) -> Int {

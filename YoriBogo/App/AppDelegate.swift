@@ -48,8 +48,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 DispatchQueue.main.async {
                     application.registerForRemoteNotifications()
                 }
-            } else {
-                print("AppDelegate: 알림 권한 거부됨 - 설정에서 변경 가능")
             }
         }
     }
@@ -58,15 +56,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     /// APNs 토큰 등록 성공
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
-        let token = tokenParts.joined()
-
         Messaging.messaging().apnsToken = deviceToken
     }
 
     /// APNs 토큰 등록 실패
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("❌ APNs 등록 실패: \(error.localizedDescription)")
     }
     
     // MARK: - Realm Configuration
@@ -107,12 +101,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         Realm.Configuration.defaultConfiguration = config
 
         // Realm 초기화 확인
-        do {
-            _ = try Realm()
-            print("Realm 초기화 성공")
-        } catch {
-            print("Realm 초기화 실패: \(error)")
-        }
+        _ = try? Realm()
     }
 
     // MARK: UISceneSession Lifecycle
@@ -147,7 +136,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 
         let title = notification.request.content.title
         let identifier = notification.request.identifier
-        print("📬 Foreground 알림 수신: \(title)")
 
         // Analytics 로깅: 알림 실제 발송
         let notificationType = identifier.hasPrefix("expiry_") ? "expiry" : (identifier.hasPrefix("test_") ? "test" : "push")
@@ -164,7 +152,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let identifier = response.notification.request.identifier
-        print("🔔 알림 탭됨: \(identifier)")
 
         // Analytics 로깅: 알림 클릭
         let notificationType = identifier.hasPrefix("expiry_") ? "expiry" : (identifier.hasPrefix("test_") ? "test" : "push")
@@ -179,12 +166,10 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         // 소비기한 알림인 경우 냉장고 화면으로 이동
         if identifier.hasPrefix("expiry_") {
             navigateToFridgeScreen()
-            print("   → 소비기한 알림: 냉장고 화면으로 이동")
         }
         // 타이머 알림인 경우 타이머 화면으로 이동
         else if identifier.hasPrefix("timer_") {
             navigateToTimerScreen()
-            print("   → 타이머 알림: 타이머 화면으로 이동")
         }
 
         completionHandler()
@@ -199,7 +184,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
                 .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
                   let window = windowScene.windows.first(where: { $0.isKeyWindow }),
                   let tabBarController = window.rootViewController as? UITabBarController else {
-                print("⚠️ AppDelegate: TabBarController를 찾을 수 없습니다.")
                 return
             }
 
@@ -210,8 +194,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             if let navigationController = tabBarController.selectedViewController as? UINavigationController {
                 navigationController.popToRootViewController(animated: false)
             }
-
-            print("✅ AppDelegate: 냉장고 화면으로 이동 완료")
         }
     }
 
@@ -224,7 +206,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
                 .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
                   let window = windowScene.windows.first(where: { $0.isKeyWindow }),
                   let tabBarController = window.rootViewController as? UITabBarController else {
-                print("⚠️ AppDelegate: TabBarController를 찾을 수 없습니다.")
                 return
             }
 
@@ -235,8 +216,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             if let navigationController = tabBarController.selectedViewController as? UINavigationController {
                 navigationController.popToRootViewController(animated: false)
             }
-
-            print("✅ AppDelegate: 타이머 화면으로 이동 완료")
         }
     }
 }
@@ -247,15 +226,7 @@ extension AppDelegate: MessagingDelegate {
 
     /// FCM 토큰 갱신 시 호출
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print("🔥 FCM Registration Token 수신")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
         if let token = fcmToken {
-            print("📲 FCM Token:")
-            print(token)
-            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
-
             // Analytics 로깅: FCM 토큰 수신
             AnalyticsService.shared.logFCMTokenReceived(tokenLength: token.count)
 
@@ -264,8 +235,6 @@ extension AppDelegate: MessagingDelegate {
 
             // UserDefaults에 저장 (선택사항)
             UserDefaults.standard.set(token, forKey: "fcmToken")
-        } else {
-            print("⚠️ FCM Token이 nil입니다.\n")
         }
 
         // 토큰 정보를 딕셔너리 형태로도 출력 (Firebase Console에서 테스트용)

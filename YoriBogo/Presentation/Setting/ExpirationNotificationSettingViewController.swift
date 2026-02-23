@@ -214,10 +214,6 @@ final class ExpirationNotificationSettingViewController: BaseViewController {
 
         // 테이블뷰 리로드
         tableView.reloadData()
-
-        print("✅ 설정 로드 완료")
-        print("   알림 날짜: \(savedDays)")
-        print("   알림 시간: \(savedTime)")
     }
 
     private func saveInitialState() {
@@ -258,13 +254,6 @@ final class ExpirationNotificationSettingViewController: BaseViewController {
         // 설정 저장
         let settings = ExpirationNotificationSettingsManager.shared
         settings.saveSettings(days: enabledDays, time: timePicker.date)
-
-        // 디버그 출력
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        print("저장 버튼 탭됨")
-        print("활성화된 날짜: \(enabledDays)")
-        print("알림 시간: \(formatter.string(from: timePicker.date))")
 
         // 초기 상태 업데이트
         saveInitialState()

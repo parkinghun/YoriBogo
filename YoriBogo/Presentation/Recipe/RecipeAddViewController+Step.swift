@@ -287,7 +287,7 @@ extension RecipeAddViewController {
             guard let stepTextView = view.viewWithTag(1000 + stepNumber) as? UITextView,
                   let text = stepTextView.text?.trimmingCharacters(in: .whitespaces),
                   !text.isEmpty else {
-                print("🧪 collectSteps: step \(stepNumber) text empty")
+                print("collectSteps: step \(stepNumber) text empty")
                 continue
             }
 
@@ -301,7 +301,7 @@ extension RecipeAddViewController {
             steps.append(step)
         }
 
-        print("🧪 collectSteps: total=\(steps.count)")
+        print("collectSteps: total=\(steps.count)")
         return steps
     }
 

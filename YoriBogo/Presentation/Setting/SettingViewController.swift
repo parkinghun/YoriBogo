@@ -121,7 +121,7 @@ final class SettingViewController: BaseViewController {
 
         case .monthlyStats:
             // TODO: 이번 달 소비/폐기 현황 화면으로 이동
-            print("✅ 이번 달 소비/폐기 현황")
+            print("이번 달 소비/폐기 현황")
 
         case .appVersion:
             break
