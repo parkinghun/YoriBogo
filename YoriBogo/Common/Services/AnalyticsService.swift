@@ -23,7 +23,6 @@ final class AnalyticsService {
         Analytics.logEvent("app_open", parameters: [
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: app_open")
     }
 
     /// 앱 포커스 변경 이벤트
@@ -33,7 +32,6 @@ final class AnalyticsService {
             "is_focused": isFocused,
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: app_focus_changed - isFocused: \(isFocused)")
     }
 
     // MARK: - 알림 권한 이벤트
@@ -43,7 +41,6 @@ final class AnalyticsService {
         Analytics.logEvent("push_permission_granted", parameters: [
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: push_permission_granted")
     }
 
     /// 알림 권한 거부 이벤트
@@ -51,7 +48,6 @@ final class AnalyticsService {
         Analytics.logEvent("push_permission_denied", parameters: [
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: push_permission_denied")
     }
 
     // MARK: - FCM 토큰 이벤트
@@ -63,7 +59,6 @@ final class AnalyticsService {
             "token_length": tokenLength,
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: fcm_token_received - length: \(tokenLength)")
     }
 
     // MARK: - 알림 스케줄 이벤트
@@ -85,7 +80,6 @@ final class AnalyticsService {
         }
 
         Analytics.logEvent("notification_scheduled", parameters: parameters)
-        print("📊 Analytics: notification_scheduled - type: \(notificationType), count: \(count)")
     }
 
     /// 알림 실제 발송 이벤트 (Foreground에서 수신 시)
@@ -98,7 +92,6 @@ final class AnalyticsService {
             "notification_type": notificationType,
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: notification_triggered - title: \(notificationTitle)")
     }
 
     /// 알림 클릭 이벤트
@@ -111,7 +104,6 @@ final class AnalyticsService {
             "notification_type": notificationType,
             "timestamp": Date().timeIntervalSince1970
         ])
-        print("📊 Analytics: notification_clicked - id: \(notificationId), type: \(notificationType)")
     }
 
     // MARK: - 레시피 이벤트
@@ -133,7 +125,6 @@ final class AnalyticsService {
         }
 
         Analytics.logEvent("recipe_viewed", parameters: parameters)
-        print("📊 Analytics: recipe_viewed - name: \(recipeName)")
     }
 
     /// 레시피 즐겨찾기 등록 이벤트
@@ -153,7 +144,6 @@ final class AnalyticsService {
         }
 
         Analytics.logEvent("recipe_favorited", parameters: parameters)
-        print("📊 Analytics: recipe_favorited - name: \(recipeName)")
     }
 
     /// 레시피 즐겨찾기 해제 이벤트
@@ -173,7 +163,6 @@ final class AnalyticsService {
         }
 
         Analytics.logEvent("recipe_unfavorited", parameters: parameters)
-        print("📊 Analytics: recipe_unfavorited - name: \(recipeName)")
     }
 
     // MARK: - 사용자 속성 설정
@@ -184,6 +173,5 @@ final class AnalyticsService {
     ///   - value: 속성 값
     func setUserProperty(key: String, value: String?) {
         Analytics.setUserProperty(value, forName: key)
-        print("📊 Analytics: User Property Set - \(key): \(value ?? "nil")")
     }
 }

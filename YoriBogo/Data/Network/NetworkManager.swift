@@ -45,10 +45,6 @@ final class NetworkManager {
             return realmManager.fetchAllRecipes()
         }
 
-        if cachedCount > 0 {
-            print("⚠️ 레시피 캐시 무결성 검증 실패(\(cachedCount)개), API 재동기화를 시도합니다.")
-        }
-
         let fetchResult = try await fetchAllRecipesFromAPI()
         try await realmManager.saveAllRecipes(fetchResult.recipes)
         saveExpectedRecipeCount(fetchResult.expectedCount)
@@ -82,11 +78,9 @@ final class NetworkManager {
                     hasMoreData = false
                 } else {
                     currentStart = currentEnd + 1
-                    // API 부하 방지를 위한 딜레이
                     try await Task.sleep(nanoseconds: 500_000_000) // 0.5초 대기
                 }
             } catch {
-                // 부분 성공은 실패로 처리하여 다음 실행에서 재시도되도록 함
                 if !allRecipes.isEmpty {
                     let targetCount = max(expectedCount, allRecipes.count)
                     throw RecipeFetchError.partialDownload(
