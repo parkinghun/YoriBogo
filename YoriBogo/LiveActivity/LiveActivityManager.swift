@@ -12,9 +12,13 @@ import ActivityKit
 final class LiveActivityManager {
     static let shared = LiveActivityManager()
 
+    private let isEnabled = false
+
     private init() {}
 
     func start(for timer: TimerItem) {
+        guard isEnabled else { return }
+
         if hasActivity(for: timer.id.uuidString) {
             update(for: timer)
             return
@@ -32,18 +36,16 @@ final class LiveActivityManager {
             remainingSeconds: timer.remainingSeconds
         )
 
-        do {
-            _ = try Activity.request(
-                attributes: attributes,
-                contentState: state,
-                pushType: nil
-            )
-        } catch {
-            print("iveActivity start failed: \(error)")
-        }
+        _ = try? Activity.request(
+            attributes: attributes,
+            contentState: state,
+            pushType: nil
+        )
     }
 
     func update(for timer: TimerItem) {
+        guard isEnabled else { return }
+
         let state = TimerLiveActivityAttributes.ContentState(
             endDate: timer.endDate,
             isRunning: timer.isRunning,
@@ -71,6 +73,11 @@ final class LiveActivityManager {
     }
 
     func sync(with timers: [TimerItem]) {
+        guard isEnabled else {
+            endAll()
+            return
+        }
+
         let timerByID = Dictionary(uniqueKeysWithValues: timers.map { ($0.id.uuidString, $0) })
         let liveActivities = Activity<TimerLiveActivityAttributes>.activities
 
