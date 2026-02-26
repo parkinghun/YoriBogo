@@ -17,6 +17,7 @@ final class TimerManager {
 
     // MARK: - Properties
     private let legacyUserDefaultsKey = "cooking_timers"
+    private let sharedSyncMetadataKey = "timer_shared_sync_metadata_v1"
     private var tickTimer: DispatchSourceTimer?
 
     /// Realm 변경 감지 토큰 (Widget Intent 등 외부 프로세스 변경 구독)
@@ -28,6 +29,11 @@ final class TimerManager {
     private let timersRelay = BehaviorRelay<[TimerItem]>(value: [])
     var timers: Driver<[TimerItem]> {
         return timersRelay.asDriver()
+    }
+
+    private struct SharedSyncMetadata: Codable {
+        var version: Int
+        var lastUpdatedAt: Date
     }
 
     // MARK: - Initialization
@@ -331,6 +337,7 @@ final class TimerManager {
     private func restoreTimersIfNeededOnInitialLoad() {
         guard !didRestoreOnInitialLoad else { return }
         didRestoreOnInitialLoad = true
+        syncTimersFromSharedState()
         restoreTimers()
     }
 
@@ -388,6 +395,7 @@ final class TimerManager {
             statesByTimerID: nextStatesByID,
             activeTimerID: activeTimerID
         )
+        persistSharedSyncMetadata(from: nextStatesByID)
     }
 
     private func normalizedSharedState(from timer: TimerItem, previousVersion: Int, now: Date) -> SharedTimerState {
@@ -440,6 +448,142 @@ final class TimerManager {
         }
 
         return timers.first?.id.uuidString
+    }
+
+    func syncTimersFromSharedState() {
+        let sharedStatesByID = TimerSharedStateStore.statesByTimerID()
+        guard !sharedStatesByID.isEmpty else { return }
+
+        var timers = timersRelay.value
+        guard !timers.isEmpty else { return }
+
+        var metadataByID = loadSharedSyncMetadata()
+        var didChange = false
+        var didApplySharedState = false
+
+        for index in timers.indices {
+            let timerID = timers[index].id.uuidString
+            guard let sharedState = sharedStatesByID[timerID] else { continue }
+            guard shouldApply(sharedState, comparedTo: metadataByID[timerID]) else { continue }
+
+            didApplySharedState = true
+            if apply(sharedState: sharedState, to: &timers[index]) {
+                didChange = true
+            }
+            metadataByID[timerID] = SharedSyncMetadata(
+                version: sharedState.version,
+                lastUpdatedAt: sharedState.lastUpdatedAt
+            )
+        }
+
+        if didApplySharedState {
+            saveSharedSyncMetadata(metadataByID)
+        }
+
+        if didChange {
+            saveTimers(timers)
+            return
+        }
+
+        if didApplySharedState {
+            timersRelay.accept(timers)
+            if #available(iOS 17.1, *) {
+                LiveActivityManager.shared.sync(with: timers)
+            }
+        }
+    }
+
+    private func shouldApply(_ sharedState: SharedTimerState, comparedTo metadata: SharedSyncMetadata?) -> Bool {
+        guard let metadata else { return true }
+        if sharedState.version != metadata.version {
+            return sharedState.version > metadata.version
+        }
+        return sharedState.lastUpdatedAt > metadata.lastUpdatedAt
+    }
+
+    @discardableResult
+    private func apply(sharedState: SharedTimerState, to timer: inout TimerItem) -> Bool {
+        var changed = false
+
+        if !sharedState.title.isEmpty, timer.name != sharedState.title {
+            timer.name = sharedState.title
+            changed = true
+        }
+
+        var normalizedIsRunning = sharedState.isRunning
+        var normalizedStartDate = sharedState.startTime
+        var normalizedEndDate = sharedState.endTime
+        var normalizedRemaining = max(0, sharedState.remainingSeconds)
+
+        if normalizedIsRunning, normalizedEndDate == nil {
+            normalizedIsRunning = false
+            normalizedStartDate = nil
+        }
+
+        if normalizedIsRunning, let endDate = normalizedEndDate {
+            normalizedRemaining = remainingSeconds(until: endDate)
+            if normalizedRemaining <= 0 {
+                normalizedIsRunning = false
+                normalizedStartDate = nil
+                normalizedEndDate = nil
+            }
+        }
+
+        if timer.isRunning != normalizedIsRunning {
+            timer.isRunning = normalizedIsRunning
+            changed = true
+        }
+        if timer.startDate != normalizedStartDate {
+            timer.startDate = normalizedStartDate
+            changed = true
+        }
+        if timer.endDate != normalizedEndDate {
+            timer.endDate = normalizedEndDate
+            changed = true
+        }
+        if timer.remainingSeconds != normalizedRemaining {
+            timer.remainingSeconds = normalizedRemaining
+            changed = true
+        }
+
+        let nextPausedDate: Date?
+        if normalizedIsRunning {
+            nextPausedDate = nil
+        } else {
+            let isPausedState = normalizedRemaining > 0 && normalizedRemaining < timer.totalSeconds
+            nextPausedDate = isPausedState ? sharedState.lastUpdatedAt : nil
+        }
+
+        if timer.pausedDate != nextPausedDate {
+            timer.pausedDate = nextPausedDate
+            changed = true
+        }
+
+        return changed
+    }
+
+    private func persistSharedSyncMetadata(from statesByID: [String: SharedTimerState]) {
+        var metadataByID = loadSharedSyncMetadata()
+        for (timerID, state) in statesByID {
+            metadataByID[timerID] = SharedSyncMetadata(
+                version: state.version,
+                lastUpdatedAt: state.lastUpdatedAt
+            )
+        }
+        saveSharedSyncMetadata(metadataByID)
+    }
+
+    private func loadSharedSyncMetadata() -> [String: SharedSyncMetadata] {
+        guard let data = UserDefaults.standard.data(forKey: sharedSyncMetadataKey),
+              let decoded = try? JSONDecoder().decode([String: SharedSyncMetadata].self, from: data) else {
+            return [:]
+        }
+        return decoded
+    }
+
+    private func saveSharedSyncMetadata(_ metadataByID: [String: SharedSyncMetadata]) {
+        guard let data = try? JSONEncoder().encode(metadataByID) else { return }
+        UserDefaults.standard.set(data, forKey: sharedSyncMetadataKey)
     }
 
     private func timerItem(from object: CookingTimerObject) -> TimerItem {

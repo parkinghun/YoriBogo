@@ -63,6 +63,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Called as the scene transitions from the background to the foreground.
         // Use this method to undo the changes made on entering the background.
 
+        // Widget/Live Activity Intent 결과를 App Group에서 먼저 동기화
+        TimerManager.shared.syncTimersFromSharedState()
+
         // 타이머 상태 재계산 (백그라운드에서 경과된 시간 반영)
         TimerManager.shared.recalculateTimers()
         print("SceneDelegate: 타이머 상태 재계산 완료")
