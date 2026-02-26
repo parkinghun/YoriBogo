@@ -22,9 +22,8 @@
 		B574AEE92E901F6F00D8AA58 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */; };
 		B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42ED2F29129F00A9550B /* WidgetKit.framework */; };
 		B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42EF2F29129F00A9550B /* SwiftUI.framework */; };
-		B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		B58F44712F2998FA00A9550B /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B58F44702F2998FA00A9550B /* RealmSwift */; };
-		B58F44732F2998FA00A9550B /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B58F44702F2998FA00A9550B /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		B5C7ADF32F4FC651001854A3 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B5C7ADF22F4FC651001854A3 /* RealmSwift */; };
+		B5C7ADF42F4FC651001854A3 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B5C7ADF22F4FC651001854A3 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,7 +54,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -66,7 +64,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				B58F44732F2998FA00A9550B /* RealmSwift in Embed Frameworks */,
+				B5C7ADF42F4FC651001854A3 /* RealmSwift in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -108,6 +106,7 @@
 				"Extension/UIColor+Extension.swift",
 				LiveActivity/TimerLiveActivityAttributes.swift,
 				LiveActivity/TimerRealmStore.swift,
+				LiveActivity/TimerSharedStateStore.swift,
 				Widgets/TimerLiveActivityIntents.swift,
 				Widgets/TimerLiveActivityWidget.swift,
 			);
@@ -158,7 +157,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B58F44712F2998FA00A9550B /* RealmSwift in Frameworks */,
+				B5C7ADF32F4FC651001854A3 /* RealmSwift in Frameworks */,
 				B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */,
 				B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */,
 			);
@@ -208,8 +207,8 @@
 				B574A93E2E89BBC400D8AA58 /* Frameworks */,
 				B574A93F2E89BBC400D8AA58 /* Resources */,
 				B574AE5B2E8E23AC00D8AA58 /* Embed Frameworks */,
-				B51753FE2E92AAB000422EAE /* Run Script */,
 				B58F43022F2912A100A9550B /* Embed Foundation Extensions */,
+				B51753FE2E92AAB000422EAE /* Run Script */,
 			);
 			buildRules = (
 			);
@@ -255,7 +254,7 @@
 			);
 			name = YoriBogoWidgetsExtension;
 			packageProductDependencies = (
-				B58F44702F2998FA00A9550B /* RealmSwift */,
+				B5C7ADF22F4FC651001854A3 /* RealmSwift */,
 			);
 			productName = YoriBogoWidgetsExtension;
 			productReference = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */;
@@ -340,7 +339,6 @@
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
-				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
 			);
 			name = "Run Script";
 			outputFileListPaths = (
@@ -407,7 +405,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 2.1.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Leo$(BUNDLE_ID_SUFFIX)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -448,7 +446,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 2.1.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Leo$(BUNDLE_ID_SUFFIX)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -812,7 +810,7 @@
 			package = B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */;
 			productName = IQKeyboardManagerSwift;
 		};
-		B58F44702F2998FA00A9550B /* RealmSwift */ = {
+		B5C7ADF22F4FC651001854A3 /* RealmSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B574AB2C2E89CF9500D8AA58 /* XCRemoteSwiftPackageReference "realm-swift" */;
 			productName = RealmSwift;
