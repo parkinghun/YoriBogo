@@ -13,6 +13,15 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 - 현재 `LiveActivityManager.isEnabled = false`로 시작/동기화가 비활성화됨
 - 앱 시작 시 `endAll()` 호출로 기존 Live Activity를 강제 종료함
 
+## Progress
+
+- Stage 1: completed
+- Stage 2: completed
+- Stage 3: pending
+- Stage 4: pending
+- Stage 5: pending
+- Stage 6: pending
+
 ## Stage Plan
 
 ### Stage 1 - Shared State Layer 추가

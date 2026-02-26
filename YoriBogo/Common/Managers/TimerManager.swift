@@ -367,6 +367,79 @@ final class TimerManager {
 
         // 로컬 write는 Notification을 기다리지 않고 relay를 직접 업데이트
         timersRelay.accept(timers)
+        syncSharedStatesFromApp(timers)
+    }
+
+    private func syncSharedStatesFromApp(_ timers: [TimerItem]) {
+        let now = Date()
+        let currentStates = TimerSharedStateStore.statesByTimerID()
+        var nextStatesByID: [String: SharedTimerState] = [:]
+        nextStatesByID.reserveCapacity(timers.count)
+
+        for timer in timers {
+            let timerID = timer.id.uuidString
+            let previousVersion = currentStates[timerID]?.version ?? -1
+            let state = normalizedSharedState(from: timer, previousVersion: previousVersion, now: now)
+            nextStatesByID[timerID] = state
+        }
+
+        let activeTimerID = activeSharedTimerID(from: timers, statesByTimerID: nextStatesByID)
+        TimerSharedStateStore.replaceAll(
+            statesByTimerID: nextStatesByID,
+            activeTimerID: activeTimerID
+        )
+    }
+
+    private func normalizedSharedState(from timer: TimerItem, previousVersion: Int, now: Date) -> SharedTimerState {
+        var normalizedStartTime = timer.startDate
+        var normalizedEndTime = timer.endDate
+        var normalizedIsRunning = timer.isRunning
+        var normalizedRemaining = max(0, timer.remainingSeconds)
+
+        if normalizedIsRunning, let endTime = normalizedEndTime {
+            // 완료 시각이 경과된 running 상태는 공유 상태에선 완료로 정규화한다.
+            normalizedRemaining = remainingSeconds(until: endTime, now: now)
+            if normalizedRemaining <= 0 {
+                normalizedIsRunning = false
+                normalizedStartTime = nil
+                normalizedEndTime = nil
+            }
+        } else if normalizedIsRunning {
+            // endTime이 없는 running 비정상 상태 방어
+            normalizedIsRunning = false
+            normalizedStartTime = nil
+        }
+
+        return SharedTimerState(
+            timerID: timer.id.uuidString,
+            title: timer.name,
+            startTime: normalizedStartTime,
+            endTime: normalizedEndTime,
+            isRunning: normalizedIsRunning,
+            remainingSeconds: normalizedRemaining,
+            lastUpdatedAt: now,
+            version: previousVersion + 1,
+            writer: SharedTimerStateWriter.app
+        )
+    }
+
+    private func activeSharedTimerID(
+        from timers: [TimerItem],
+        statesByTimerID: [String: SharedTimerState]
+    ) -> String? {
+        let runningStates = statesByTimerID.values.filter { $0.isRunning }
+        if let running = runningStates.sorted(by: { lhs, rhs in
+            let leftEnd = lhs.endTime ?? .distantFuture
+            let rightEnd = rhs.endTime ?? .distantFuture
+            if leftEnd == rightEnd {
+                return lhs.lastUpdatedAt > rhs.lastUpdatedAt
+            }
+            return leftEnd < rightEnd
+        }).first {
+            return running.timerID
+        }
+
+        return timers.first?.id.uuidString
     }
 
     private func timerItem(from object: CookingTimerObject) -> TimerItem {
