@@ -22,8 +22,6 @@
 		B574AEE92E901F6F00D8AA58 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */; };
 		B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42ED2F29129F00A9550B /* WidgetKit.framework */; };
 		B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42EF2F29129F00A9550B /* SwiftUI.framework */; };
-		B5C7ADF32F4FC651001854A3 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B5C7ADF22F4FC651001854A3 /* RealmSwift */; };
-		B5C7ADF42F4FC651001854A3 /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = B5C7ADF22F4FC651001854A3 /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,17 +54,6 @@
 			files = (
 			);
 			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B58F44722F2998FA00A9550B /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				B5C7ADF42F4FC651001854A3 /* RealmSwift in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -102,10 +89,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Common/Managers/TimerSettings.swift,
-				Data/Persistence/Realm/CookingTimerObject.swift,
 				"Extension/UIColor+Extension.swift",
 				LiveActivity/TimerLiveActivityAttributes.swift,
-				LiveActivity/TimerRealmStore.swift,
 				LiveActivity/TimerSharedStateStore.swift,
 				Widgets/TimerLiveActivityIntents.swift,
 				Widgets/TimerLiveActivityWidget.swift,
@@ -157,7 +142,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B5C7ADF32F4FC651001854A3 /* RealmSwift in Frameworks */,
 				B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */,
 				B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */,
 			);
@@ -243,7 +227,6 @@
 				B58F430D2F2984D300A9550B /* Sources */,
 				B58F430E2F2984D300A9550B /* Frameworks */,
 				B58F430F2F2984D300A9550B /* Resources */,
-				B58F44722F2998FA00A9550B /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -254,7 +237,6 @@
 			);
 			name = YoriBogoWidgetsExtension;
 			packageProductDependencies = (
-				B5C7ADF22F4FC651001854A3 /* RealmSwift */,
 			);
 			productName = YoriBogoWidgetsExtension;
 			productReference = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */;
@@ -809,11 +791,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B574AEE72E901F6F00D8AA58 /* XCRemoteSwiftPackageReference "IQKeyboardManager" */;
 			productName = IQKeyboardManagerSwift;
-		};
-		B5C7ADF22F4FC651001854A3 /* RealmSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = B574AB2C2E89CF9500D8AA58 /* XCRemoteSwiftPackageReference "realm-swift" */;
-			productName = RealmSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
