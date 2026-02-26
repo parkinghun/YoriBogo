@@ -9,12 +9,12 @@ import Foundation
 import AppIntents
 import ActivityKit
 import UserNotifications
-import RealmSwift
 
 @available(iOS 17.1, *)
 struct PauseResumeTimerIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "타이머 정지/재개"
     static let openAppWhenRun = false
+    static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "타이머 ID")
     var timerID: String
@@ -38,93 +38,100 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        guard let uuid = UUID(uuidString: timerID) else { return .result() }
         let now = Date()
-        var running = false
-        var endDate: Date?
-        var currentRemaining = 0
+        let previousState = TimerSharedStateStore.state(for: timerID)
+            ?? fallbackSharedState(now: now)
+        var nextState = previousState
 
-        var updatedRemaining = 0
-        var updatedEndDate: Date?
-        var updatedIsRunning = false
-        var timerTitle = "타이머"
-
-        do {
-            let realm = try TimerRealmStore.realm()
-            guard let object = realm.object(ofType: CookingTimerObject.self, forPrimaryKey: uuid.uuidString) else {
-                await endActivity(timerID: timerID)
-                return .result()
+        if requestedAction == "pause" {
+            let remainingFromEndDate = nextState.endTime.map { remainingSecondsFromEndDate($0, now: now) }
+                ?? nextState.remainingSeconds
+            nextState.remainingSeconds = max(0, remainingFromEndDate)
+            nextState.isRunning = false
+            nextState.startTime = nil
+            nextState.endTime = nil
+        } else if requestedAction == "resume" {
+            var resumedRemaining = max(0, nextState.remainingSeconds)
+            if resumedRemaining == 0 {
+                resumedRemaining = max(0, remainingSeconds)
             }
-
-            timerTitle = object.title
-            running = object.isRunning
-            endDate = object.endDate
-            currentRemaining = object.remainingSeconds
-
-            try realm.write {
-                if requestedAction == "pause" {
-                    let remainingFromEndDate = endDate.map { remainingSecondsFromEndDate($0, now: now) } ?? currentRemaining
-                    updatedRemaining = max(0, remainingFromEndDate)
-                    updatedIsRunning = false
-                    updatedEndDate = nil
-                    object.remainingSeconds = updatedRemaining
-                    object.isRunning = false
-                    object.startDate = nil
-                    object.endDate = nil
-                    object.pausedDate = now
-                } else if requestedAction == "resume" {
-                    updatedRemaining = max(0, object.remainingSeconds)
-                    if updatedRemaining == 0 {
-                        updatedRemaining = object.totalSeconds
-                    }
-                    updatedIsRunning = true
-                    updatedEndDate = now.addingTimeInterval(TimeInterval(updatedRemaining))
-                    object.remainingSeconds = updatedRemaining
-                    object.isRunning = true
-                    object.startDate = now
-                    object.endDate = updatedEndDate
-                    object.pausedDate = nil
-                } else if running, let endDate {
-                    updatedRemaining = remainingSecondsFromEndDate(endDate, now: now)
-                    updatedIsRunning = false
-                    updatedEndDate = nil
-                    object.remainingSeconds = updatedRemaining
-                    object.isRunning = false
-                    object.startDate = nil
-                    object.endDate = nil
-                    object.pausedDate = now
-                } else {
-                    updatedRemaining = max(0, object.remainingSeconds)
-                    if updatedRemaining == 0 {
-                        updatedRemaining = object.totalSeconds
-                    }
-                    updatedIsRunning = true
-                    updatedEndDate = now.addingTimeInterval(TimeInterval(updatedRemaining))
-                    object.remainingSeconds = updatedRemaining
-                    object.isRunning = true
-                    object.startDate = now
-                    object.endDate = updatedEndDate
-                    object.pausedDate = nil
-                }
+            nextState.remainingSeconds = resumedRemaining
+            nextState.isRunning = true
+            nextState.startTime = now
+            nextState.endTime = now.addingTimeInterval(TimeInterval(resumedRemaining))
+        } else if nextState.isRunning, let endTime = nextState.endTime {
+            let remainingFromEndDate = remainingSecondsFromEndDate(endTime, now: now)
+            nextState.remainingSeconds = max(0, remainingFromEndDate)
+            nextState.isRunning = false
+            nextState.startTime = nil
+            nextState.endTime = nil
+        } else {
+            var resumedRemaining = max(0, nextState.remainingSeconds)
+            if resumedRemaining == 0 {
+                resumedRemaining = max(0, remainingSeconds)
             }
-        } catch {
-            return .result()
+            nextState.remainingSeconds = resumedRemaining
+            nextState.isRunning = true
+            nextState.startTime = now
+            nextState.endTime = now.addingTimeInterval(TimeInterval(resumedRemaining))
         }
 
-        if updatedIsRunning, let updatedEndDate {
-            scheduleNotification(timerID: uuid.uuidString, title: timerTitle, endDate: updatedEndDate)
+        if nextState.isRunning, let endTime = nextState.endTime {
+            let normalizedRemaining = remainingSecondsFromEndDate(endTime, now: now)
+            nextState.remainingSeconds = normalizedRemaining
+            if normalizedRemaining <= 0 {
+                nextState.isRunning = false
+                nextState.startTime = nil
+                nextState.endTime = nil
+            }
         } else {
-            cancelNotification(id: uuid)
+            nextState.remainingSeconds = max(0, nextState.remainingSeconds)
+        }
+
+        nextState.lastUpdatedAt = now
+        nextState.version = previousState.version + 1
+        nextState.writer = SharedTimerStateWriter.intent
+
+        TimerSharedStateStore.upsert(nextState, makeActive: nextState.isRunning)
+        if !nextState.isRunning,
+           TimerSharedStateStore.activeTimerID() == nextState.timerID,
+           let nextActiveTimerID = pickNextActiveTimerID(excluding: nextState.timerID) {
+            TimerSharedStateStore.setActiveTimerID(nextActiveTimerID)
+        }
+
+        if nextState.isRunning, let updatedEndDate = nextState.endTime {
+            scheduleNotification(timerID: timerID, title: nextState.title, endDate: updatedEndDate)
+        } else {
+            cancelNotification(timerID: timerID)
         }
 
         await updateActivity(
             timerID: timerID,
-            endDate: updatedEndDate,
-            isRunning: updatedIsRunning,
-            remainingSeconds: updatedRemaining
+            endDate: nextState.endTime,
+            isRunning: nextState.isRunning,
+            remainingSeconds: nextState.remainingSeconds
         )
 
         return .result()
+    }
+
+    private func fallbackSharedState(now: Date) -> SharedTimerState {
+        let fallbackRemaining = max(0, remainingSeconds)
+        let fallbackEndDate = endDateTimestamp > 0
+            ? Date(timeIntervalSince1970: endDateTimestamp)
+            : now.addingTimeInterval(TimeInterval(fallbackRemaining))
+
+        return SharedTimerState(
+            timerID: timerID,
+            title: "타이머",
+            startTime: isRunning ? now : nil,
+            endTime: isRunning ? fallbackEndDate : nil,
+            isRunning: isRunning,
+            remainingSeconds: fallbackRemaining,
+            lastUpdatedAt: now,
+            version: 0,
+            writer: SharedTimerStateWriter.intent
+        )
     }
 }
 
@@ -132,6 +139,7 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
 struct CancelTimerIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "타이머 취소"
     static let openAppWhenRun = false
+    static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "타이머 ID")
     var timerID: String
@@ -143,22 +151,31 @@ struct CancelTimerIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        guard let uuid = UUID(uuidString: timerID) else { return .result() }
-        cancelNotification(id: uuid)
+        let now = Date()
+        cancelNotification(timerID: timerID)
         await endActivity(timerID: timerID)
-        do {
-            let realm = try TimerRealmStore.realm()
-            if let object = realm.object(ofType: CookingTimerObject.self, forPrimaryKey: uuid.uuidString) {
-                try realm.write {
-                    object.remainingSeconds = object.totalSeconds
-                    object.isRunning = false
-                    object.startDate = nil
-                    object.endDate = nil
-                    object.pausedDate = nil
-                }
-            }
-        } catch {
+
+        guard var state = TimerSharedStateStore.state(for: timerID) else {
+            TimerSharedStateStore.remove(timerID: timerID)
+            return .result()
         }
+
+        if state.isRunning, let endTime = state.endTime {
+            state.remainingSeconds = remainingSecondsFromEndDate(endTime, now: now)
+        }
+        state.isRunning = false
+        state.startTime = nil
+        state.endTime = nil
+        state.lastUpdatedAt = now
+        state.version += 1
+        state.writer = SharedTimerStateWriter.intent
+
+        TimerSharedStateStore.upsert(state)
+        if TimerSharedStateStore.activeTimerID() == timerID,
+           let nextActiveTimerID = pickNextActiveTimerID(excluding: timerID) {
+            TimerSharedStateStore.setActiveTimerID(nextActiveTimerID)
+        }
+
         return .result()
     }
 }
@@ -184,8 +201,16 @@ private func endActivity(timerID: String) async {
     }
 }
 
-private func cancelNotification(id: UUID) {
-    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timer_\(id.uuidString)"])
+private func pickNextActiveTimerID(excluding timerID: String) -> String? {
+    let states = TimerSharedStateStore.states()
+    if let runningState = states.first(where: { $0.isRunning && $0.timerID != timerID }) {
+        return runningState.timerID
+    }
+    return states.first(where: { $0.timerID != timerID })?.timerID
+}
+
+private func cancelNotification(timerID: String) {
+    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["timer_\(timerID)"])
 }
 
 private func scheduleNotification(timerID: String, title: String, endDate: Date) {

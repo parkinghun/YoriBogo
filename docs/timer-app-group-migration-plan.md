@@ -17,7 +17,7 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 
 - Stage 1: completed
 - Stage 2: completed
-- Stage 3: pending
+- Stage 3: completed
 - Stage 4: pending
 - Stage 5: pending
 - Stage 6: pending
