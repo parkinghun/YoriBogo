@@ -30,10 +30,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // 앱 실행 이벤트 로깅
         AnalyticsService.shared.logAppOpen()
 
-        if #available(iOS 17.1, *) {
-            LiveActivityManager.shared.endAll()
-        }
-
         return true
     }
 

@@ -10,12 +10,43 @@ import AppIntents
 import ActivityKit
 import UserNotifications
 
+private let intentMutationLock = NSLock()
+
+private func withIntentMutationLock<T>(_ block: () -> T) -> T {
+    intentMutationLock.lock()
+    defer { intentMutationLock.unlock() }
+    return block()
+}
+
+private enum TimerControlAction {
+    case pause
+    case resume
+    case toggle
+
+    init(requestedAction: String) {
+        switch requestedAction.lowercased() {
+        case "pause":
+            self = .pause
+        case "resume":
+            self = .resume
+        default:
+            self = .toggle
+        }
+    }
+}
+
+private struct IntentMutationResult {
+    var state: SharedTimerState
+}
+
 @available(iOS 17.1, *)
 struct PauseResumeTimerIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "타이머 정지/재개"
     static let openAppWhenRun = false
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
+    @Parameter(title: "라이브 액티비티 ID")
+    var activityID: String
     @Parameter(title: "타이머 ID")
     var timerID: String
     @Parameter(title: "실행 중 여부")
@@ -29,7 +60,8 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
 
     init() {}
 
-    init(timerID: String, isRunning: Bool, endDateTimestamp: Double, remainingSeconds: Int, requestedAction: String) {
+    init(activityID: String, timerID: String, isRunning: Bool, endDateTimestamp: Double, remainingSeconds: Int, requestedAction: String) {
+        self.activityID = activityID
         self.timerID = timerID
         self.isRunning = isRunning
         self.endDateTimestamp = endDateTimestamp
@@ -39,77 +71,47 @@ struct PauseResumeTimerIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         let now = Date()
-        let previousState = TimerSharedStateStore.state(for: timerID)
-            ?? fallbackSharedState(now: now)
-        var nextState = previousState
+        let mutation = withIntentMutationLock {
+            let storedState = TimerSharedStateStore.state(for: timerID)
+            let previousState = storedState ?? fallbackSharedState(now: now)
+            var nextState = normalizedSharedState(previousState, now: now)
+            let didNormalize = nextState != previousState
 
-        if requestedAction == "pause" {
-            let remainingFromEndDate = nextState.endTime.map { remainingSecondsFromEndDate($0, now: now) }
-                ?? nextState.remainingSeconds
-            nextState.remainingSeconds = max(0, remainingFromEndDate)
-            nextState.isRunning = false
-            nextState.startTime = nil
-            nextState.endTime = nil
-        } else if requestedAction == "resume" {
-            var resumedRemaining = max(0, nextState.remainingSeconds)
-            if resumedRemaining == 0 {
-                resumedRemaining = max(0, remainingSeconds)
+            let action = TimerControlAction(requestedAction: requestedAction)
+            let didApplyAction = apply(action, to: &nextState, now: now, fallbackRemainingSeconds: remainingSeconds)
+            nextState = normalizedSharedState(nextState, now: now)
+
+            let didMutate = didNormalize || didApplyAction
+            guard didMutate else {
+                return IntentMutationResult(state: nextState)
             }
-            nextState.remainingSeconds = resumedRemaining
-            nextState.isRunning = true
-            nextState.startTime = now
-            nextState.endTime = now.addingTimeInterval(TimeInterval(resumedRemaining))
-        } else if nextState.isRunning, let endTime = nextState.endTime {
-            let remainingFromEndDate = remainingSecondsFromEndDate(endTime, now: now)
-            nextState.remainingSeconds = max(0, remainingFromEndDate)
-            nextState.isRunning = false
-            nextState.startTime = nil
-            nextState.endTime = nil
-        } else {
-            var resumedRemaining = max(0, nextState.remainingSeconds)
-            if resumedRemaining == 0 {
-                resumedRemaining = max(0, remainingSeconds)
+
+            let latestVersion = TimerSharedStateStore.state(for: timerID)?.version ?? nextState.version
+            nextState.lastUpdatedAt = now
+            nextState.version = max(latestVersion, nextState.version) + 1
+            nextState.writer = SharedTimerStateWriter.intent
+
+            TimerSharedStateStore.upsert(nextState, makeActive: nextState.isRunning)
+            if !nextState.isRunning,
+               TimerSharedStateStore.activeTimerID() == nextState.timerID,
+               let nextActiveTimerID = pickNextActiveTimerID(excluding: nextState.timerID) {
+                TimerSharedStateStore.setActiveTimerID(nextActiveTimerID)
             }
-            nextState.remainingSeconds = resumedRemaining
-            nextState.isRunning = true
-            nextState.startTime = now
-            nextState.endTime = now.addingTimeInterval(TimeInterval(resumedRemaining))
+
+            let committed = TimerSharedStateStore.state(for: timerID) ?? nextState
+            return IntentMutationResult(state: committed)
         }
 
-        if nextState.isRunning, let endTime = nextState.endTime {
-            let normalizedRemaining = remainingSecondsFromEndDate(endTime, now: now)
-            nextState.remainingSeconds = normalizedRemaining
-            if normalizedRemaining <= 0 {
-                nextState.isRunning = false
-                nextState.startTime = nil
-                nextState.endTime = nil
-            }
-        } else {
-            nextState.remainingSeconds = max(0, nextState.remainingSeconds)
-        }
-
-        nextState.lastUpdatedAt = now
-        nextState.version = previousState.version + 1
-        nextState.writer = SharedTimerStateWriter.intent
-
-        TimerSharedStateStore.upsert(nextState, makeActive: nextState.isRunning)
-        if !nextState.isRunning,
-           TimerSharedStateStore.activeTimerID() == nextState.timerID,
-           let nextActiveTimerID = pickNextActiveTimerID(excluding: nextState.timerID) {
-            TimerSharedStateStore.setActiveTimerID(nextActiveTimerID)
-        }
-
-        if nextState.isRunning, let updatedEndDate = nextState.endTime {
-            scheduleNotification(timerID: timerID, title: nextState.title, endDate: updatedEndDate)
+        if mutation.state.isRunning, let updatedEndDate = mutation.state.endTime {
+            scheduleNotification(timerID: timerID, title: mutation.state.title, endDate: updatedEndDate)
         } else {
             cancelNotification(timerID: timerID)
         }
 
         await updateActivity(
+            activityID: activityID,
             timerID: timerID,
-            endDate: nextState.endTime,
-            isRunning: nextState.isRunning,
-            remainingSeconds: nextState.remainingSeconds
+            state: mutation.state
         )
 
         return .result()
@@ -141,64 +143,105 @@ struct CancelTimerIntent: LiveActivityIntent {
     static let openAppWhenRun = false
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
+    @Parameter(title: "라이브 액티비티 ID")
+    var activityID: String
     @Parameter(title: "타이머 ID")
     var timerID: String
 
     init() {}
 
-    init(timerID: String) {
+    init(activityID: String, timerID: String) {
+        self.activityID = activityID
         self.timerID = timerID
     }
 
     func perform() async throws -> some IntentResult {
         let now = Date()
+        let mutation = withIntentMutationLock {
+            let storedState = TimerSharedStateStore.state(for: timerID)
+            var nextState = storedState ?? SharedTimerState(
+                timerID: timerID,
+                title: "타이머",
+                startTime: nil,
+                endTime: nil,
+                isRunning: false,
+                remainingSeconds: 0,
+                lastUpdatedAt: now,
+                version: 0,
+                writer: SharedTimerStateWriter.intent
+            )
+            nextState = normalizedSharedState(nextState, now: now)
+            let previousState = nextState
+
+            if nextState.isRunning, let endTime = nextState.endTime {
+                nextState.remainingSeconds = remainingSecondsFromEndDate(endTime, now: now)
+            }
+            nextState.isRunning = false
+            nextState.startTime = nil
+            nextState.endTime = nil
+
+            let didMutate = nextState != previousState
+            guard didMutate else {
+                return IntentMutationResult(state: nextState)
+            }
+
+            let latestVersion = TimerSharedStateStore.state(for: timerID)?.version ?? nextState.version
+            nextState.lastUpdatedAt = now
+            nextState.version = max(latestVersion, nextState.version) + 1
+            nextState.writer = SharedTimerStateWriter.intent
+
+            TimerSharedStateStore.upsert(nextState)
+            if TimerSharedStateStore.activeTimerID() == timerID,
+               let nextActiveTimerID = pickNextActiveTimerID(excluding: timerID) {
+                TimerSharedStateStore.setActiveTimerID(nextActiveTimerID)
+            }
+
+            let committed = TimerSharedStateStore.state(for: timerID) ?? nextState
+            return IntentMutationResult(state: committed)
+        }
+
         cancelNotification(timerID: timerID)
-        await endActivity(timerID: timerID)
-
-        guard var state = TimerSharedStateStore.state(for: timerID) else {
-            TimerSharedStateStore.remove(timerID: timerID)
-            return .result()
-        }
-
-        if state.isRunning, let endTime = state.endTime {
-            state.remainingSeconds = remainingSecondsFromEndDate(endTime, now: now)
-        }
-        state.isRunning = false
-        state.startTime = nil
-        state.endTime = nil
-        state.lastUpdatedAt = now
-        state.version += 1
-        state.writer = SharedTimerStateWriter.intent
-
-        TimerSharedStateStore.upsert(state)
-        if TimerSharedStateStore.activeTimerID() == timerID,
-           let nextActiveTimerID = pickNextActiveTimerID(excluding: timerID) {
-            TimerSharedStateStore.setActiveTimerID(nextActiveTimerID)
-        }
+        await updateActivity(activityID: activityID, timerID: timerID, state: mutation.state)
+        await endActivity(activityID: activityID, timerID: timerID)
 
         return .result()
     }
 }
 
 @available(iOS 17.1, *)
-private func updateActivity(timerID: String, endDate: Date?, isRunning: Bool, remainingSeconds: Int) async {
-    let targets = Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
+private func updateActivity(activityID: String, timerID: String, state: SharedTimerState) async {
+    let targets = targetActivities(activityID: activityID, timerID: timerID)
     for activity in targets {
-        let state = TimerLiveActivityAttributes.ContentState(
-            endDate: endDate,
-            isRunning: isRunning,
-            remainingSeconds: max(0, remainingSeconds)
+        let contentState = TimerLiveActivityAttributes.ContentState(
+            endDate: state.endTime,
+            isRunning: state.isRunning,
+            remainingSeconds: max(0, state.remainingSeconds)
         )
-        await activity.update(using: state)
+        let content = ActivityContent(
+            state: contentState,
+            staleDate: state.isRunning ? state.endTime?.addingTimeInterval(2) : Date().addingTimeInterval(30)
+        )
+        await activity.update(content)
     }
 }
 
 @available(iOS 17.1, *)
-private func endActivity(timerID: String) async {
-    let targets = Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
+private func endActivity(activityID: String, timerID: String) async {
+    let targets = targetActivities(activityID: activityID, timerID: timerID)
     for activity in targets {
-        await activity.end(dismissalPolicy: .immediate)
+        await activity.end(nil, dismissalPolicy: .immediate)
     }
+}
+
+@available(iOS 17.1, *)
+private func targetActivities(activityID: String, timerID: String) -> [Activity<TimerLiveActivityAttributes>] {
+    if !activityID.isEmpty {
+        let byActivityID = Activity<TimerLiveActivityAttributes>.activities.filter { $0.id == activityID }
+        if !byActivityID.isEmpty {
+            return byActivityID
+        }
+    }
+    return Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
 }
 
 private func pickNextActiveTimerID(excluding timerID: String) -> String? {
@@ -236,4 +279,73 @@ private func scheduleNotification(timerID: String, title: String, endDate: Date)
 
 private func remainingSecondsFromEndDate(_ endDate: Date, now: Date = Date()) -> Int {
     max(0, Int(ceil(endDate.timeIntervalSince(now))))
+}
+
+private func normalizedSharedState(_ state: SharedTimerState, now: Date) -> SharedTimerState {
+    var nextState = state
+    nextState.remainingSeconds = max(0, nextState.remainingSeconds)
+
+    if nextState.isRunning {
+        guard let endTime = nextState.endTime else {
+            nextState.isRunning = false
+            nextState.startTime = nil
+            return nextState
+        }
+        let remaining = remainingSecondsFromEndDate(endTime, now: now)
+        nextState.remainingSeconds = remaining
+        if remaining <= 0 {
+            nextState.isRunning = false
+            nextState.startTime = nil
+            nextState.endTime = nil
+        }
+    } else {
+        nextState.startTime = nil
+        nextState.endTime = nil
+    }
+
+    return nextState
+}
+
+private func apply(
+    _ action: TimerControlAction,
+    to state: inout SharedTimerState,
+    now: Date,
+    fallbackRemainingSeconds: Int
+) -> Bool {
+    switch action {
+    case .pause:
+        guard state.isRunning else { return false }
+        if let endTime = state.endTime {
+            state.remainingSeconds = remainingSecondsFromEndDate(endTime, now: now)
+        } else {
+            state.remainingSeconds = max(0, state.remainingSeconds)
+        }
+        state.isRunning = false
+        state.startTime = nil
+        state.endTime = nil
+        return true
+
+    case .resume:
+        guard !state.isRunning else { return false }
+        var resumedRemaining = max(0, state.remainingSeconds)
+        if resumedRemaining == 0 {
+            resumedRemaining = max(0, fallbackRemainingSeconds)
+        }
+        guard resumedRemaining > 0 else { return false }
+
+        state.remainingSeconds = resumedRemaining
+        state.isRunning = true
+        state.startTime = now
+        state.endTime = now.addingTimeInterval(TimeInterval(resumedRemaining))
+        return true
+
+    case .toggle:
+        let resolvedAction: TimerControlAction = state.isRunning ? .pause : .resume
+        return apply(
+            resolvedAction,
+            to: &state,
+            now: now,
+            fallbackRemainingSeconds: fallbackRemainingSeconds
+        )
+    }
 }

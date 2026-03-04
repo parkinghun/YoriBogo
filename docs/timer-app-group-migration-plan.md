@@ -10,8 +10,8 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 - Widget intent가 현재 Realm 직접 접근 중
 - Widget target에 `RealmSwift` 링크/임베드가 남아 있음
 - Live Activity 갱신은 `ActivityKit`로 유지 가능
-- 현재 `LiveActivityManager.isEnabled = false`로 시작/동기화가 비활성화됨
-- 앱 시작 시 `endAll()` 호출로 기존 Live Activity를 강제 종료함
+- (resolved) `LiveActivityManager` 활성 여부를 권한 기반으로 동적 판단하도록 전환
+- (resolved) 앱 시작 시 `endAll()` 강제 종료 제거
 
 ## Progress
 
@@ -20,7 +20,8 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 - Stage 3: completed
 - Stage 4: completed
 - Stage 5: completed
-- Stage 6: pending
+- Stage 6: completed
+- Stage 7: in progress
 
 ## Stage Plan
 
@@ -95,6 +96,22 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 - 완료 조건:
   - 잠금화면에서 제어 후 앱 복귀/재실행해도 Live Activity가 불필요하게 끊기지 않음
 
+### Stage 7 - 잠금화면/백그라운드 제어 동기화 보강
+
+- 문제 시나리오:
+  - 잠금화면/Live Activity 버튼으로 정지/취소는 되었지만 Expanded/Dynamic Island UI가 계속 카운트되는 현상
+  - 동일 버튼 연타 시(특히 pause/resume 교차 탭) 상태 역전/시간 리셋 위험
+- 조치:
+  - Intent에서 `activityID`를 우선 타겟팅하고, 미매칭 시 `timerID` fallback 유지
+  - Intent 상태 전이를 멱등하게 처리
+    - 이미 pause 상태에서 pause 재호출 시 no-op
+    - 이미 running 상태에서 resume 재호출 시 no-op
+  - Intent 내부 상태 변경 구간을 잠금(`NSLock`)으로 직렬화해 연속 탭 경쟁 완화
+  - Widget UI 렌더링 시 `context.state`보다 App Group의 `SharedTimerState`를 우선 반영해 표시 동기화
+- 완료 조건:
+  - 잠금화면/Expanded에서 pause/cancel 직후 표시가 running에 머물지 않고 즉시 정합하게 반영
+  - pause/resume 연타 시 남은 시간이 임의로 리셋되거나 상태가 역전되지 않음
+
 ## Verification Checklist
 
 - `rg "import RealmSwift" YoriBogoWidgets YoriBogo/Widgets` 결과 0건
@@ -104,6 +121,7 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 - 잠금화면(앱 종료 상태)에서 pause/resume/cancel 모두 정상 동작 확인
 - 포그라운드 복귀 시 App Group/Realm/UI/Live Activity 4자 상태 일치 확인
 - 동일 버튼 연타(예: pause 2회, resume 2회)에서도 상태가 안정적으로 유지됨
+- 잠금화면 Expanded에서 pause/cancel 직후 1~2초 내 카운트다운 정지/종료 반영 확인
 
 ## Confirmation Points
 
@@ -113,3 +131,4 @@ Widget/Live Activity extension에서 `RealmSwift` 의존성을 제거하고, 타
 - Stage 4 완료 후 컨펌
 - Stage 5 완료 후 컨펌
 - Stage 6 완료 후 컨펌
+- Stage 7 완료 후 컨펌

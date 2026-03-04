@@ -22,6 +22,7 @@
 		B574AEE92E901F6F00D8AA58 /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B574AEE82E901F6F00D8AA58 /* IQKeyboardManagerSwift */; };
 		B58F43122F2984D300A9550B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42ED2F29129F00A9550B /* WidgetKit.framework */; };
 		B58F43132F2984D300A9550B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B58F42EF2F29129F00A9550B /* SwiftUI.framework */; };
+		B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B58F43112F2984D300A9550B /* YoriBogoWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				B58F43202F2984D500A9550B /* YoriBogoWidgetsExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;

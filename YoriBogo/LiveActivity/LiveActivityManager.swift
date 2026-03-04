@@ -12,9 +12,11 @@ import ActivityKit
 final class LiveActivityManager {
     static let shared = LiveActivityManager()
 
-    private let isEnabled = false
-
     private init() {}
+
+    private var isEnabled: Bool {
+        ActivityAuthorizationInfo().areActivitiesEnabled
+    }
 
     func start(for timer: TimerItem) {
         guard isEnabled else { return }
@@ -30,15 +32,9 @@ final class LiveActivityManager {
             isRecipeStep: timer.recipeStepID != nil
         )
 
-        let state = TimerLiveActivityAttributes.ContentState(
-            endDate: timer.endDate,
-            isRunning: timer.isRunning,
-            remainingSeconds: timer.remainingSeconds
-        )
-
         _ = try? Activity.request(
             attributes: attributes,
-            contentState: state,
+            content: makeContent(for: timer),
             pushType: nil
         )
     }
@@ -46,14 +42,10 @@ final class LiveActivityManager {
     func update(for timer: TimerItem) {
         guard isEnabled else { return }
 
-        let state = TimerLiveActivityAttributes.ContentState(
-            endDate: timer.endDate,
-            isRunning: timer.isRunning,
-            remainingSeconds: timer.remainingSeconds
-        )
+        let content = makeContent(for: timer)
         Task {
             for activity in activities(for: timer.id.uuidString) {
-                await activity.update(using: state)
+                await activity.update(content)
             }
         }
     }
@@ -61,14 +53,14 @@ final class LiveActivityManager {
     func end(for timer: TimerItem) {
         Task {
             for activity in activities(for: timer.id.uuidString) {
-                await activity.end(dismissalPolicy: .immediate)
+                await activity.end(makeContent(for: timer), dismissalPolicy: .immediate)
             }
         }
     }
 
     func endAll() {
         for activity in Activity<TimerLiveActivityAttributes>.activities {
-            Task { await activity.end(dismissalPolicy: .immediate) }
+            Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
     }
 
@@ -84,21 +76,17 @@ final class LiveActivityManager {
         for activity in liveActivities {
             let timerID = activity.attributes.timerID
             guard let timer = timerByID[timerID] else {
-                Task { await activity.end(dismissalPolicy: .immediate) }
+                Task { await activity.end(nil, dismissalPolicy: .immediate) }
                 continue
             }
             // cancel/complete/idle 상태(일시정지가 아님)는 Live Activity를 종료
             if !timer.isRunning, timer.pausedDate == nil {
-                Task { await activity.end(dismissalPolicy: .immediate) }
+                Task { await activity.end(makeContent(for: timer), dismissalPolicy: .immediate) }
                 continue
             }
 
-            let state = TimerLiveActivityAttributes.ContentState(
-                endDate: timer.endDate,
-                isRunning: timer.isRunning,
-                remainingSeconds: timer.remainingSeconds
-            )
-            Task { await activity.update(using: state) }
+            let content = makeContent(for: timer)
+            Task { await activity.update(content) }
         }
 
         // 실행 중 타이머는 Live Activity가 없으면 생성
@@ -115,5 +103,25 @@ final class LiveActivityManager {
 
     private func activities(for timerID: String) -> [Activity<TimerLiveActivityAttributes>] {
         return Activity<TimerLiveActivityAttributes>.activities.filter { $0.attributes.timerID == timerID }
+    }
+
+    private func makeContent(for timer: TimerItem, now: Date = Date()) -> ActivityContent<TimerLiveActivityAttributes.ContentState> {
+        let state = TimerLiveActivityAttributes.ContentState(
+            endDate: timer.endDate,
+            isRunning: timer.isRunning,
+            remainingSeconds: max(0, timer.remainingSeconds)
+        )
+
+        let staleDate: Date?
+        if timer.isRunning {
+            staleDate = timer.endDate?.addingTimeInterval(2)
+        } else {
+            staleDate = now.addingTimeInterval(30)
+        }
+
+        return ActivityContent(
+            state: state,
+            staleDate: staleDate
+        )
     }
 }
