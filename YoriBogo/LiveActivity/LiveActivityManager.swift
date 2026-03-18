@@ -15,7 +15,11 @@ final class LiveActivityManager {
     private init() {}
 
     private var isEnabled: Bool {
-        ActivityAuthorizationInfo().areActivitiesEnabled
+        #if DEBUG
+        return ActivityAuthorizationInfo().areActivitiesEnabled
+        #else
+        return false
+        #endif
     }
 
     func start(for timer: TimerItem) {
