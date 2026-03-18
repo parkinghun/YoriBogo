@@ -136,8 +136,10 @@ final class SettingViewModel: ViewModelType {
 
     func transform(input: Input) -> Output {
         // 섹션 데이터
+        let filteredSections = SettingSection.allCases.filter { $0 != .statistics }
+
         let sections = input.viewDidLoad
-            .map { SettingSection.allCases.filter { $0 != .statistics } }
+            .map { filteredSections }
             .asDriver(onErrorJustReturn: [])
 
         // 알림 시간 (UserDefaults에서 가져오거나 기본값)
@@ -155,7 +157,7 @@ final class SettingViewModel: ViewModelType {
         // 아이템 선택
         let itemSelected = input.itemSelected
             .map { indexPath -> SettingItem in
-                let section = SettingSection.allCases[indexPath.section]
+                let section = filteredSections[indexPath.section]
                 return section.items[indexPath.row]
             }
             .asDriver(onErrorJustReturn: .appVersion)
